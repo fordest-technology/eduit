@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id             String            @id @default(cuid())
+  name           String
+  address        String?
+  phone          String?
+  email          String            @unique
+  logo           String?
+  subdomain      String            @unique
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  primaryColor   String?
+  secondaryColor String?
+  shortName      String            @unique
+  sessions       AcademicSession[]
+  classes        Class[]
+  events         Event[]
+  subjects       Subject[]
+  users          User[]
+}
+
+model User {
+  id              String           @id @default(cuid())
+  name            String
+  email           String           @unique
+  password        String
+  role            Role             @default(STUDENT)
+  schoolId        String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  address         String?
+  city            String?
+  country         String?
+  dateOfBirth     DateTime?
+  gender          String?
+  phone           String?
+  profileImage    String?
+  religion        String?
+  state           String?
+  attendance      Attendance[]
+  teacherClasses  Class[]          @relation("ClassTeacher")
+  results         Result[]
+  studentClass    StudentClass[]
+  children        StudentParent[]  @relation("Parent")
+  parents         StudentParent[]  @relation("Student")
+  teacherSubjects SubjectTeacher[]
+  school          School?          @relation(fields: [schoolId], references: [id])
+}
+
+model Class {
+  id        String         @id @default(cuid())
+  name      String
+  section   String?
+  schoolId  String
+  teacherId String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  school    School         @relation(fields: [schoolId], references: [id])
+  teacher   User?          @relation("ClassTeacher", fields: [teacherId], references: [id])
+  subjects  ClassSubject[]
+  students  StudentClass[]
+}
+
+model Subject {
+  id          String           @id @default(cuid())
+  name        String
+  code        String?
+  description String?
+  schoolId    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  classes     ClassSubject[]
+  results     Result[]
+  school      School           @relation(fields: [schoolId], references: [id])
+  teachers    SubjectTeacher[]
+}
+
+model AcademicSession {
+  id             String         @id @default(cuid())
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean        @default(false)
+  schoolId       String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  school         School         @relation(fields: [schoolId], references: [id])
+  attendance     Attendance[]
+  results        Result[]
+  studentClasses StudentClass[]
+}
+
+model StudentClass {
+  id         String          @id @default(cuid())
+  studentId  String
+  classId    String
+  sessionId  String
+  rollNumber String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  class      Class           @relation(fields: [classId], references: [id])
+  session    AcademicSession @relation(fields: [sessionId], references: [id])
+  student    User            @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, classId, sessionId])
+}
+
+model StudentParent {
+  id        String   @id @default(cuid())
+  studentId String
+  parentId  String
+  relation  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  parent    User     @relation("Parent", fields: [parentId], references: [id])
+  student   User     @relation("Student", fields: [studentId], references: [id])
+
+  @@unique([studentId, parentId])
+}
+
+model SubjectTeacher {
+  id        String   @id @default(cuid())
+  subjectId String
+  teacherId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  teacher   User     @relation(fields: [teacherId], references: [id])
+
+  @@unique([subjectId, teacherId])
+}
+
+model ClassSubject {
+  id        String   @id @default(cuid())
+  classId   String
+  subjectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  class     Class    @relation(fields: [classId], references: [id])
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+
+  @@unique([classId, subjectId])
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  date      DateTime
+  status    AttendanceStatus
+  studentId String
+  sessionId String
+  remarks   String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  session   AcademicSession  @relation(fields: [sessionId], references: [id])
+  student   User             @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, date, sessionId])
+}
+
+model Result {
+  id         String          @id @default(cuid())
+  studentId  String
+  subjectId  String
+  sessionId  String
+  examType   ExamType
+  marks      Float
+  totalMarks Float
+  grade      String?
+  remarks    String?
+  isApproved Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  session    AcademicSession @relation(fields: [sessionId], references: [id])
+  student    User            @relation(fields: [studentId], references: [id])
+  subject    Subject         @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentId, subjectId, sessionId, examType])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  isPublic    Boolean   @default(true)
+  schoolId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  school      School    @relation(fields: [schoolId], references: [id])
+}
+
+enum Role {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum ExamType {
+  QUIZ
+  TEST
+  MIDTERM
+  FINAL
+}
