@@ -35,9 +35,15 @@
     --ring: 142 76% 36%;
 
     --radius: 0.5rem;
+
+    /* Default colors if none are set */
+    --primary-color: #3b82f6;
+    --primary-color-light: #60a5fa;
+    --primary-color-dark: #2563eb;
+    --secondary-color: #1f2937;
+    --secondary-color-light: #374151;
+    --secondary-color-dark: #111827;
   }
-
-
 }
 
 @layer base {
@@ -48,4 +54,38 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Add these utility classes */
+.bg-primary-custom {
+  background-color: var(--primary-color);
+}
+
+.bg-secondary-custom {
+  background-color: var(--secondary-color);
+}
+
+.text-primary-custom {
+  color: var(--primary-color);
+}
+
+.text-secondary-custom {
+  color: var(--secondary-color);
+}
+
+.border-primary-custom {
+  border-color: var(--primary-color);
+}
+
+.border-secondary-custom {
+  border-color: var(--secondary-color);
+}
+
+/* Add hover variants */
+.hover\:bg-primary-custom:hover {
+  background-color: var(--primary-color);
+}
+
+.hover\:bg-secondary-custom:hover {
+  background-color: var(--secondary-color);
 }

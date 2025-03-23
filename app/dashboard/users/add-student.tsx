@@ -26,10 +26,11 @@ interface AddStudentDialogProps {
   onSuccess: () => void
   classes: any[]
   parents: any[]
+  departments: any[]
   schoolId?: string
 }
 
-export function AddStudentDialog({ open, onOpenChange, onSuccess, classes, parents, schoolId }: AddStudentDialogProps) {
+export function AddStudentDialog({ open, onOpenChange, onSuccess, classes, parents, departments, schoolId }: AddStudentDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -44,6 +45,7 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess, classes, paren
     state: "",
     classId: "",
     parentId: "",
+    departmentId: "",
   })
 
   const [profileImage, setProfileImage] = useState<File | null>(null)
@@ -90,6 +92,7 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess, classes, paren
       state: "",
       classId: "",
       parentId: "",
+      departmentId: "",
     })
     setProfileImage(null)
     setImagePreview(null)
@@ -297,16 +300,15 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess, classes, paren
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="classId">Class</Label>
+              <Label htmlFor="class">Class</Label>
               <Select
-                name="classId"
                 value={formData.classId}
                 onValueChange={(value) => handleSelectChange("classId", value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Class" />
+                  <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((cls) => (
@@ -317,25 +319,46 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess, classes, paren
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="parentId">Parent (Optional)</Label>
+              <Label htmlFor="department">Department</Label>
               <Select
-                name="parentId"
-                value={formData.parentId}
-                onValueChange={(value) => handleSelectChange("parentId", value)}
+                value={formData.departmentId}
+                onValueChange={(value) => handleSelectChange("departmentId", value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Parent" />
+                  <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  {parents.map((parent) => (
-                    <SelectItem key={parent.id} value={parent.id}>
-                      {parent.name}
+                  <SelectItem value="none">None (General)</SelectItem>
+                  {departments.map((department) => (
+                    <SelectItem key={department.id} value={department.id}>
+                      {department.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="parentId">Parent (Optional)</Label>
+            <Select
+              name="parentId"
+              value={formData.parentId}
+              onValueChange={(value) => handleSelectChange("parentId", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Parent" />
+              </SelectTrigger>
+              <SelectContent>
+                {parents.map((parent) => (
+                  <SelectItem key={parent.id} value={parent.id}>
+                    {parent.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

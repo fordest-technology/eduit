@@ -1,30 +1,43 @@
 "use client"
+
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Calendar, MoreHorizontal, Plus, AlertCircle } from "lucide-react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import { z } from "zod"
+import { DataTable } from "@/components/ui/data-table"
+import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
-import { CalendarIcon, Loader2, PlusIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { DatePicker } from "@/components/ui/date-picker"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ColumnFiltersState } from "@tanstack/react-table"
 
+// Define types for our data
 interface School {
     id: string
     name: string
@@ -35,16 +48,16 @@ interface Session {
     name: string
     startDate: string
     endDate: string
-    isCurrent: boolean
-    school: {
-        id: string
-        name: string
-    }
+    isActive: boolean
+    schoolId: string
+    school: School
     _count: {
         studentClasses: number
         attendance: number
         results: number
     }
+    createdAt: string
+    updatedAt: string
 }
 
 interface SessionsTableProps {
@@ -54,224 +67,343 @@ interface SessionsTableProps {
     userSchoolId: string
 }
 
-export function SessionsTable({ initialSessions, schools, userRole, userSchoolId }: SessionsTableProps) {
-    const router = useRouter()
-    const [sessions, setSessions] = useState(initialSessions)
-    const [isCreating, setIsCreating] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
-    const [updatingSessionId, setUpdatingSessionId] = useState<string | null>(null)
+// Define form schema
+const formSchema = z.object({
+    name: z.string().min(3, { message: "Name must be at least 3 characters" }),
+    schoolId: z.string().min(1, { message: "School is required" }),
+    startDate: z.date({ required_error: "Start date is required" }),
+    endDate: z.date({ required_error: "End date is required" })
+        .refine((date) => date > new Date(), {
+            message: "End date must be in the future"
+        })
+})
 
-    const [newSession, setNewSession] = useState({
-        name: "",
-        startDate: "",
-        endDate: "",
-        schoolId: userRole === "super_admin" ? "" : userSchoolId,
+// Define columns
+const getColumns = (toggleActive: (id: string) => Promise<void>) => [
+    {
+        accessorKey: "name",
+        header: "Session Name",
+        cell: ({ row }: { row: any }) => (
+            <div className="font-medium">{row.getValue("name")}</div>
+        )
+    },
+    {
+        accessorKey: "school.name",
+        header: "School",
+        cell: ({ row }: { row: any }) => (
+            <div>{row.original.school.name}</div>
+        )
+    },
+    {
+        accessorKey: "startDate",
+        header: "Start Date",
+        cell: ({ row }: { row: any }) => {
+            const date = row.getValue("startDate");
+            return (
+                <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    {date ? format(new Date(date), "MMM d, yyyy") : "N/A"}
+                </div>
+            );
+        }
+    },
+    {
+        accessorKey: "endDate",
+        header: "End Date",
+        cell: ({ row }: { row: any }) => {
+            const date = row.getValue("endDate");
+            return (
+                <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    {date ? format(new Date(date), "MMM d, yyyy") : "N/A"}
+                </div>
+            );
+        }
+    },
+    {
+        accessorKey: "isActive",
+        header: "Status",
+        cell: ({ row }: { row: any }) => (
+            <div className="flex items-center">
+                <Badge variant={row.getValue("isActive") ? "default" : "secondary"}>
+                    {row.getValue("isActive") ? "Active" : "Inactive"}
+                </Badge>
+            </div>
+        )
+    },
+    {
+        accessorKey: "_count.studentClasses",
+        header: "Classes",
+        cell: ({ row }: { row: any }) => (
+            <div>{row.original._count.studentClasses}</div>
+        )
+    },
+    {
+        id: "actions",
+        cell: ({ row }: { row: any }) => {
+            const session = row.original
+
+            return (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem
+                            onClick={() => toggleActive(session.id)}
+                        >
+                            {session.isActive ? "Set Inactive" : "Set Active"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>View Details</DropdownMenuItem>
+                        <DropdownMenuItem>Manage Classes</DropdownMenuItem>
+                        <DropdownMenuItem>Edit Session</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )
+        }
+    }
+]
+
+export function SessionsTable({ initialSessions, schools, userRole, userSchoolId }: SessionsTableProps) {
+    const [sessions, setSessions] = useState<Session[]>(initialSessions)
+    const [isLoading, setIsLoading] = useState(false)
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const router = useRouter()
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            name: "",
+            schoolId: userRole === "school_admin" ? userSchoolId : "",
+            startDate: new Date(),
+            endDate: new Date(new Date().setMonth(new Date().getMonth() + 10))
+        }
     })
 
-    async function handleCreateSession() {
-        if (!newSession.name || !newSession.startDate || !newSession.endDate || !newSession.schoolId) {
-            toast.error("Please fill in all fields")
-            return
-        }
-
+    async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true)
+        setError(null)
 
         try {
             const response = await fetch("/api/sessions", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "application/json"
                 },
-                body: JSON.stringify(newSession),
+                body: JSON.stringify(values)
             })
 
             if (!response.ok) {
-                throw new Error("Failed to create session")
+                const error = await response.json()
+                throw new Error(error.message || "Failed to create session")
             }
 
-            const createdSession = await response.json()
-            setSessions([createdSession, ...sessions])
-            setIsCreating(false)
-            setNewSession({
-                name: "",
-                startDate: "",
-                endDate: "",
-                schoolId: userRole === "super_admin" ? "" : userSchoolId,
-            })
-            toast.success("Session created successfully")
+            const newSession = await response.json()
+
+            toast.success("Academic session created successfully")
+            setSessions([newSession, ...sessions])
+            form.reset()
+            setIsDialogOpen(false)
             router.refresh()
-        } catch (error) {
+        } catch (err: any) {
+            console.error(err)
+            setError(err.message || "An error occurred while creating the session")
             toast.error("Failed to create session")
-            console.error(error)
         } finally {
             setIsLoading(false)
         }
     }
 
-    async function handleToggleSessionStatus(sessionId: string, currentStatus: boolean) {
-        setUpdatingSessionId(sessionId)
+    async function toggleActive(id: string) {
+        setIsLoading(true)
+
         try {
-            const response = await fetch(`/api/sessions/${sessionId}`, {
+            const session = sessions.find(s => s.id === id)
+            if (!session) return
+
+            const response = await fetch(`/api/sessions/${id}`, {
                 method: "PUT",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    isCurrent: !currentStatus,
-                }),
+                    isActive: !session.isActive
+                })
             })
 
             if (!response.ok) {
-                throw new Error("Failed to update session status")
+                const error = await response.json()
+                throw new Error(error.message || "Failed to update session status")
             }
 
-            // Update sessions list with new status
-            setSessions(sessions.map(session =>
-                session.id === sessionId
-                    ? { ...session, isCurrent: !currentStatus }
-                    : session.isCurrent && !currentStatus
-                        ? { ...session, isCurrent: false }
-                        : session
+            const updatedSession = await response.json()
+
+            setSessions(sessions.map(s =>
+                s.id === id ? { ...s, isActive: !s.isActive } : s
             ))
-            toast.success("Session status updated successfully")
+
+            toast.success(`Session ${updatedSession.isActive ? "activated" : "deactivated"} successfully`)
             router.refresh()
-        } catch (error) {
-            console.error(error)
+        } catch (err: any) {
+            console.error(err)
             toast.error("Failed to update session status")
         } finally {
-            setUpdatingSessionId(null)
+            setIsLoading(false)
         }
     }
 
     return (
-        <div className="w-full">
-            <div className="flex items-center justify-between p-4 border-b">
-                <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold tracking-tight">Sessions</h2>
+        <div className="space-y-4 p-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-bold">Academic Sessions</h2>
                     <p className="text-sm text-muted-foreground">
-                        Create and manage academic sessions
+                        Manage your academic sessions and terms
                     </p>
                 </div>
-                <Dialog open={isCreating} onOpenChange={setIsCreating}>
+
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
-                            <PlusIcon className="w-4 h-4 mr-2" />
-                            New Session
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Session
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Create New Session</DialogTitle>
+                            <DialogTitle>Create New Academic Session</DialogTitle>
+                            <DialogDescription>
+                                Add a new academic session or term to your school calendar.
+                            </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Session Name</Label>
-                                <Input
-                                    id="name"
-                                    placeholder="e.g., 2023/2024 Academic Year"
-                                    value={newSession.name}
-                                    onChange={(e) => setNewSession({ ...newSession, name: e.target.value })}
+
+                        {error && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Error</AlertTitle>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Session Name</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g. 2023/2024 Academic Year" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
                                 />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="startDate">Start Date</Label>
-                                <Input
-                                    id="startDate"
-                                    type="date"
-                                    value={newSession.startDate}
-                                    onChange={(e) => setNewSession({ ...newSession, startDate: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="endDate">End Date</Label>
-                                <Input
-                                    id="endDate"
-                                    type="date"
-                                    value={newSession.endDate}
-                                    onChange={(e) => setNewSession({ ...newSession, endDate: e.target.value })}
-                                />
-                            </div>
-                            {userRole === "super_admin" && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="school">School</Label>
-                                    <Select
-                                        value={newSession.schoolId}
-                                        onValueChange={(value) => setNewSession({ ...newSession, schoolId: value })}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a school" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {schools.map((school) => (
-                                                <SelectItem key={school.id} value={school.id}>
-                                                    {school.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+
+                                {userRole === "super_admin" && (
+                                    <FormField
+                                        control={form.control}
+                                        name="schoolId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>School</FormLabel>
+                                                <Select
+                                                    onValueChange={field.onChange}
+                                                    defaultValue={field.value}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a school" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {schools.map(school => (
+                                                            <SelectItem key={school.id} value={school.id}>
+                                                                {school.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="startDate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Start Date</FormLabel>
+                                                <FormControl>
+                                                    <DatePicker
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        placeholder="Select start date"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="endDate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>End Date</FormLabel>
+                                                <FormControl>
+                                                    <DatePicker
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        placeholder="Select end date"
+                                                        minDate={form.getValues().startDate || new Date()}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
-                            )}
-                            <Button
-                                className="w-full"
-                                onClick={handleCreateSession}
-                                disabled={isLoading}
-                            >
-                                {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                Create Session
-                            </Button>
-                        </div>
+
+                                <DialogFooter>
+                                    <Button type="submit" disabled={isLoading}>
+                                        {isLoading ? "Creating..." : "Create Session"}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
                     </DialogContent>
                 </Dialog>
             </div>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>School</TableHead>
-                        <TableHead>Start Date</TableHead>
-                        <TableHead>End Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Classes</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {sessions.map((session) => (
-                        <TableRow key={session.id}>
-                            <TableCell className="font-medium">{session.name}</TableCell>
-                            <TableCell>{session.school.name}</TableCell>
-                            <TableCell>{format(new Date(session.startDate), "MMM d, yyyy")}</TableCell>
-                            <TableCell>{format(new Date(session.endDate), "MMM d, yyyy")}</TableCell>
-                            <TableCell>
-                                {session.isCurrent ? (
-                                    <Badge>Current</Badge>
-                                ) : (
-                                    <Badge variant="secondary">Inactive</Badge>
-                                )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                                {session._count.studentClasses}
-                            </TableCell>
-                            <TableCell>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleToggleSessionStatus(session.id, session.isCurrent)}
-                                    disabled={updatingSessionId === session.id}
-                                >
-                                    {updatingSessionId === session.id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : session.isCurrent ? (
-                                        "Make Inactive"
-                                    ) : (
-                                        "Make Active"
-                                    )}
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+
+            {sessions.length > 0 ? (
+                <DataTable
+                    columns={getColumns(toggleActive)}
+                    data={sessions}
+                    searchKey="name"
+                    searchPlaceholder="Search sessions..."
+                />
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>No Sessions Found</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p>No academic sessions have been created yet. Click the "Add Session" button to create your first session.</p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     )
 } 

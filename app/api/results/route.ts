@@ -1,89 +1,85 @@
-import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { type NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db";
+import { getSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const session = await getSession()
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   try {
-    const { searchParams } = new URL(request.url)
-    const studentId = searchParams.get("studentId")
-    const subjectId = searchParams.get("subjectId")
-    const sessionId = searchParams.get("sessionId")
-    const examType = searchParams.get("examType")
-    const isApproved = searchParams.get("isApproved")
-
-    const where: any = {}
-
-    if (studentId) {
-      where.studentId = studentId
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    if (subjectId) {
-      where.subjectId = subjectId
-    }
+    const { searchParams } = new URL(request.url);
+    const classId = searchParams.get("classId");
+    const subjectId = searchParams.get("subjectId");
+    const studentId = searchParams.get("studentId");
+    const sessionId = searchParams.get("sessionId");
 
-    if (sessionId) {
-      where.sessionId = sessionId
-    }
+    // Build where clause based on query parameters
+    const where: any = {};
+    if (classId) where.classId = classId;
+    if (subjectId) where.subjectId = subjectId;
+    if (studentId) where.studentId = studentId;
+    if (sessionId) where.sessionId = sessionId;
 
-    if (examType) {
-      where.examType = examType.toUpperCase()
-    }
-
-    if (isApproved !== null) {
-      where.isApproved = isApproved === "true"
-    }
-
-    // If user is a student, they can only see their own approved results
-    if (session.role === "STUDENT") {
-      where.studentId = session.id
-      where.isApproved = true
-    }
-
-    // If user is a parent, they can only see their children's approved results
-    if (session.role === "PARENT") {
-      const children = await prisma.studentParent.findMany({
-        where: { parentId: session.id },
-        select: { studentId: true },
-      })
-
-      const childrenIds = children.map((child) => child.studentId)
-
-      if (childrenIds.length === 0) {
-        return NextResponse.json([])
-      }
-
-      where.studentId = { in: childrenIds }
-      where.isApproved = true
-    }
-
-    // If user is a teacher, they can only see results for subjects they teach
-    if (session.role === "TEACHER") {
-      const teacherSubjects = await prisma.subjectTeacher.findMany({
-        where: { teacherId: session.id },
-        select: { subjectId: true },
-      })
-
-      const subjectIds = teacherSubjects.map((subject) => subject.subjectId)
-
-      if (subjectIds.length === 0 && !subjectId) {
-        return NextResponse.json([])
-      }
-
-      if (!subjectId) {
-        where.subjectId = { in: subjectIds }
+    // If user is a student, only show their own results
+    if (session.role === "student") {
+      const student = await prisma.student.findUnique({
+        where: { userId: session.id },
+      });
+      if (student) {
+        where.studentId = student.id;
       }
     }
 
-    // If user is a school admin, they can only see results for their school
-    if (session.role === "SCHOOL_ADMIN") {
-      where.student = {
-        schoolId: session.schoolId,
+    // If user is a parent, only show their children's results
+    if (session.role === "parent") {
+      const parent = await prisma.parent.findUnique({
+        where: { userId: session.id },
+        include: {
+          children: {
+            include: {
+              student: true,
+            },
+          },
+        },
+      });
+      if (parent) {
+        where.studentId = {
+          in: parent.children.map((child) => child.student.id),
+        };
+      }
+    }
+
+    // If user is a teacher, only show results for their classes
+    if (session.role === "teacher") {
+      const teacher = await prisma.teacher.findUnique({
+        where: { userId: session.id },
+        include: {
+          classes: true,
+        },
+      });
+      if (teacher) {
+        where.classId = {
+          in: teacher.classes.map((cls) => cls.id),
+        };
+      }
+    }
+
+    // If user is a school admin, only show results for their school
+    if (session.role === "school_admin") {
+      const admin = await prisma.admin.findUnique({
+        where: { userId: session.id },
+        include: {
+          user: true,
+        },
+      });
+      if (admin?.user.schoolId) {
+        where.student = {
+          user: {
+            schoolId: admin.user.schoolId,
+          },
+        };
       }
     }
 
@@ -91,188 +87,294 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            schoolId: true,
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
         subject: true,
         session: true,
       },
       orderBy: {
-        updatedAt: "desc",
+        createdAt: "desc",
       },
-    })
+    });
 
-    return NextResponse.json(results)
+    // Transform the results to include student name from the user relation
+    const transformedResults = results.map((result) => ({
+      ...result,
+      student: {
+        ...result.student,
+        name: result.student.user.name,
+      },
+    }));
+
+    return NextResponse.json(transformedResults);
   } catch (error) {
-    console.error("Error fetching results:", error)
-    return NextResponse.json({ error: "Failed to fetch results" }, { status: 500 })
+    console.error("Error fetching results:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch results" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getSession()
-
-  if (!session || (session.role !== "super_admin" && session.role !== "school_admin" && session.role !== "TEACHER")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   try {
-    const body = await request.json()
-    const { studentId, subjectId, sessionId, examType, marks, totalMarks, remarks } = body
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Only teachers and admins can create results
+    if (!["teacher", "super_admin", "school_admin"].includes(session.role)) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    const data = await request.json();
+    const {
+      studentId,
+      subjectId,
+      sessionId,
+      examType,
+      marks,
+      totalMarks,
+      grade,
+      remarks,
+    } = data;
 
     // Validate required fields
-    if (!studentId || !subjectId || !sessionId || !examType || marks === undefined || totalMarks === undefined) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    }
-
-    // Check if student exists
-    const student = await prisma.user.findFirst({
-      where: {
-        id: studentId,
-        role: "STUDENT",
-      },
-      select: { schoolId: true },
-    })
-
-    if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 })
-    }
-
-    // Check if subject exists
-    const subject = await prisma.subject.findUnique({
-      where: { id: subjectId },
-      select: { schoolId: true },
-    })
-
-    if (!subject) {
-      return NextResponse.json({ error: "Subject not found" }, { status: 404 })
-    }
-
-    // Check if session exists
-    const academicSession = await prisma.academicSession.findUnique({
-      where: { id: sessionId },
-      select: { schoolId: true },
-    })
-
-    if (!academicSession) {
-      return NextResponse.json({ error: "Academic session not found" }, { status: 404 })
-    }
-
-    // Check if all entities belong to the same school
-    if (student.schoolId !== subject.schoolId || student.schoolId !== academicSession.schoolId) {
+    if (
+      !studentId ||
+      !subjectId ||
+      !sessionId ||
+      !examType ||
+      marks === undefined ||
+      totalMarks === undefined
+    ) {
       return NextResponse.json(
-        { error: "Student, subject, and session must belong to the same school" },
-        { status: 400 },
-      )
+        { message: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    // Check if user has permission to add results for this student/subject
-    if (session.role === "TEACHER") {
-      // Teachers can only add results for subjects they teach
-      const teacherSubject = await prisma.subjectTeacher.findFirst({
-        where: {
-          teacherId: session.id,
-          subjectId,
+    // If user is a teacher, verify they teach this subject
+    if (session.role === "teacher") {
+      const teacher = await prisma.teacher.findUnique({
+        where: { userId: session.id },
+        include: {
+          subjects: true,
         },
-      })
+      });
 
-      if (!teacherSubject) {
-        return NextResponse.json({ error: "You are not assigned to teach this subject" }, { status: 403 })
-      }
-    } else if (session.role === "SCHOOL_ADMIN") {
-      // School admins can only add results for students in their school
-      if (student.schoolId !== session.schoolId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      if (!teacher?.subjects.some((st) => st.subjectId === subjectId)) {
+        return NextResponse.json(
+          { message: "You can only create results for subjects you teach" },
+          { status: 403 }
+        );
       }
     }
 
-    // Calculate grade based on percentage
-    const percentage = (marks / totalMarks) * 100
-    let grade = ""
+    // If user is a school admin, verify the student belongs to their school
+    if (session.role === "school_admin") {
+      const admin = await prisma.admin.findUnique({
+        where: { userId: session.id },
+        include: {
+          user: true,
+        },
+      });
 
-    if (percentage >= 90) {
-      grade = "A+"
-    } else if (percentage >= 80) {
-      grade = "A"
-    } else if (percentage >= 70) {
-      grade = "B"
-    } else if (percentage >= 60) {
-      grade = "C"
-    } else if (percentage >= 50) {
-      grade = "D"
-    } else {
-      grade = "F"
+      if (admin?.user.schoolId) {
+        const student = await prisma.student.findUnique({
+          where: { id: studentId },
+          include: {
+            user: true,
+          },
+        });
+
+        if (student?.user.schoolId !== admin.user.schoolId) {
+          return NextResponse.json(
+            {
+              message:
+                "You can only create results for students in your school",
+            },
+            { status: 403 }
+          );
+        }
+      }
     }
 
-    // Check if result already exists
-    const existingResult = await prisma.result.findFirst({
-      where: {
+    const result = await prisma.result.create({
+      data: {
         studentId,
         subjectId,
         sessionId,
-        examType: examType.toUpperCase(),
+        examType,
+        marks,
+        totalMarks,
+        grade,
+        remarks,
+        isApproved:
+          session.role === "super_admin" || session.role === "school_admin",
       },
-    })
-
-    let result
-
-    if (existingResult) {
-      // Update existing result
-      result = await prisma.result.update({
-        where: { id: existingResult.id },
-        data: {
-          marks,
-          totalMarks,
-          grade,
-          remarks,
-          isApproved: session.role === "SCHOOL_ADMIN", // Auto-approve if added by school admin
-        },
-        include: {
-          student: {
-            select: {
-              id: true,
-              name: true,
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
             },
           },
-          subject: true,
-          session: true,
         },
-      })
-    } else {
-      // Create new result
-      result = await prisma.result.create({
-        data: {
-          studentId,
-          subjectId,
-          sessionId,
-          examType: examType.toUpperCase(),
-          marks,
-          totalMarks,
-          grade,
-          remarks,
-          isApproved: session.role === "SCHOOL_ADMIN", // Auto-approve if added by school admin
-        },
-        include: {
-          student: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          subject: true,
-          session: true,
-        },
-      })
-    }
+        subject: true,
+        session: true,
+      },
+    });
 
-    return NextResponse.json(result, { status: existingResult ? 200 : 201 })
+    // Transform the result to include student name from the user relation
+    const transformedResult = {
+      ...result,
+      student: {
+        ...result.student,
+        name: result.student.user.name,
+      },
+    };
+
+    return NextResponse.json(transformedResult);
   } catch (error) {
-    console.error("Error adding result:", error)
-    return NextResponse.json({ error: "Failed to add result" }, { status: 500 })
+    console.error("Error creating result:", error);
+    return NextResponse.json(
+      { message: "Failed to create result" },
+      { status: 500 }
+    );
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Only teachers and admins can update results
+    if (!["teacher", "super_admin", "school_admin"].includes(session.role)) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    const data = await request.json();
+    const { id, marks, totalMarks, grade, remarks, isApproved } = data;
+
+    if (!id) {
+      return NextResponse.json(
+        { message: "Result ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // If user is a teacher, verify they teach this subject
+    if (session.role === "teacher") {
+      const teacher = await prisma.teacher.findUnique({
+        where: { userId: session.id },
+        include: {
+          subjects: true,
+        },
+      });
+
+      const result = await prisma.result.findUnique({
+        where: { id },
+        include: {
+          subject: true,
+        },
+      });
+
+      if (
+        !result ||
+        !teacher?.subjects.some((st) => st.subjectId === result.subjectId)
+      ) {
+        return NextResponse.json(
+          { message: "You can only update results for subjects you teach" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // If user is a school admin, verify the result belongs to their school
+    if (session.role === "school_admin") {
+      const admin = await prisma.admin.findUnique({
+        where: { userId: session.id },
+        include: {
+          user: true,
+        },
+      });
+
+      if (admin?.user.schoolId) {
+        const result = await prisma.result.findUnique({
+          where: { id },
+          include: {
+            student: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        });
+
+        if (result?.student.user.schoolId !== admin.user.schoolId) {
+          return NextResponse.json(
+            {
+              message:
+                "You can only update results for students in your school",
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    const result = await prisma.result.update({
+      where: { id },
+      data: {
+        marks,
+        totalMarks,
+        grade,
+        remarks,
+        isApproved,
+      },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        subject: true,
+        session: true,
+      },
+    });
+
+    // Transform the result to include student name from the user relation
+    const transformedResult = {
+      ...result,
+      student: {
+        ...result.student,
+        name: result.student.user.name,
+      },
+    };
+
+    return NextResponse.json(transformedResult);
+  } catch (error) {
+    console.error("Error updating result:", error);
+    return NextResponse.json(
+      { message: "Failed to update result" },
+      { status: 500 }
+    );
+  }
+}

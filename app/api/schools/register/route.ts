@@ -1,8 +1,46 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/email";
 import { uploadImage } from "@/lib/cloudinary";
+import { UserRole, AdminType } from "@prisma/client";
+import { checkCloudinaryConfig } from "@/lib/env-check";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { randomUUID } from "crypto";
+
+// Helper function to handle file uploads locally if Cloudinary is not available
+async function handleFileUpload(file: File): Promise<string | null> {
+  try {
+    // Check if Cloudinary is configured
+    const isCloudinaryConfigured = checkCloudinaryConfig();
+
+    if (isCloudinaryConfigured) {
+      // Use Cloudinary for file upload
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const base64 = buffer.toString("base64");
+      const dataURI = `data:${file.type};base64,${base64}`;
+
+      return await uploadImage(dataURI);
+    } else {
+      // Fallback to local file storage
+      const uploadDir = join(process.cwd(), "public", "uploads", "logos");
+      await mkdir(uploadDir, { recursive: true });
+
+      const filename = `${randomUUID()}-${file.name.replace(/\s/g, "_")}`;
+      const filePath = join(uploadDir, filename);
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await writeFile(filePath, buffer);
+
+      return `/uploads/logos/${filename}`;
+    }
+  } catch (error) {
+    console.error("Error handling file upload:", error);
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,13 +71,7 @@ export async function POST(request: NextRequest) {
       // Handle logo upload
       const logoFile = formData.get("logo") as File;
       if (logoFile && logoFile.size > 0) {
-        // Convert file to base64 for Cloudinary upload
-        const buffer = await logoFile.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString("base64");
-        const dataURI = `data:${logoFile.type};base64,${base64}`;
-
-        // Upload to Cloudinary
-        logoUrl = await uploadImage(dataURI);
+        logoUrl = await handleFileUpload(logoFile);
       }
     } else {
       // Handle regular JSON request
@@ -73,65 +105,53 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if school email already exists
-    try {
-      const existingSchoolByEmail = await prisma.school.findUnique({
+    const existingSchoolByEmail = await prisma.school
+      .findUnique({
         where: { email },
+      })
+      .catch((error) => {
+        console.error("Error checking school email:", error);
+        return null; // Return null instead of throwing to continue execution
       });
 
-      if (existingSchoolByEmail) {
-        return NextResponse.json(
-          { error: "School email already in use" },
-          { status: 400 }
-        );
-      }
-    } catch (emailCheckError) {
-      console.error("Error checking school email:", emailCheckError);
+    if (existingSchoolByEmail) {
       return NextResponse.json(
-        {
-          error: "Failed to check if school email exists",
-          details: emailCheckError.message,
-        },
-        { status: 500 }
+        { error: "School email already in use" },
+        { status: 400 }
       );
     }
 
     // Check if school shortName already exists
-    try {
-      const existingSchoolByShortName = await prisma.school.findUnique({
+    const existingSchoolByShortName = await prisma.school
+      .findUnique({
         where: { shortName },
+      })
+      .catch((error) => {
+        console.error("Error checking school shortName:", error);
+        return null; // Return null instead of throwing to continue execution
       });
 
-      if (existingSchoolByShortName) {
-        return NextResponse.json(
-          { error: "School short name already in use" },
-          { status: 400 }
-        );
-      }
-    } catch (shortNameCheckError) {
-      console.error("Error checking school shortName:", shortNameCheckError);
-      // Continue with registration even if check fails
+    if (existingSchoolByShortName) {
+      return NextResponse.json(
+        { error: "School short name already in use" },
+        { status: 400 }
+      );
     }
 
     // Check if admin email already exists
-    try {
-      const existingAdmin = await prisma.user.findUnique({
+    const existingAdmin = await prisma.user
+      .findUnique({
         where: { email: adminEmail },
+      })
+      .catch((error) => {
+        console.error("Error checking admin email:", error);
+        return null; // Return null instead of throwing to continue execution
       });
 
-      if (existingAdmin) {
-        return NextResponse.json(
-          { error: "Admin email already in use" },
-          { status: 400 }
-        );
-      }
-    } catch (adminCheckError) {
-      console.error("Error checking admin email:", adminCheckError);
+    if (existingAdmin) {
       return NextResponse.json(
-        {
-          error: "Failed to check if admin email exists",
-          details: adminCheckError.message,
-        },
-        { status: 500 }
+        { error: "Admin email already in use" },
+        { status: 400 }
       );
     }
 
@@ -143,9 +163,6 @@ export async function POST(request: NextRequest) {
 
     // Create school and admin in a transaction
     try {
-      // First, let's check what fields are available in the School model
-      console.log("Checking School model fields...");
-
       // Create school with only the fields that exist in your schema
       const result = await prisma.$transaction(async (tx) => {
         // Create school with only the fields that exist in your schema
@@ -159,7 +176,9 @@ export async function POST(request: NextRequest) {
             email,
             logo: logoUrl,
             subdomain,
-            // primaryColor and secondaryColor are removed since they don't exist in your schema
+            // Add the color fields from the form
+            primaryColor: body.primaryColor || "#22c55e",
+            secondaryColor: body.secondaryColor || "#f59e0b",
           },
         });
 
@@ -169,8 +188,19 @@ export async function POST(request: NextRequest) {
             name: adminName,
             email: adminEmail,
             password: hashedPassword,
-            role: "SCHOOL_ADMIN",
+            role: UserRole.SCHOOL_ADMIN,
             schoolId: school.id,
+            // Create the admin profile with a nested create
+            admin: {
+              create: {
+                adminType: AdminType.SCHOOL_ADMIN,
+                permissions: JSON.stringify({
+                  canManageUsers: true,
+                  canManageClasses: true,
+                  canManageDepartments: true,
+                }),
+              },
+            },
           },
         });
 
@@ -215,8 +245,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Failed to create school and admin",
-          details: transactionError.message,
-          code: transactionError.code,
+          details:
+            transactionError instanceof Error
+              ? transactionError.message
+              : "Unknown error",
+          code: (transactionError as any)?.code,
         },
         { status: 500 }
       );
@@ -226,8 +259,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Failed to register school",
-        details: error.message,
-        stack: error.stack,
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

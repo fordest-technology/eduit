@@ -17,12 +17,12 @@ async function main() {
     },
   });
 
-  console.log("Seed data created successfully");
+  console.log("Database seed completed: Super Admin account created");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("Database seed failed:", e);
     process.exit(1);
   })
   .finally(async () => {

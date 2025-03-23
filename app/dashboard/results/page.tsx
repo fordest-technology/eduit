@@ -1,149 +1,169 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getSession } from "@/lib/auth"
-import { PrismaClient } from "@prisma/client"
-import { redirect } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { FileDown, Loader2, GraduationCap, BookOpen, Award } from "lucide-react"
 import { ResultsTable } from "./results-table"
-import type { Result, Prisma } from "@prisma/client"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { DashboardHeader } from "@/app/components/dashboard-header"
+import { useSession } from "next-auth/react"
+import { ExtendedResult } from "./types"
 import type { UserRole } from "@/lib/auth"
 
-const prisma = new PrismaClient()
-
-interface ExtendedResult extends Result {
-  student: {
+interface ExtendedSession {
+  user: {
     id: string
-    name: string
+    name?: string | null
+    email?: string | null
+    image?: string | null
   }
-  subject: {
-    id: string
-    name: string
-  }
+  role: UserRole
+  expires: string
 }
 
-export default async function ResultsPage() {
-  const session = await getSession()
-  if (!session) {
-    redirect("/login")
-  }
+interface PageProps {
+  params: { id: string }
+}
 
-  let results: ExtendedResult[] = []
-  const { role, id, schoolId } = session
+export default function ResultsPage({ params }: PageProps) {
+  const router = useRouter()
+  const { data: session, status } = useSession() as { data: ExtendedSession | null, status: string }
+  const [results, setResults] = useState<ExtendedResult[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [schoolData, setSchoolData] = useState<any>(null)
 
-  const baseInclude = {
-    student: {
-      select: {
-        id: true,
-        name: true,
-      },
-    },
-    subject: {
-      select: {
-        id: true,
-        name: true,
-      },
-    },
-  } as const
+  // Calculate statistics
+  const totalResults = results.length
+  const approvedResults = results.filter(r => r.isApproved).length
+  const averageScore = results.length > 0
+    ? results.reduce((sum, r) => sum + (r.marks / r.totalMarks) * 100, 0) / results.length
+    : 0
 
-  if (role === "super_admin") {
-    const data = await prisma.result.findMany({
-      where: {
-        student: {
-          schoolId,
-        },
-        isApproved: false,
-      },
-      include: baseInclude,
-    })
-    results = data as ExtendedResult[]
-  } else if (role === "teacher") {
-    const data = await prisma.result.findMany({
-      where: {
-        student: {
-          schoolId,
-        },
-        subject: {
-          teachers: {
-            some: {
-              teacherId: id,
-            },
-          },
-        },
-      },
-      include: baseInclude,
-    })
-    results = data as ExtendedResult[]
-  } else if (role === "student") {
-    const data = await prisma.result.findMany({
-      where: {
-        student: {
-          schoolId,
-        },
-        studentId: id,
-        isApproved: true,
-      },
-      include: baseInclude,
-    })
-    results = data as ExtendedResult[]
-  } else if (role === "parent") {
-    const studentParents = await prisma.studentParent.findMany({
-      where: { parentId: id },
-      select: {
-        studentId: true,
-      },
-    })
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        if (status === "unauthenticated") {
+          router.push("/login")
+          return
+        }
 
-    if (studentParents.length > 0) {
-      const studentIds = studentParents.map(s => s.studentId)
-      const data = await prisma.result.findMany({
-        where: {
-          student: {
-            schoolId,
-          },
-          studentId: {
-            in: studentIds,
-          },
-          isApproved: true,
-        },
-        include: baseInclude,
-      })
-      results = data as ExtendedResult[]
+        // Fetch school data
+        const schoolRes = await fetch("/api/schools/current")
+        if (schoolRes.ok) {
+          const schoolData = await schoolRes.json()
+          setSchoolData(schoolData.school)
+        }
+
+        // Fetch results
+        const resultsRes = await fetch("/api/results")
+        if (!resultsRes.ok) {
+          throw new Error("Failed to fetch results")
+        }
+
+        const resultsData = await resultsRes.json()
+        setResults(resultsData)
+      } catch (error) {
+        console.error("Error:", error)
+        if (error instanceof Error) {
+          setError(error.message)
+        } else {
+          setError("An unexpected error occurred")
+        }
+        toast.error("Error loading page")
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchData()
+  }, [status, router])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
   }
 
-  let title = "Results"
-  let description = "View and manage results"
-
-  switch (role) {
-    case "super_admin":
-      title = "Results Management"
-      description = "Review and approve student results"
-      break
-    case "teacher":
-      title = "Student Results"
-      description = "View and manage your students' results"
-      break
-    case "student":
-      title = "My Results"
-      description = "View your academic results"
-      break
-    case "parent":
-      title = "Children's Results"
-      description = "View your children's academic results"
-      break
+  if (error || !session) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-red-500 mb-4">{error || "Not authorized"}</p>
+        <Button onClick={() => router.push("/dashboard")}>
+          Back to Dashboard
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </CardHeader>
-      <CardContent>
-        <ResultsTable
-          userRole={role}
-          schoolId={schoolId}
-          results={results}
-        />
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <DashboardHeader
+        heading="Academic Results"
+        text="Manage and track student performance across all subjects and examinations"
+        showBanner={true}
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center text-blue-700">
+              <GraduationCap className="mr-2 h-5 w-5" />
+              Total Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-blue-800">{totalResults}</p>
+            <p className="text-sm text-blue-600 mt-1">Recorded assessments</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
+              <BookOpen className="mr-2 h-5 w-5" />
+              Approved Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-emerald-800">{approvedResults}</p>
+            <p className="text-sm text-emerald-600 mt-1">Verified assessments</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center text-purple-700">
+              <Award className="mr-2 h-5 w-5" />
+              Average Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-purple-800">{averageScore.toFixed(1)}%</p>
+            <p className="text-sm text-purple-600 mt-1">Overall performance</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-primary/10 shadow-md">
+        <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardTitle>Results Management</CardTitle>
+          <CardDescription>View, add, and manage student examination results</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <ResultsTable
+            initialData={{
+              results,
+              userRole: session.role,
+              schoolId: schoolData?.id
+            }}
+          />
+        </CardContent>
+      </Card>
+    </div>
   )
 }

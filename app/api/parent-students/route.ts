@@ -1,174 +1,320 @@
-import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function POST(request: NextRequest) {
-  const session = await getSession()
-
-  if (!session || (session.role !== "super_admin" && session.role !== "school_admin")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+export async function POST(req: Request) {
   try {
-    const body = await request.json()
-    const { parentId, studentIds, relation } = body
-
-    // Validate required fields
-    if (!parentId || !studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
-      return NextResponse.json({ error: "Parent ID and at least one student ID are required" }, { status: 400 })
+    // Check authentication
+    const session = await getSession();
+    if (!session) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "You must be signed in to access this endpoint",
+        }),
+        { status: 401 }
+      );
     }
 
-    // Check if parent exists and is a parent
-    const parent = await prisma.user.findFirst({
+    // Check authorization - only admins can link parents and students
+    if (session.role !== "super_admin" && session.role !== "school_admin") {
+      return new NextResponse(
+        JSON.stringify({
+          error: "You do not have permission to perform this action",
+        }),
+        { status: 403 }
+      );
+    }
+
+    // Get the request body
+    const body = await req.json();
+    const { parentId, studentIds, relation } = body;
+
+    // Validate the required data
+    if (
+      !parentId ||
+      !studentIds ||
+      !Array.isArray(studentIds) ||
+      studentIds.length === 0
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          error:
+            "Invalid request data. Parent ID and student IDs are required.",
+        }),
+        { status: 400 }
+      );
+    }
+
+    // Check if the parent exists and is a parent
+    const parentUser = await prisma.user.findUnique({
       where: {
         id: parentId,
         role: "PARENT",
       },
-      select: { id: true, schoolId: true },
-    })
+      include: {
+        parent: true,
+      },
+    });
 
-    if (!parent) {
-      return NextResponse.json({ error: "Parent not found" }, { status: 404 })
+    if (!parentUser) {
+      return new NextResponse(JSON.stringify({ error: "Parent not found" }), {
+        status: 404,
+      });
     }
 
-    // Check if user has permission to link this parent
-    if (session.role === "school_admin" && parent.schoolId !== session.schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (!parentUser.parent) {
+      return new NextResponse(
+        JSON.stringify({
+          error:
+            "Parent profile not found. Please ensure the parent profile is properly set up.",
+        }),
+        { status: 404 }
+      );
     }
 
-    // Check if all students exist and belong to the same school
+    const parentProfileId = parentUser.parent.id;
+
+    // Check if the user has permission to link this parent
+    // School admins can only manage parents in their school
+    if (
+      session.role === "school_admin" &&
+      parentUser.schoolId !== session.schoolId
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "You do not have permission to manage this parent",
+        }),
+        { status: 403 }
+      );
+    }
+
+    // Verify all students exist and belong to the same school as the parent
     const students = await prisma.user.findMany({
       where: {
         id: { in: studentIds },
         role: "STUDENT",
+        schoolId: parentUser.schoolId,
       },
-      select: { id: true, schoolId: true },
-    })
+      include: {
+        student: true,
+      },
+    });
 
     if (students.length !== studentIds.length) {
-      return NextResponse.json({ error: "One or more students not found" }, { status: 404 })
+      return new NextResponse(
+        JSON.stringify({
+          error:
+            "One or more students do not exist or belong to a different school",
+        }),
+        { status: 400 }
+      );
     }
 
-    // If school admin, check if all students belong to their school
-    if (session.role === "school_admin") {
-      const invalidStudents = students.filter((student) => student.schoolId !== session.schoolId)
+    // Filter out students without student profiles
+    const validStudents = students.filter(
+      (student) => student.student !== null
+    );
 
-      if (invalidStudents.length > 0) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      }
+    if (validStudents.length !== students.length) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Some selected students do not have proper student profiles",
+        }),
+        { status: 400 }
+      );
     }
 
-    // Create parent-student relationships
+    // Create connections between parent and students
     const results = await Promise.all(
-      studentIds.map(async (studentId) => {
+      validStudents.map(async (student) => {
         // Check if relationship already exists
-        const existingRelation = await prisma.studentParent.findUnique({
+        const existingRelation = await prisma.studentParent.findFirst({
           where: {
-            studentId_parentId: {
-              studentId,
-              parentId,
-            },
+            studentId: student.student!.id,
+            parentId: parentProfileId,
           },
-        })
+        });
 
         if (existingRelation) {
-          // Update relation if provided
-          if (relation) {
+          // Update relation if it exists and a new relation value is provided
+          if (relation !== undefined) {
             return prisma.studentParent.update({
-              where: {
-                id: existingRelation.id,
-              },
-              data: {
-                relation,
-              },
-            })
+              where: { id: existingRelation.id },
+              data: { relation },
+            });
           }
-          return existingRelation
+          return existingRelation;
         }
 
-        // Create new relationship
+        // Create new relation if it doesn't exist
         return prisma.studentParent.create({
           data: {
-            studentId,
-            parentId,
+            studentId: student.student!.id,
+            parentId: parentProfileId,
             relation,
           },
-        })
-      }),
-    )
+        });
+      })
+    );
 
-    return NextResponse.json(
-      {
-        success: true,
-        count: results.length,
-      },
-      { status: 200 },
-    )
+    return NextResponse.json({
+      success: true,
+      message: `${results.length} student(s) linked to parent successfully`,
+      count: results.length,
+    });
   } catch (error) {
-    console.error("Error linking parent to students:", error)
-    return NextResponse.json({ error: "Failed to link parent to students" }, { status: 500 })
+    console.error("Error linking students to parent:", error);
+    return new NextResponse(
+      JSON.stringify({
+        error: "An error occurred while linking students to parent",
+      }),
+      { status: 500 }
+    );
   }
 }
 
-export async function GET(request: NextRequest) {
-  const session = await getSession()
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const parentId = searchParams.get("parentId")
-    const studentId = searchParams.get("studentId")
-
-    const where: any = {}
-
-    if (parentId) {
-      where.parentId = parentId
+    // Check authentication
+    const session = await getSession();
+    if (!session) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "You must be signed in to access this endpoint",
+        }),
+        { status: 401 }
+      );
     }
 
-    if (studentId) {
-      where.studentId = studentId
+    // Parse query parameters
+    const { searchParams } = new URL(req.url);
+    const parentId = searchParams.get("parentId");
+
+    // Validate required parameters
+    if (!parentId) {
+      return new NextResponse(
+        JSON.stringify({ error: "Parent ID is required" }),
+        { status: 400 }
+      );
     }
 
-    // If school admin, restrict to their school
-    if (session.role === "school_admin") {
-      where.student = {
-        schoolId: session.schoolId,
-      }
+    // Check if the parent exists
+    const parentUser = await prisma.user.findUnique({
+      where: {
+        id: parentId,
+        role: "PARENT",
+      },
+      include: {
+        parent: true,
+      },
+    });
+
+    if (!parentUser) {
+      return new NextResponse(JSON.stringify({ error: "Parent not found" }), {
+        status: 404,
+      });
     }
 
-    // If parent, restrict to their own relationships
-    if (session.role === "parent") {
-      where.parentId = session.id
+    if (!parentUser.parent) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Parent profile not found",
+        }),
+        { status: 404 }
+      );
     }
 
-    const relationships = await prisma.studentParent.findMany({
-      where,
+    const parentProfileId = parentUser.parent.id;
+
+    // Check authorization
+    if (
+      session.role !== "super_admin" &&
+      session.role !== "school_admin" &&
+      session.role !== "teacher" &&
+      session.id !== parentId
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "You do not have permission to access this information",
+        }),
+        { status: 403 }
+      );
+    }
+
+    // School admins and teachers can only view parents in their school
+    if (
+      (session.role === "school_admin" || session.role === "teacher") &&
+      parentUser.schoolId !== session.schoolId
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "You do not have permission to access this information",
+        }),
+        { status: 403 }
+      );
+    }
+
+    // Get current session
+    const currentSession = parentUser.schoolId
+      ? await prisma.academicSession.findFirst({
+          where: {
+            schoolId: parentUser.schoolId,
+            isCurrent: true,
+          },
+        })
+      : null;
+
+    // Get all linked students for this parent
+    const linkedStudents = await prisma.studentParent.findMany({
+      where: {
+        parentId: parentProfileId,
+      },
       include: {
         student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            schoolId: true,
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+          include: {
+            user: true,
+            classes: {
+              where: currentSession
+                ? {
+                    sessionId: currentSession.id,
+                  }
+                : undefined,
+              include: {
+                class: true,
+              },
+            },
           },
         },
       },
-    })
+    });
 
-    return NextResponse.json(relationships)
+    // Format the response
+    const formattedLinkedStudents = linkedStudents.map((link) => {
+      // Get class information
+      const currentClass =
+        link.student.classes && link.student.classes.length > 0
+          ? link.student.classes[0].class.name
+          : "No Class Assigned";
+
+      return {
+        id: link.student.id,
+        name: link.student.user?.name || "Unknown",
+        linkId: link.id,
+        relation: link.relation || "Not specified",
+        class: currentClass,
+      };
+    });
+
+    return NextResponse.json({
+      students: formattedLinkedStudents,
+    });
   } catch (error) {
-    console.error("Error fetching parent-student relationships:", error)
-    return NextResponse.json({ error: "Failed to fetch parent-student relationships" }, { status: 500 })
+    console.error("Error fetching linked students:", error);
+    return new NextResponse(
+      JSON.stringify({
+        error: "An error occurred while fetching linked students",
+      }),
+      { status: 500 }
+    );
   }
 }
-

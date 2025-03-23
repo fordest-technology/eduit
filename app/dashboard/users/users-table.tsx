@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -15,13 +14,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { UserRole } from "@/lib/auth"
 import { Edit, Loader2, Plus, Trash, UserPlus, Users } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
-import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { AddStudentDialog } from "@/components/add-student-dialog"
+import { Role } from "@prisma/client"
+import { useColors } from "@/contexts/color-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal, Pencil } from "lucide-react"
+import { AddUserDialog } from "@/components/add-user-dialog"
 
 type School = {
   id: string
@@ -43,17 +51,39 @@ type Session = {
   name: string
 }
 
+type Department = {
+  id: string
+  name: string
+  school: {
+    id: string
+    name: string
+  }
+}
+
 type User = {
   id: string
   name: string
   email: string
-  role: string
+  role: Role
   schoolId?: string | null
   school?: {
     name: string
   } | null
+  department?: {
+    name: string
+  } | null
+  studentClasses?: Array<{
+    class: {
+      name: string
+    }
+  }>
   createdAt: string
   profileImage?: string | null
+  studentClass?: {
+    id: string
+    name: string
+    section: string
+  } | null
 }
 
 type Student = {
@@ -62,11 +92,12 @@ type Student = {
 }
 
 interface UsersTableProps {
-  userRole: UserRole
+  userRole: Role
   userId: string
   schoolId?: string
   schools: School[]
   classes: Class[]
+  departments: Department[]
   currentSession?: Session | null
   roleFilter: string
 }
@@ -76,7 +107,8 @@ export function UsersTable({
   userId,
   schoolId,
   schools,
-  classes,
+  classes: initialClasses = [],
+  departments: initialDepartments = [],
   currentSession,
   roleFilter,
 }: UsersTableProps) {
@@ -94,8 +126,11 @@ export function UsersTable({
     name: "",
     email: "",
     password: "",
-    role: roleFilter !== "all" ? roleFilter : "STUDENT",
-    schoolId: schoolId || "",
+    role: "STUDENT" as Role,
+    schoolId: schoolId || undefined,
+    classId: undefined as string | undefined,
+    parentId: undefined as string | undefined,
+    departmentId: undefined as string | undefined,
     gender: "",
     dateOfBirth: "",
     religion: "",
@@ -108,58 +143,74 @@ export function UsersTable({
   })
   const [submitting, setSubmitting] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [classes, setClasses] = useState<Class[]>(initialClasses)
+  const [parents, setParents] = useState<User[]>([])
+  const [departments, setDepartments] = useState<Department[]>(initialDepartments)
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false)
+  const [isLoadingParents, setIsLoadingParents] = useState(false)
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false)
+  const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(false)
+  const { colors } = useColors()
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [deletingUser, setDeletingUser] = useState<User | null>(null)
+  const [linkingParent, setLinkingParent] = useState<User | null>(null)
+  const [addingToClass, setAddingToClass] = useState<User | null>(null)
 
   // Fetch users
-  useEffect(() => {
-    async function fetchUsers() {
-      setLoading(true)
-      try {
-        let url = "/api/users?"
+  const fetchUsers = async () => {
+    setLoading(true)
+    try {
+      let url = "/api/users?"
 
-        if (roleFilter !== "all") {
-          url += `&role=${roleFilter}`
-        }
-
-        if (schoolId) {
-          url += `&schoolId=${schoolId}`
-        }
-
-        const response = await fetch(url)
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch users")
-        }
-
-        const data = await response.json()
-        setUsers(data)
-      } catch (error) {
-        console.error("Error fetching users:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load users",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
+      if (roleFilter !== "all") {
+        url += `&role=${roleFilter}`
       }
-    }
 
+      if (schoolId) {
+        url += `&schoolId=${schoolId}`
+      }
+
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch users")
+      }
+
+      const data = await response.json()
+      if (Array.isArray(data)) {
+        setUsers(data)
+      } else {
+        throw new Error("Invalid response format")
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error)
+      toast.error("Failed to load users")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchUsers()
   }, [roleFilter, schoolId])
 
   // Fetch students for parent linking
   useEffect(() => {
-    if (roleFilter === "PARENT" && (userRole === "super_admin" || userRole === "school_admin")) {
+    if (roleFilter === "PARENT" && (userRole === Role.SUPER_ADMIN || userRole === Role.SCHOOL_ADMIN)) {
       async function fetchStudents() {
         try {
-          const response = await fetch(`/api/users?role=STUDENT${schoolId ? `&schoolId=${schoolId}` : ""}`)
+          const response = await fetch(`/api/users?role=${Role.STUDENT}${schoolId ? `&schoolId=${schoolId}` : ""}`)
 
           if (!response.ok) {
             throw new Error("Failed to fetch students")
           }
 
           const data = await response.json()
-          setStudents(data)
+          if (Array.isArray(data)) {
+            setStudents(data)
+          } else {
+            throw new Error("Invalid response format")
+          }
         } catch (error) {
           console.error("Error fetching students:", error)
         }
@@ -199,8 +250,11 @@ export function UsersTable({
       name: "",
       email: "",
       password: "",
-      role: roleFilter !== "all" ? roleFilter : "STUDENT",
-      schoolId: schoolId || "",
+      role: "STUDENT" as Role,
+      schoolId: schoolId || undefined,
+      classId: undefined,
+      parentId: undefined,
+      departmentId: undefined,
       gender: "",
       dateOfBirth: "",
       religion: "",
@@ -221,13 +275,17 @@ export function UsersTable({
 
   // Open edit dialog
   const openEditDialog = (user: User) => {
+    if (!user) return
     setCurrentUser(user)
     setFormData({
       name: user.name,
       email: user.email,
       password: "", // Don't set password for edit
       role: user.role,
-      schoolId: user.schoolId || "",
+      schoolId: user.schoolId || undefined,
+      classId: undefined,
+      parentId: undefined,
+      departmentId: undefined,
       gender: "",
       dateOfBirth: "",
       religion: "",
@@ -243,12 +301,8 @@ export function UsersTable({
 
   // Open link parent dialog
   const openLinkParentDialog = (user: User) => {
-    if (user.role !== "PARENT") {
-      toast({
-        title: "Error",
-        description: "Only parents can be linked to students",
-        variant: "destructive",
-      })
+    if (!user || user.role !== Role.PARENT) {
+      toast.error("Only parents can be linked to students")
       return
     }
 
@@ -259,12 +313,8 @@ export function UsersTable({
 
   // Open assign class dialog
   const openAssignClassDialog = (user: User) => {
-    if (user.role !== "STUDENT") {
-      toast({
-        title: "Error",
-        description: "Only students can be assigned to classes",
-        variant: "destructive",
-      })
+    if (!user || user.role !== Role.STUDENT) {
+      toast.error("Only students can be assigned to classes")
       return
     }
 
@@ -277,24 +327,20 @@ export function UsersTable({
   const addUser = async () => {
     setSubmitting(true)
     try {
-      // Create FormData object to handle file upload
       const formDataToSend = new FormData()
-
-      // Append all text fields
       Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'profileImage' && value !== null && value !== '') {
+        if (value !== null && value !== undefined && value !== "") {
           formDataToSend.append(key, value.toString())
         }
       })
 
-      // Append profile image if exists
       if (formData.profileImage) {
-        formDataToSend.append('profileImage', formData.profileImage)
+        formDataToSend.append("profileImage", formData.profileImage)
       }
 
       const response = await fetch("/api/users", {
         method: "POST",
-        body: formDataToSend, // Send as FormData instead of JSON
+        body: formDataToSend,
       })
 
       if (!response.ok) {
@@ -303,22 +349,13 @@ export function UsersTable({
       }
 
       const newUser = await response.json()
-
       setUsers((prev) => [newUser, ...prev])
       setIsAddDialogOpen(false)
       resetForm()
-
-      toast({
-        title: "Success",
-        description: "User added successfully",
-      })
+      toast.success("User added successfully")
     } catch (error: any) {
       console.error("Error adding user:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add user",
-        variant: "destructive",
-      })
+      toast.error(error.message || "Failed to add user")
     } finally {
       setSubmitting(false)
     }
@@ -330,25 +367,21 @@ export function UsersTable({
 
     setSubmitting(true)
     try {
-      // Create FormData object to handle file upload
       const formDataToSend = new FormData()
-
-      // Append all text fields except password if empty
       Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'password' && !value) return // Skip empty password
-        if (key !== 'profileImage' && value !== null && value !== '') {
+        if (key === "password" && !value) return // Skip empty password
+        if (value !== null && value !== undefined && value !== "") {
           formDataToSend.append(key, value.toString())
         }
       })
 
-      // Append profile image if exists
       if (formData.profileImage) {
-        formDataToSend.append('profileImage', formData.profileImage)
+        formDataToSend.append("profileImage", formData.profileImage)
       }
 
       const response = await fetch(`/api/users/${currentUser.id}`, {
         method: "PUT",
-        body: formDataToSend, // Send as FormData instead of JSON
+        body: formDataToSend,
       })
 
       if (!response.ok) {
@@ -357,22 +390,13 @@ export function UsersTable({
       }
 
       const updatedUser = await response.json()
-
       setUsers((prev) => prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)))
       setIsEditDialogOpen(false)
       setCurrentUser(null)
-
-      toast({
-        title: "Success",
-        description: "User updated successfully",
-      })
+      toast.success("User updated successfully")
     } catch (error: any) {
       console.error("Error updating user:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update user",
-        variant: "destructive",
-      })
+      toast.error(error.message || "Failed to update user")
     } finally {
       setSubmitting(false)
     }
@@ -396,17 +420,10 @@ export function UsersTable({
 
       setUsers((prev) => prev.filter((user) => user.id !== userId))
 
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      })
+      toast.success("User deleted successfully")
     } catch (error: any) {
       console.error("Error deleting user:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete user",
-        variant: "destructive",
-      })
+      toast.error(error.message || "Failed to delete user")
     }
   }
 
@@ -436,17 +453,10 @@ export function UsersTable({
       setCurrentUser(null)
       setSelectedStudents([])
 
-      toast({
-        title: "Success",
-        description: "Parent linked to students successfully",
-      })
+      toast.success("Parent linked to students successfully")
     } catch (error: any) {
       console.error("Error linking parent to students:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to link parent to students",
-        variant: "destructive",
-      })
+      toast.error(error.message || "Failed to link parent to students")
     } finally {
       setSubmitting(false)
     }
@@ -477,19 +487,12 @@ export function UsersTable({
 
       setIsAssignClassDialogOpen(false)
       setCurrentUser(null)
-      setSelectedClass("")
+      setSelectedClass("none")
 
-      toast({
-        title: "Success",
-        description: "Student assigned to class successfully",
-      })
+      toast.success("Student assigned to class successfully")
     } catch (error: any) {
       console.error("Error assigning student to class:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to assign student to class",
-        variant: "destructive",
-      })
+      toast.error(error.message || "Failed to assign student to class")
     } finally {
       setSubmitting(false)
     }
@@ -512,31 +515,132 @@ export function UsersTable({
     setFormData((prev) => ({ ...prev, password }))
   }
 
+  useEffect(() => {
+    if (isAddDialogOpen) {
+      fetchClasses()
+      fetchParents()
+      fetchDepartments()
+    }
+  }, [isAddDialogOpen])
+
+  const fetchClasses = async () => {
+    try {
+      setIsLoadingClasses(true)
+      const response = await fetch("/api/classes")
+      if (!response.ok) {
+        throw new Error("Failed to fetch classes")
+      }
+      const data = await response.json()
+      setClasses(data || [])
+    } catch (error) {
+      console.error("Error fetching classes:", error)
+      toast.error("Failed to load classes")
+      setClasses([])
+    } finally {
+      setIsLoadingClasses(false)
+    }
+  }
+
+  const fetchParents = async () => {
+    try {
+      setIsLoadingParents(true)
+      const response = await fetch(`/api/users?role=${Role.PARENT}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch parents")
+      }
+      const data = await response.json()
+      setParents(data || [])
+    } catch (error) {
+      console.error("Error fetching parents:", error)
+      toast.error("Failed to load parents")
+      setParents([])
+    } finally {
+      setIsLoadingParents(false)
+    }
+  }
+
+  const fetchDepartments = async () => {
+    try {
+      setIsDepartmentsLoading(true)
+      const response = await fetch("/api/departments")
+      if (!response.ok) {
+        throw new Error("Failed to fetch departments")
+      }
+      const data = await response.json()
+      setDepartments(data || [])
+    } catch (error) {
+      console.error("Error fetching departments:", error)
+      toast.error("Failed to fetch departments")
+      setDepartments([])
+    } finally {
+      setIsDepartmentsLoading(false)
+    }
+  }
+
+  const handleAddSuccess = () => {
+    setIsAddDialogOpen(false)
+    fetchUsers()
+  }
+
+  const handleEditUser = (user: User) => {
+    setCurrentUser(user)
+    setIsAddDialogOpen(true)
+  }
+
+  const handleDeleteUser = (user: User) => {
+    setDeletingUser(user)
+  }
+
+  const handleLinkStudent = (user: User) => {
+    setLinkingParent(user)
+  }
+
+  const handleAddToClass = (user: User) => {
+    setAddingToClass(user)
+  }
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <div className="flex flex-col sm:flex-row gap-2">
-          <Input
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-[300px]"
-          />
+          {(userRole === Role.SUPER_ADMIN || userRole === Role.SCHOOL_ADMIN) && (
+            <>
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full sm:w-[300px]"
+              />
 
-          {userRole === "super_admin" && (
-            <Select value={formData.schoolId} onValueChange={(value) => handleSelectChange("schoolId", value)}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Schools" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Schools</SelectItem>
-                {schools.map((school) => (
-                  <SelectItem key={school.id} value={school.id}>
-                    {school.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {userRole === Role.SUPER_ADMIN && (
+                <Select value={formData.schoolId} onValueChange={(value) => handleSelectChange("schoolId", value)}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All Schools" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingClasses ? (
+                      <SelectItem value="loading" disabled>
+                        Loading...
+                      </SelectItem>
+                    ) : classes.length > 0 ? (
+                      classes.map((school) => (
+                        <SelectItem key={school.id} value={school.id || "none"}>
+                          {school.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No schools available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+            </>
           )}
         </div>
 
@@ -552,16 +656,15 @@ export function UsersTable({
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              {userRole === "super_admin" && <TableHead>School</TableHead>}
-              <TableHead>Created</TableHead>
+              <TableHead>Class</TableHead>
+              <TableHead>Department</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={userRole === "super_admin" ? 6 : 5} className="text-center py-8">
+                <TableCell colSpan={userRole === Role.SUPER_ADMIN ? 6 : 5} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
                     Loading users...
@@ -570,7 +673,7 @@ export function UsersTable({
               </TableRow>
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={userRole === "super_admin" ? 6 : 5} className="text-center py-8">
+                <TableCell colSpan={userRole === Role.SUPER_ADMIN ? 6 : 5} className="text-center py-8">
                   No users found
                 </TableCell>
               </TableRow>
@@ -587,44 +690,25 @@ export function UsersTable({
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="font-medium">{user.name}</span>
-                        {user.role === "TEACHER" && (
-                          <span className="text-xs text-muted-foreground">Teacher</span>
-                        )}
+                        {user.role === Role.TEACHER && <span className="text-xs text-muted-foreground">Teacher</span>}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        user.role === "SUPER_ADMIN"
-                          ? "destructive"
-                          : user.role === "SCHOOL_ADMIN"
-                            ? "default"
-                            : user.role === "TEACHER"
-                              ? "secondary"
-                              : user.role === "STUDENT"
-                                ? "outline"
-                                : "secondary"
-                      }
-                    >
-                      {user.role.replace("_", " ")}
-                    </Badge>
-                  </TableCell>
-                  {userRole === "super_admin" && <TableCell>{user.school?.name || "-"}</TableCell>}
-                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>{user.studentClass?.name || "-"}</TableCell>
+                  <TableCell>{user.department?.name || "-"}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
-                        <Edit className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                        <Pencil className="h-4 w-4" />
                         <span className="sr-only">Edit</span>
                       </Button>
 
-                      {user.role === "PARENT" && (
+                      {user.role === Role.PARENT && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openLinkParentDialog(user)}
+                          onClick={() => handleLinkStudent(user)}
                           className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         >
                           <Users className="h-4 w-4" />
@@ -632,11 +716,11 @@ export function UsersTable({
                         </Button>
                       )}
 
-                      {user.role === "STUDENT" && currentSession && (
+                      {user.role === Role.STUDENT && currentSession && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openAssignClassDialog(user)}
+                          onClick={() => handleAddToClass(user)}
                           className="text-green-600 hover:text-green-700 hover:bg-green-50"
                         >
                           <Plus className="h-4 w-4" />
@@ -647,7 +731,7 @@ export function UsersTable({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteUser(user.id)}
+                        onClick={() => handleDeleteUser(user)}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <Trash className="h-4 w-4" />
@@ -726,10 +810,10 @@ export function UsersTable({
                     <SelectValue placeholder="Select Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {userRole === "super_admin" && <SelectItem value="SCHOOL_ADMIN">School Admin</SelectItem>}
-                    <SelectItem value="TEACHER">Teacher</SelectItem>
-                    <SelectItem value="STUDENT">Student</SelectItem>
-                    <SelectItem value="PARENT">Parent</SelectItem>
+                    {userRole === Role.SUPER_ADMIN && <SelectItem value={Role.SCHOOL_ADMIN}>School Admin</SelectItem>}
+                    <SelectItem value={Role.TEACHER}>Teacher</SelectItem>
+                    <SelectItem value={Role.STUDENT}>Student</SelectItem>
+                    <SelectItem value={Role.PARENT}>Parent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -738,7 +822,11 @@ export function UsersTable({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="gender">Gender</Label>
-                <Select name="gender" value={formData.gender} onValueChange={(value) => handleSelectChange("gender", value)}>
+                <Select
+                  name="gender"
+                  value={formData.gender}
+                  onValueChange={(value) => handleSelectChange("gender", value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Gender" />
                   </SelectTrigger>
@@ -818,13 +906,7 @@ export function UsersTable({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  placeholder="City"
-                />
+                <Input id="city" name="city" value={formData.city} onChange={handleInputChange} placeholder="City" />
               </div>
             </div>
 
@@ -842,7 +924,7 @@ export function UsersTable({
               />
             </div>
 
-            {userRole === "super_admin" && (
+            {userRole === Role.SUPER_ADMIN && (
               <div className="space-y-2">
                 <Label htmlFor="school">School</Label>
                 <Select
@@ -854,11 +936,21 @@ export function UsersTable({
                     <SelectValue placeholder="Select School" />
                   </SelectTrigger>
                   <SelectContent>
-                    {schools.map((school) => (
-                      <SelectItem key={school.id} value={school.id}>
-                        {school.name}
+                    {isLoadingClasses ? (
+                      <SelectItem value="loading" disabled>
+                        Loading...
                       </SelectItem>
-                    ))}
+                    ) : classes.length > 0 ? (
+                      classes.map((school) => (
+                        <SelectItem key={school.id} value={school.id || "none"}>
+                          {school.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No schools available
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -871,203 +963,6 @@ export function UsersTable({
             <Button onClick={addUser} disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add User
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit User Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>Update user information and settings.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Full Name</Label>
-                <Input id="edit-name" name="name" value={formData.name} onChange={handleInputChange} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input id="edit-email" name="email" type="email" value={formData.email} onChange={handleInputChange} required />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-password">Password (leave blank to keep current)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="edit-password"
-                    name="password"
-                    type="text"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="New password"
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={generatePassword}>
-                    Generate
-                  </Button>
-                </div>
-              </div>
-              {userRole === "super_admin" && (
-                <div className="space-y-2">
-                  <Label htmlFor="edit-role">Role</Label>
-                  <Select name="role" value={formData.role} onValueChange={(value) => handleSelectChange("role", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                      <SelectItem value="SCHOOL_ADMIN">School Admin</SelectItem>
-                      <SelectItem value="TEACHER">Teacher</SelectItem>
-                      <SelectItem value="STUDENT">Student</SelectItem>
-                      <SelectItem value="PARENT">Parent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-gender">Gender</Label>
-                <Select name="gender" value={formData.gender} onValueChange={(value) => handleSelectChange("gender", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MALE">Male</SelectItem>
-                    <SelectItem value="FEMALE">Female</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-dateOfBirth">Date of Birth</Label>
-                <Input
-                  id="edit-dateOfBirth"
-                  name="dateOfBirth"
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-religion">Religion</Label>
-                <Input
-                  id="edit-religion"
-                  name="religion"
-                  value={formData.religion}
-                  onChange={handleInputChange}
-                  placeholder="Religion"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone">Phone Number</Label>
-                <Input
-                  id="edit-phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="Phone Number"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-address">Address</Label>
-              <Input
-                id="edit-address"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                placeholder="Address"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-country">Country</Label>
-                <Input
-                  id="edit-country"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  placeholder="Country"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-state">State</Label>
-                <Input
-                  id="edit-state"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleInputChange}
-                  placeholder="State"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-city">City</Label>
-                <Input
-                  id="edit-city"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  placeholder="City"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-profileImage">Profile Image</Label>
-              <Input
-                id="edit-profileImage"
-                name="profileImage"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null
-                  setFormData((prev) => ({ ...prev, profileImage: file }))
-                }}
-              />
-            </div>
-
-            {userRole === "super_admin" && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-school">School</Label>
-                <Select
-                  name="schoolId"
-                  value={formData.schoolId}
-                  onValueChange={(value) => handleSelectChange("schoolId", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select School" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No School</SelectItem>
-                    {schools.map((school) => (
-                      <SelectItem key={school.id} value={school.id}>
-                        {school.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={updateUser} disabled={submitting}>
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update User
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1138,12 +1033,22 @@ export function UsersTable({
                   <SelectValue placeholder="Select Class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name} {cls.section ? `(${cls.section})` : ""}
-                      {userRole === "super_admin" && ` - ${cls.school.name}`}
+                  {isLoadingClasses ? (
+                    <SelectItem value="loading" disabled>
+                      Loading...
                     </SelectItem>
-                  ))}
+                  ) : classes.length > 0 ? (
+                    classes.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id || "none"}>
+                        {cls.name} {cls.section ? `(${cls.section})` : ""}
+                        {userRole === Role.SUPER_ADMIN && ` - ${cls.school.name}`}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>
+                      No classes available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -1152,13 +1057,51 @@ export function UsersTable({
             <Button variant="outline" onClick={() => setIsAssignClassDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={assignStudentToClass} disabled={submitting || !selectedClass || !currentSession}>
+            <Button
+              onClick={assignStudentToClass}
+              disabled={submitting || !selectedClass || selectedClass === "none" || !currentSession}
+            >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Assign to Class
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {deletingUser && (
+        <DeleteUserDialog
+          open={!!deletingUser}
+          onOpenChange={(open) => !open && setDeletingUser(null)}
+          user={deletingUser}
+          onSuccess={handleAddSuccess}
+        />
+      )}
+
+      {linkingParent && (
+        <LinkStudentDialog
+          open={!!linkingParent}
+          onOpenChange={(open) => !open && setLinkingParent(null)}
+          parentId={linkingParent.id}
+          onSuccess={handleAddSuccess}
+        />
+      )}
+
+      {addingToClass && (
+        <AddStudentToClassDialog
+          open={!!addingToClass}
+          onOpenChange={(open) => !open && setAddingToClass(null)}
+          studentId={addingToClass.id}
+          onSuccess={handleAddSuccess}
+        />
+      )}
+
+      <AddUserDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        initialRole={roleFilter}
+        user={currentUser}
+        onSuccess={handleAddSuccess}
+      />
     </div>
   )
 }

@@ -1,48 +1,51 @@
-import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { UserRole } from "@prisma/client";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+// GET a specific class
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const classId = params.id
+    const auth = await requireAuth(request);
+
+    if (!auth.authenticated || !auth.user || !auth.user.schoolId) {
+      return NextResponse.json(
+        { error: "You must be logged in to access this resource" },
+        { status: 401 }
+      );
+    }
+
+    const { user } = auth;
+    const classId = params.id;
+
+    // Get current academic session
+    const currentSession = await prisma.academicSession.findFirst({
+      where: {
+        schoolId: user.schoolId,
+        isCurrent: true,
+      },
+    });
 
     const classData = await prisma.class.findUnique({
-      where: { id: classId },
+      where: {
+        id: classId,
+        schoolId: user.schoolId,
+      },
       include: {
         teacher: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        school: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        subjects: {
           include: {
-            subject: true,
-          },
-        },
-        students: {
-          include: {
-            student: {
+            user: {
               select: {
                 id: true,
                 name: true,
                 email: true,
+                profileImage: true,
               },
             },
-            session: {
+            department: {
               select: {
                 id: true,
                 name: true,
@@ -50,125 +53,197 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             },
           },
         },
-      },
-    })
-
-    if (!classData) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 })
-    }
-
-    // Check if user has permission to view this class
-    if (session.role !== "super_admin" && classData.schoolId !== session.schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    return NextResponse.json(classData)
-  } catch (error) {
-    console.error("Error fetching class:", error)
-    return NextResponse.json({ error: "Failed to fetch class" }, { status: 500 })
-  }
-}
-
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-
-  if (!session || (session.role !== "super_admin" && session.role !== "school_admin")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  try {
-    const classId = params.id
-
-    // Check if class exists and user has permission to update it
-    const existingClass = await prisma.class.findUnique({
-      where: { id: classId },
-      select: { schoolId: true },
-    })
-
-    if (!existingClass) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 })
-    }
-
-    if (session.role !== "super_admin" && existingClass.schoolId !== session.schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const { name, section, teacherId } = body
-
-    // If teacherId is provided, verify the teacher exists and belongs to the school
-    if (teacherId) {
-      const teacher = await prisma.user.findFirst({
-        where: {
-          id: teacherId,
-          role: "TEACHER",
-          schoolId: existingClass.schoolId,
+        level: true,
+        subjects: {
+          include: {
+            subject: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                department: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
         },
-      })
-
-      if (!teacher) {
-        return NextResponse.json({ error: "Teacher not found or not assigned to this school" }, { status: 400 })
-      }
-    }
-
-    // Update class
-    const updatedClass = await prisma.class.update({
-      where: { id: classId },
-      data: {
-        ...(name ? { name } : {}),
-        ...(section !== undefined ? { section } : {}),
-        ...(teacherId !== undefined ? { teacherId } : {}),
-      },
-      include: {
-        teacher: {
-          select: {
-            id: true,
-            name: true,
+        students: {
+          where: {
+            status: "ACTIVE",
+            sessionId: currentSession?.id, // Only get students for current session
+          },
+          include: {
+            student: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    profileImage: true,
+                  },
+                },
+                department: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            student: {
+              user: {
+                name: "asc",
+              },
+            },
           },
         },
       },
-    })
+    });
 
-    return NextResponse.json(updatedClass)
+    if (!classData) {
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    // Format the response to include session info
+    const formattedResponse = {
+      ...classData,
+      currentSession: currentSession
+        ? {
+            id: currentSession.id,
+            name: currentSession.name,
+            startDate: currentSession.startDate,
+            endDate: currentSession.endDate,
+          }
+        : null,
+    };
+
+    return NextResponse.json(formattedResponse);
   } catch (error) {
-    console.error("Error updating class:", error)
-    return NextResponse.json({ error: "Failed to update class" }, { status: 500 })
+    console.error("[CLASS_GET] Error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch class details" },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-
-  if (!session || (session.role !== "super_admin" && session.role !== "school_admin")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+// PATCH to update a class
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const classId = params.id
+    const auth = await requireAuth(request, ["super_admin", "school_admin"]);
 
-    // Check if class exists and user has permission to delete it
+    if (!auth.authenticated || !auth.authorized) {
+      return NextResponse.json(
+        { error: "You are not authorized to perform this action" },
+        { status: 403 }
+      );
+    }
+
+    const { user } = auth;
+    const classId = params.id;
+    const body = await request.json();
+
+    // Validate the class exists and belongs to the school
     const existingClass = await prisma.class.findUnique({
-      where: { id: classId },
-      select: { schoolId: true },
-    })
+      where: {
+        id: classId,
+        schoolId: user.schoolId,
+      },
+    });
 
     if (!existingClass) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 })
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    if (session.role !== "super_admin" && existingClass.schoolId !== session.schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    // Update the class
+    const updatedClass = await prisma.class.update({
+      where: {
+        id: classId,
+      },
+      data: {
+        name: body.name,
+        section: body.section,
+        teacherId: body.teacherId,
+        levelId: body.levelId,
+      },
+      include: {
+        level: true,
+        teacher: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                profileImage: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-    // Delete class
-    await prisma.class.delete({
-      where: { id: classId },
-    })
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json(updatedClass);
   } catch (error) {
-    console.error("Error deleting class:", error)
-    return NextResponse.json({ error: "Failed to delete class" }, { status: 500 })
+    console.error("[CLASS_PUT] Error:", error);
+    return NextResponse.json(
+      { error: "Failed to update class" },
+      { status: 500 }
+    );
   }
 }
 
+// DELETE a class
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const auth = await requireAuth(request, ["super_admin", "school_admin"]);
+
+    if (!auth.authenticated || !auth.authorized) {
+      return NextResponse.json(
+        { error: "You are not authorized to perform this action" },
+        { status: 403 }
+      );
+    }
+
+    const { user } = auth;
+    const classId = params.id;
+
+    // Validate the class exists and belongs to the school
+    const existingClass = await prisma.class.findUnique({
+      where: {
+        id: classId,
+        schoolId: user.schoolId,
+      },
+    });
+
+    if (!existingClass) {
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    // Delete the class
+    await prisma.class.delete({
+      where: {
+        id: classId,
+      },
+    });
+
+    return NextResponse.json({ message: "Class deleted successfully" });
+  } catch (error) {
+    console.error("[CLASS_DELETE] Error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete class" },
+      { status: 500 }
+    );
+  }
+}

@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, Calendar, Users } from "lucide-react"
+import { BarChart3, BookOpen, Calendar, Users, UserCheck, BookText } from "lucide-react"
 import { DashboardHeader } from "../components/dashboard-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getSession } from "@/lib/auth"
@@ -6,12 +6,16 @@ import prisma from "@/lib/db"
 import { redirect } from "next/navigation"
 import { format } from "date-fns"
 import { Result, Event } from "@prisma/client"
+import { cn } from "@/lib/utils"
+import AdminDashboardClient from "./admin-client"
 
 interface DashboardStats {
   totalStudents: number
   totalClasses: number
   attendanceRate: number
   averageScore: number
+  totalTeachers: number
+  totalSubjects: number
 }
 
 interface ResultWithDetails extends Result {
@@ -34,7 +38,9 @@ export default async function DashboardPage() {
     totalStudents: 0,
     totalClasses: 0,
     attendanceRate: 0,
-    averageScore: 0
+    averageScore: 0,
+    totalTeachers: 0,
+    totalSubjects: 0
   }
 
   let recentActivities: ResultWithDetails[] = []
@@ -179,7 +185,7 @@ export default async function DashboardPage() {
       upcomingEvents = events
     }
   } catch (error) {
-    console.error("Error fetching dashboard data:", error)
+    console.error("Error fetching teacher dashboard data:", error)
   }
 
   // Get role-specific title and description
@@ -203,95 +209,159 @@ export default async function DashboardPage() {
     <>
       <div className="flex-1 space-y-4 p-8 pt-6">
         <DashboardHeader heading={roleTitle} text={roleDescription} />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Students
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalStudents}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Classes
-              </CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalClasses}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Attendance Rate
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats.attendanceRate.toFixed(1)}%
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Average Score
-              </CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats.averageScore.toFixed(1)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+
+        {(session.role === "super_admin" || session.role === "school_admin") ? (
+          <AdminDashboardClient stats={stats} />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-primary/20 hover:border-primary/50 transition-all shadow-sm hover:shadow-md group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                <CardTitle className="text-sm font-medium">
+                  Total Students
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{stats.totalStudents}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Active students in your school
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-secondary/20 hover:border-secondary/50 transition-all shadow-sm hover:shadow-md group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-secondary/5 group-hover:bg-secondary/10 transition-colors">
+                <CardTitle className="text-sm font-medium">
+                  Total Classes
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-secondary/10 flex items-center justify-center group-hover:bg-secondary/20 transition-colors">
+                  <BookOpen className="h-4 w-4 text-secondary" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{stats.totalClasses}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Classes across all departments
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-primary/20 hover:border-primary/50 transition-all shadow-sm hover:shadow-md group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                <CardTitle className="text-sm font-medium">
+                  Total Teachers
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <UserCheck className="h-4 w-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{stats.totalTeachers}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Teachers in your school
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-secondary/20 hover:border-secondary/50 transition-all shadow-sm hover:shadow-md group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-secondary/5 group-hover:bg-secondary/10 transition-colors">
+                <CardTitle className="text-sm font-medium">
+                  Total Subjects
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-secondary/10 flex items-center justify-center group-hover:bg-secondary/20 transition-colors">
+                  <BookText className="h-4 w-4 text-secondary" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{stats.totalSubjects}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Subjects taught in your school
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
-            <CardHeader>
+          <Card className="col-span-4 border-primary/20 shadow-sm hover:shadow-md transition-all">
+            <CardHeader className="bg-primary/5 border-b border-primary/10">
               <CardTitle>Recent Activities</CardTitle>
             </CardHeader>
-            <CardContent className="pl-2">
-              {recentActivities.map((activity: any) => (
-                <div key={activity.id} className="mb-4 grid grid-cols-[25px_1fr] items-start pb-4 last:mb-0 last:pb-0">
-                  <span className="flex h-2 w-2 translate-y-1 rounded-full bg-sky-500" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {activity.student.name} - {activity.subject.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Score: {activity.marks}/{activity.totalMarks} ({format(new Date(activity.createdAt), 'MMM d, yyyy')})
-                    </p>
+            <CardContent className="p-0">
+              <div className="space-y-0">
+                {recentActivities.length === 0 ? (
+                  <div className="flex items-center justify-center h-40">
+                    <p className="text-muted-foreground">No recent activities</p>
                   </div>
-                </div>
-              ))}
+                ) : (
+                  <div>
+                    {recentActivities.map((activity, index) => (
+                      <div
+                        key={activity.id}
+                        className={cn(
+                          "flex items-center p-4 hover:bg-primary/5 transition-colors",
+                          index !== recentActivities.length - 1 ? "border-b border-primary/10" : ""
+                        )}
+                      >
+                        <div className="space-y-1 flex-1">
+                          <p className="text-sm font-medium leading-none">
+                            {activity.student.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Scored {activity.marks}/{activity.totalMarks} in{" "}
+                            {activity.subject.name}
+                          </p>
+                        </div>
+                        <div className="ml-auto text-xs text-muted-foreground">
+                          {format(new Date(activity.updatedAt), "MMM d, yyyy")}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
-          <Card className="col-span-3">
-            <CardHeader>
+          <Card className="col-span-3 border-secondary/20 shadow-sm hover:shadow-md transition-all">
+            <CardHeader className="bg-secondary/5 border-b border-secondary/10">
               <CardTitle>Upcoming Events</CardTitle>
             </CardHeader>
-            <CardContent>
-              {upcomingEvents.map((event: any) => (
-                <div key={event.id} className="mb-4 last:mb-0">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {event.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(event.startDate), 'MMM d, yyyy')}
-                      {event.location && ` - ${event.location}`}
-                    </p>
+            <CardContent className="p-0">
+              <div className="space-y-0">
+                {upcomingEvents.length === 0 ? (
+                  <div className="flex items-center justify-center h-40">
+                    <p className="text-muted-foreground">No upcoming events</p>
                   </div>
-                </div>
-              ))}
+                ) : (
+                  <div>
+                    {upcomingEvents.map((event, index) => (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          "flex items-center p-4 hover:bg-secondary/5 transition-colors",
+                          index !== upcomingEvents.length - 1 ? "border-b border-secondary/10" : ""
+                        )}
+                      >
+                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
+                          <Calendar className="h-5 w-5 text-secondary" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {event.title}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(event.startDate), "MMM d, yyyy")}
+                            {event.endDate && event.startDate !== event.endDate &&
+                              ` - ${format(
+                                new Date(event.endDate),
+                                "MMM d, yyyy"
+                              )}`}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

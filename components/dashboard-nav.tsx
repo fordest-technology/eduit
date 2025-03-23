@@ -45,34 +45,37 @@ export function DashboardNav({ user }: DashboardNavProps) {
     }
 
     return (
-        <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-16 items-center px-4">
+        <header className="sticky top-0 z-30 w-full border-b bg-white">
+            <div className="flex h-16 items-center px-6">
                 <div className="flex flex-1 items-center gap-4">
-                    <h1 className="text-lg font-semibold">{getRoleName(user.role)}</h1>
+                    <h1 className="text-lg font-semibold text-gray-900">{getRoleName(user.role)}</h1>
                     <form className="hidden lg:block">
                         <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                             <Input
                                 type="search"
                                 placeholder="Search..."
-                                className="w-[200px] pl-8 lg:w-[300px]"
+                                className="w-[200px] pl-8 lg:w-[300px] border-gray-300 focus:border-gray-400 focus:ring-gray-400"
                             />
                         </div>
                     </form>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-4 w-4" />
-                        <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                    <Button variant="ghost" size="icon" className="relative text-gray-500 hover:bg-gray-100">
+                        <Bell className="h-5 w-5" />
+                        <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-medium text-white">
                             2
                         </span>
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user.profileImage} alt={user.name} />
-                                    <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                <Avatar className="h-8 w-8 border border-gray-200">
+                                    {user.profileImage ? (
+                                        <AvatarImage src={user.profileImage} alt={user.name} />
+                                    ) : (
+                                        <AvatarFallback className="bg-gray-200 text-gray-700">{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                    )}
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
@@ -80,14 +83,14 @@ export function DashboardNav({ user }: DashboardNavProps) {
                             <DropdownMenuLabel className="font-normal">
                                 <div className="flex flex-col space-y-1">
                                     <p className="text-sm font-medium leading-none">{user.name}</p>
-                                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                                    <p className="text-xs leading-none text-gray-500">{user.email}</p>
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
+                            <DropdownMenuItem asChild className="hover:bg-gray-100">
                                 <Link href="/dashboard/settings">Settings</Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
+                            <DropdownMenuItem asChild className="hover:bg-red-50 text-red-600">
                                 <Link href="/api/auth/logout">Log out</Link>
                             </DropdownMenuItem>
                         </DropdownMenuContent>

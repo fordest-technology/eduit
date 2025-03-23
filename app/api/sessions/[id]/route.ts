@@ -1,16 +1,47 @@
-import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { type NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db";
+import { getSession } from "@/lib/auth";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+// Helper function to convert BigInt values to numbers for serialization
+function serializeBigInts(data: any): any {
+  if (data === null || data === undefined) {
+    return data;
   }
 
+  if (typeof data === "bigint") {
+    return Number(data);
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => serializeBigInts(item));
+  }
+
+  if (typeof data === "object") {
+    const result: any = {};
+    for (const key in data) {
+      result[key] = serializeBigInts(data[key]);
+    }
+    return result;
+  }
+
+  return data;
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const sessionId = params.id
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+
+    const sessionId = params.id;
 
     const academicSession = await prisma.academicSession.findUnique({
       where: { id: sessionId },
@@ -29,53 +60,91 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           },
         },
       },
-    })
+    });
 
     if (!academicSession) {
-      return NextResponse.json({ error: "Academic session not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Academic session not found" },
+        { status: 404 }
+      );
     }
 
     // Check if user has permission to view this session
-    if (session.role !== "super_admin" && academicSession.schoolId !== session.schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (
+      session.role !== "super_admin" &&
+      academicSession.schoolId !== session.schoolId
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(academicSession)
+    return NextResponse.json(serializeBigInts(academicSession));
   } catch (error) {
-    console.error("Error fetching academic session:", error)
-    return NextResponse.json({ error: "Failed to fetch academic session" }, { status: 500 })
+    console.error("Error fetching academic session:", error);
+
+    // Check if it's a connection error
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const isConnectionError = errorMessage.includes(
+      "Can't reach database server"
+    );
+
+    return NextResponse.json(
+      {
+        error: "Failed to fetch academic session",
+        details: isConnectionError
+          ? "Database connection error"
+          : "Server error",
+        isConnectionError,
+      },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-
-  if (!session || (session.role !== "super_admin" && session.role !== "school_admin")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const sessionId = params.id
+    const session = await getSession();
 
-    // Check if session exists and user has permission to update it
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+
+    // Only super_admin and school_admin can update sessions
+    if (!["super_admin", "school_admin"].includes(session.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const sessionId = params.id;
+    const body = await request.json();
+
+    // Find the session first to check permissions
     const existingSession = await prisma.academicSession.findUnique({
       where: { id: sessionId },
-      select: { schoolId: true },
-    })
+    });
 
     if (!existingSession) {
-      return NextResponse.json({ error: "Academic session not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Academic session not found" },
+        { status: 404 }
+      );
     }
 
-    if (session.role !== "super_admin" && existingSession.schoolId !== session.schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // Check if user has permission to modify this session
+    if (
+      session.role !== "super_admin" &&
+      existingSession.schoolId !== session.schoolId
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json()
-    const { name, startDate, endDate, isCurrent } = body
-
-    // If setting as current, unset any other current sessions
-    if (isCurrent) {
+    // If setting as current and it's not already current, unset any other current sessions
+    if (body.isCurrent === true && !existingSession.isCurrent) {
       await prisma.academicSession.updateMany({
         where: {
           schoolId: existingSession.schoolId,
@@ -85,60 +154,156 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         data: {
           isCurrent: false,
         },
-      })
+      });
     }
 
-    // Update academic session
+    // Update the session
     const updatedSession = await prisma.academicSession.update({
       where: { id: sessionId },
       data: {
-        ...(name ? { name } : {}),
-        ...(startDate ? { startDate: new Date(startDate) } : {}),
-        ...(endDate ? { endDate: new Date(endDate) } : {}),
-        ...(isCurrent !== undefined ? { isCurrent } : {}),
+        name: body.name,
+        startDate: body.startDate ? new Date(body.startDate) : undefined,
+        endDate: body.endDate ? new Date(body.endDate) : undefined,
+        isCurrent: body.isCurrent,
       },
-    })
+      include: {
+        school: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            studentClasses: true,
+            attendance: true,
+            results: true,
+          },
+        },
+      },
+    });
 
-    return NextResponse.json(updatedSession)
+    return NextResponse.json(serializeBigInts(updatedSession));
   } catch (error) {
-    console.error("Error updating academic session:", error)
-    return NextResponse.json({ error: "Failed to update academic session" }, { status: 500 })
+    console.error("Error updating academic session:", error);
+
+    // Check if it's a connection error
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const isConnectionError = errorMessage.includes(
+      "Can't reach database server"
+    );
+
+    return NextResponse.json(
+      {
+        error: "Failed to update academic session",
+        details: isConnectionError
+          ? "Database connection error"
+          : "Server error",
+        isConnectionError,
+      },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-
-  if (!session || (session.role !== "super_admin" && session.role !== "school_admin")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const sessionId = params.id
+    const session = await getSession();
 
-    // Check if session exists and user has permission to delete it
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+
+    // Only super_admin and school_admin can delete sessions
+    if (!["super_admin", "school_admin"].includes(session.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const sessionId = params.id;
+
+    // Find the session first to check permissions
     const existingSession = await prisma.academicSession.findUnique({
       where: { id: sessionId },
-      select: { schoolId: true },
-    })
+      include: {
+        _count: {
+          select: {
+            studentClasses: true,
+            attendance: true,
+            results: true,
+          },
+        },
+      },
+    });
 
     if (!existingSession) {
-      return NextResponse.json({ error: "Academic session not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Academic session not found" },
+        { status: 404 }
+      );
     }
 
-    if (session.role !== "super_admin" && existingSession.schoolId !== session.schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // Check if user has permission to delete this session
+    if (
+      session.role !== "super_admin" &&
+      existingSession.schoolId !== session.schoolId
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Delete academic session
+    // Check if the session has related records
+    const relatedRecords =
+      existingSession._count.studentClasses +
+      existingSession._count.attendance +
+      existingSession._count.results;
+
+    if (relatedRecords > 0) {
+      return NextResponse.json(
+        {
+          error: "Cannot delete session with related records",
+          counts: {
+            studentClasses: existingSession._count.studentClasses,
+            attendance: existingSession._count.attendance,
+            results: existingSession._count.results,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Delete the session
     await prisma.academicSession.delete({
       where: { id: sessionId },
-    })
+    });
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(
+      serializeBigInts({ success: true, id: sessionId })
+    );
   } catch (error) {
-    console.error("Error deleting academic session:", error)
-    return NextResponse.json({ error: "Failed to delete academic session" }, { status: 500 })
+    console.error("Error deleting academic session:", error);
+
+    // Check if it's a connection error
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const isConnectionError = errorMessage.includes(
+      "Can't reach database server"
+    );
+
+    return NextResponse.json(
+      {
+        error: "Failed to delete academic session",
+        details: isConnectionError
+          ? "Database connection error"
+          : "Server error",
+        isConnectionError,
+      },
+      { status: 500 }
+    );
   }
 }
-

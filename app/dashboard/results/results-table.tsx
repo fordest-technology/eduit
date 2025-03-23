@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -17,27 +16,33 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import type { UserRole } from "@/lib/auth"
-import { CheckCircle, Edit, FileDown, Loader2, Plus, XCircle } from "lucide-react"
+import { CheckCircle, Edit, FileDown, Loader2, Plus, Search, SortAsc, SortDesc, XCircle } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Check, X } from "lucide-react"
-import type { Result, Role } from "@prisma/client"
+import type { Result } from "@prisma/client"
+import { ResultReport } from "./components/result-report"
+import { useSession } from "next-auth/react"
+import { ExtendedResult } from "./types"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Card, CardContent } from "@/components/ui/card"
+import { format } from "date-fns"
 
-interface ExtendedResult extends Result {
-  student: {
-    id: string
-    name: string
-  }
-  subject: {
-    id: string
-    name: string
-  }
-}
-
-interface ResultsTableProps {
-  userRole: UserRole
-  schoolId?: string
-  results: ExtendedResult[]
+// Type for Next-Auth session user with custom fields
+interface ExtendedUser {
+  id: string
+  name?: string | null
+  email?: string | null
+  image?: string | null
 }
 
 interface Session {
@@ -59,12 +64,88 @@ interface Student {
   section?: string
 }
 
-export function ResultsTable({ userRole, schoolId, results: initialResults }: ResultsTableProps) {
-  const [results, setResults] = useState<ExtendedResult[]>(initialResults)
-  const [loading, setLoading] = useState(true)
+interface ResultsTableProps {
+  initialData: {
+    results: ExtendedResult[]
+    userRole: UserRole
+    schoolId: string | undefined
+  }
+}
+
+interface ResultsTableRowProps {
+  result: ExtendedResult
+  onEdit: (result: ExtendedResult) => void
+  onDelete: (result: ExtendedResult) => void
+}
+
+function ResultsTableRow({ result, onEdit, onDelete }: ResultsTableRowProps) {
+  const studentName = result.student?.user?.name || 'N/A'
+  const subjectName = result.subject?.name || 'N/A'
+  const className = result.student?.classes[0]?.class.name || "N/A"
+  const section = result.student?.classes[0]?.class.section || "N/A"
+
+  return (
+    <TableRow className="hover:bg-muted/50 transition-colors">
+      <TableCell>{studentName}</TableCell>
+      <TableCell>{subjectName}</TableCell>
+      <TableCell>{className}</TableCell>
+      <TableCell>{section}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{result.marks}</span>
+          <span className="text-muted-foreground">/ {result.totalMarks}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge variant={result.grade === 'A' ? 'default' : result.grade === 'F' ? 'destructive' : 'secondary'}>
+          {result.grade || 'N/A'}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <Badge
+          variant={result.isApproved ? 'default' : 'secondary'}
+          className={result.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
+        >
+          {result.isApproved ? 'Approved' : 'Pending'}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <span className="sr-only">Open menu</span>
+              <Edit className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onEdit(result)}>
+              <Edit className="mr-2 h-4 w-4" /> Edit Result
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onDelete(result)}
+              className="text-destructive focus:text-destructive"
+            >
+              <X className="mr-2 h-4 w-4" /> Delete Result
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  )
+}
+
+export function ResultsTable({ initialData }: ResultsTableProps) {
+  const { data: session, status } = useSession()
+  const [results, setResults] = useState<ExtendedResult[]>(initialData.results)
+  const [filteredResults, setFilteredResults] = useState<ExtendedResult[]>(results)
+  const [loading, setLoading] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [userRole, setUserRole] = useState<UserRole>(initialData.userRole)
+  const [schoolId, setSchoolId] = useState<string | null>(initialData.schoolId || null)
   const [selectedSession, setSelectedSession] = useState<string>("")
   const [selectedSubject, setSelectedSubject] = useState<string>("")
   const [selectedStudent, setSelectedStudent] = useState<string>("")
@@ -87,48 +168,29 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
     grade: "",
     comments: "",
   })
+  const [selectedClass, setSelectedClass] = useState("")
+  const [selectedExamType, setSelectedExamType] = useState("MIDTERM")
+  const [showReportGenerator, setShowReportGenerator] = useState(false)
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof ExtendedResult | "studentName" | "subjectName",
+    direction: "asc" | "desc"
+  }>({ key: "createdAt", direction: "desc" })
+  const router = useRouter()
+  const { toast } = useToast()
 
-  // Fetch results
+  // Protect the component from unauthorized access
   useEffect(() => {
-    async function fetchResults() {
-      setLoading(true)
-      try {
-        let url = "/api/results?"
-
-        if (selectedSession) {
-          url += `&sessionId=${selectedSession}`
-        }
-
-        if (selectedSubject) {
-          url += `&subjectId=${selectedSubject}`
-        }
-
-        if (selectedStudent) {
-          url += `&studentId=${selectedStudent}`
-        }
-
-        const response = await fetch(url)
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch results")
-        }
-
-        const data = await response.json()
-        setResults(data)
-      } catch (error) {
-        console.error("Error fetching results:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load results",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
+    if (status === "unauthenticated") {
+      router.push("/auth/signin")
     }
+  }, [status, router])
 
-    fetchResults()
-  }, [selectedSession, selectedSubject, selectedStudent])
+  // If loading or not authenticated, show nothing
+  if (status === "loading" || status === "unauthenticated") {
+    return null
+  }
 
   // Fetch students and sessions
   useEffect(() => {
@@ -205,6 +267,111 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
 
     fetchData()
   }, [schoolId, userRole])
+
+  // Fetch classes
+  useEffect(() => {
+    async function fetchClasses() {
+      try {
+        let url = "/api/classes"
+        if (schoolId) {
+          url += `?schoolId=${schoolId}`
+        }
+        if (userRole === "teacher" && session?.user) {
+          const user = session.user as ExtendedUser
+          if (user.id) {
+            url += `${schoolId ? "&" : "?"}teacherId=${user.id}`
+          }
+        }
+
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error("Failed to fetch classes")
+        }
+
+        const data = await response.json()
+        setClasses(data)
+
+        // Set default class if available
+        if (data.length > 0 && !selectedClass) {
+          setSelectedClass(data[0].id)
+        }
+      } catch (error) {
+        console.error("Error fetching classes:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load classes",
+          variant: "destructive",
+        })
+      }
+    }
+
+    if (session?.user) {
+      fetchClasses()
+    }
+  }, [schoolId, userRole, session, selectedClass])
+
+  // Filter and sort results
+  useEffect(() => {
+    let filtered = [...results]
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(result =>
+        result.student.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        result.subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        result.grade?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Apply filters
+    if (selectedClass) {
+      filtered = filtered.filter(result =>
+        result.student.classes.some(c => c.class.id === selectedClass)
+      )
+    }
+
+    if (selectedSubject) {
+      filtered = filtered.filter(result =>
+        result.subject.id === selectedSubject
+      )
+    }
+
+    if (selectedExamType) {
+      filtered = filtered.filter(result =>
+        result.examType === selectedExamType
+      )
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: string | number | null;
+      let bValue: string | number | null;
+
+      // Handle special cases for nested properties
+      if (sortConfig.key === "studentName") {
+        aValue = a.student.user.name;
+        bValue = b.student.user.name;
+      } else if (sortConfig.key === "subjectName") {
+        aValue = a.subject.name;
+        bValue = b.subject.name;
+      } else {
+        // Handle direct properties
+        const key = sortConfig.key as keyof ExtendedResult;
+        aValue = a[key] as string | number | null;
+        bValue = b[key] as string | number | null;
+      }
+
+      // Convert null/undefined to empty string for comparison
+      aValue = aValue ?? '';
+      bValue = bValue ?? '';
+
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    setFilteredResults(filtered)
+  }, [results, searchTerm, selectedClass, selectedSubject, selectedExamType, sortConfig])
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -286,6 +453,7 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
         title: "Success",
         description: "Result added successfully",
       })
+      router.refresh()
     } catch (error: any) {
       console.error("Error adding result:", error)
       toast({
@@ -327,6 +495,7 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
         title: "Success",
         description: "Result updated successfully",
       })
+      router.refresh()
     } catch (error: any) {
       console.error("Error updating result:", error)
       toast({
@@ -363,6 +532,7 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
         title: "Success",
         description: `Result ${approve ? "approved" : "rejected"} successfully`,
       })
+      router.refresh()
     } catch (error: any) {
       console.error(`Error ${approve ? "approving" : "rejecting"} result:`, error)
       toast({
@@ -410,6 +580,7 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
         title: "Success",
         description: "Result updated successfully",
       })
+      router.refresh()
     } catch (error) {
       toast({
         title: "Error",
@@ -435,6 +606,7 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
         title: "Success",
         description: "Result approved successfully",
       })
+      router.refresh()
     } catch (error) {
       toast({
         title: "Error",
@@ -460,6 +632,7 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
         title: "Success",
         description: "Result rejected successfully",
       })
+      router.refresh()
     } catch (error) {
       toast({
         title: "Error",
@@ -469,162 +642,243 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
     }
   }
 
+  const handleEdit = async (result: ExtendedResult) => {
+    try {
+      const response = await fetch(`/api/results/${result.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(result),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update result")
+      }
+
+      const updatedResult = await response.json()
+      setResults(results.map(r => r.id === updatedResult.id ? updatedResult : r))
+      toast({
+        title: "Success",
+        description: "Result updated successfully",
+        duration: 3000,
+      })
+      router.refresh()
+    } catch (error) {
+      console.error("Error updating result:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update result",
+        duration: 3000,
+      })
+    }
+  }
+
+  const handleDelete = async (result: ExtendedResult) => {
+    try {
+      const response = await fetch(`/api/results/${result.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete result")
+      }
+
+      setResults(results.filter(r => r.id !== result.id))
+      toast({
+        title: "Success",
+        description: "Result deleted successfully",
+        duration: 3000,
+      })
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting result:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete result",
+        duration: 3000,
+      })
+    }
+  }
+
+  const handleSort = (key: typeof sortConfig.key) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc"
+    }))
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Select value={selectedSession} onValueChange={setSelectedSession}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select Session" />
-            </SelectTrigger>
-            <SelectContent>
-              {sessions.map((session) => (
-                <SelectItem key={session.id} value={session.id}>
-                  {session.name} {session.isCurrent && "(Current)"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="space-y-6">
+      {showReportGenerator ? (
+        <ResultReport
+          classId={selectedClass}
+          sessionId={selectedSession}
+          examType={selectedExamType}
+          students={filteredResults.map(result => ({
+            id: result.student.id,
+            name: result.student.user.name,
+            results: [{
+              subjectId: result.subject.id,
+              subjectName: result.subject.name,
+              marks: result.marks,
+              totalMarks: result.totalMarks,
+              grade: result.grade || "",
+              position: result.position || 0,
+              skillRatings: result.skillRatings ?
+                Object.entries(result.skillRatings).reduce((acc, [key, value]) => ({
+                  ...acc,
+                  [key]: typeof value === 'number' ? value : 0
+                }), {}) : {},
+              attendance: result.attendance || 0,
+              behavior: result.behavior || 0,
+              effort: result.effort || 0,
+              teacherNote: result.teacherNote || ""
+            }]
+          }))}
+          onClose={() => setShowReportGenerator(false)}
+        />
+      ) : (
+        <>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-1 items-center space-x-2">
+              <Input
+                placeholder="Search results..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-[300px]"
+              />
+              <Button variant="outline" size="icon">
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
 
-          {(userRole === "teacher" || userRole === "school_admin" || userRole === "super_admin") && (
-            <>
-              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All Subjects" />
+                  <SelectValue placeholder="Select Class" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Subjects</SelectItem>
-                  {subjects?.map((subject: { id: string, name: string, code?: string }) => (
-                    <SelectItem key={subject.id} value={subject.id}>
-                      {subject.name} {subject.code ? `(${subject.code})` : ""}
+                  {classes.map((class_) => (
+                    <SelectItem key={class_.id} value={class_.id}>
+                      {class_.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+              <Select value={selectedSession} onValueChange={setSelectedSession}>
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All Students" />
+                  <SelectValue placeholder="Select Session" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Students</SelectItem> {/* Already correct */}
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name} {student.class && `(${student.class}${student.section ? ` - ${student.section}` : ""})`}
+                  {sessions.map((session) => (
+                    <SelectItem key={session.id} value={session.id}>
+                      {session.name} {session.isCurrent && "(Current)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </>
-          )}
-        </div>
 
-        <div className="flex gap-2">
-          {(userRole === "teacher" || userRole === "school_admin" || userRole === "super_admin") && (
-            <Button onClick={openAddDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Result
-            </Button>
-          )}
+              <Select value={selectedExamType} onValueChange={setSelectedExamType}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select Exam Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MIDTERM">Mid-Term</SelectItem>
+                  <SelectItem value="FINAL">Final</SelectItem>
+                  <SelectItem value="TEST">Test</SelectItem>
+                  <SelectItem value="QUIZ">Quiz</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {(userRole === "student" || userRole === "parent") && (
-            <Button onClick={generateReportCard}>
-              <FileDown className="mr-2 h-4 w-4" />
-              Download Report Card
-            </Button>
-          )}
-        </div>
-      </div>
+            <div className="flex items-center space-x-2">
+              {(userRole === "teacher" || userRole === "school_admin" || userRole === "super_admin") && (
+                <>
+                  <Button onClick={() => setShowReportGenerator(true)} variant="outline">
+                    <FileDown className="mr-2 h-4 w-4" />
+                    Generate Report
+                  </Button>
+                  <Button onClick={openAddDialog}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Result
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Exam Type</TableHead>
-              <TableHead className="text-right">Marks</TableHead>
-              <TableHead>Grade</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <div className="flex justify-center items-center">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    Loading results...
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : results.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  No results found
-                </TableCell>
-              </TableRow>
-            ) : (
-              results.map((result) => (
-                <TableRow key={result.id}>
-                  <TableCell>{result.student.name}</TableCell>
-                  <TableCell>{result.subject.name}</TableCell>
-                  <TableCell>{result.examType.charAt(0) + result.examType.slice(1).toLowerCase()}</TableCell>
-                  <TableCell className="text-right">
-                    {result.marks}/{result.totalMarks} ({((result.marks / result.totalMarks) * 100).toFixed(1)}%)
-                  </TableCell>
-                  <TableCell>{result.grade}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        result.isApproved ? "default"
-                          : "destructive"
-                      }
-                    >
-                      {result.isApproved ? "Approved" : "Pending"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {(userRole === "teacher" || userRole === "school_admin" || userRole === "super_admin") && (
-                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(result)}>
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                      )}
-
-                      {(userRole === "school_admin" || userRole === "super_admin") && !result.isApproved && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleApproval(result.id, true)}
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          <span className="sr-only">Approve</span>
-                        </Button>
-                      )}
-
-                      {(userRole === "school_admin" || userRole === "super_admin") && result.isApproved && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleApproval(result.id, false)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <XCircle className="h-4 w-4" />
-                          <span className="sr-only">Reject</span>
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+          <Card>
+            <CardContent className="p-0">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort("studentName")}>
+                        <div className="flex items-center gap-2">
+                          Student
+                          {sortConfig.key === "studentName" && (
+                            sortConfig.direction === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort("subjectName")}>
+                        <div className="flex items-center gap-2">
+                          Subject
+                          {sortConfig.key === "subjectName" && (
+                            sortConfig.direction === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead>Class</TableHead>
+                      <TableHead>Section</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort("marks")}>
+                        <div className="flex items-center gap-2">
+                          Marks
+                          {sortConfig.key === "marks" && (
+                            sortConfig.direction === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                            Loading results...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredResults.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          No results found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredResults.map((result) => (
+                        <ResultsTableRow
+                          key={result.id}
+                          result={result}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                        />
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Add Result Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -787,7 +1041,7 @@ export function ResultsTable({ userRole, schoolId, results: initialResults }: Re
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Student</label>
-                <Input value={currentResult?.student.name || ""} disabled />
+                <Input value={currentResult?.student.user.name || ""} disabled />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Subject</label>

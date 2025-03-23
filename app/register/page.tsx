@@ -45,17 +45,30 @@ export default function RegisterPage() {
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      setLogoFile(file)
+      const file = e.target.files[0];
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError("Please select a valid image file");
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Image size should be less than 5MB");
+        return;
+      }
+
+      setLogoFile(file);
 
       // Create preview
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const validateForm = () => {
     if (!formData.schoolName || !formData.shortName || !formData.email || !formData.adminName || !formData.adminEmail || !formData.adminPassword || !formData.confirmPassword) {
@@ -88,55 +101,69 @@ export default function RegisterPage() {
       return false
     }
 
+    // Ensure colors are valid hex values
+    const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
+    if (!hexColorRegex.test(formData.primaryColor)) {
+      setError("Invalid primary color format")
+      return false
+    }
+
+    if (!hexColorRegex.test(formData.secondaryColor)) {
+      setError("Invalid secondary color format")
+      return false
+    }
+
     return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     if (!validateForm()) {
-      setIsLoading(false)
-      return
+      setIsLoading(false);
+      return;
     }
 
     try {
-      const formDataToSend = new FormData()
+      const formDataToSend = new FormData();
 
       // Add all text fields
       Object.entries(formData).forEach(([key, value]) => {
         if (key !== "confirmPassword") {
-          formDataToSend.append(key, value)
+          formDataToSend.append(key, value);
         }
-      })
+      });
 
       // Add logo file if exists
       if (logoFile) {
-        formDataToSend.append("logo", logoFile)
+        formDataToSend.append("logo", logoFile);
       }
 
       // Send registration request
       const response = await fetch("/api/schools/register", {
         method: "POST",
         body: formDataToSend,
-      })
+        // Do not set Content-Type header when using FormData
+        // The browser will automatically set the correct Content-Type with boundary
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Registration failed. Please try again.")
+        throw new Error(data.error || data.details || "Registration failed. Please try again.");
       }
 
       // Redirect to login page with success message
-      router.push("/login?registered=true")
+      router.push("/login?registered=true");
     } catch (error: any) {
-      console.error("Registration failed:", error)
-      setError(error.message || "Registration failed. Please try again.")
+      console.error("Registration failed:", error);
+      setError(error.message || "Registration failed. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4">
@@ -252,13 +279,14 @@ export default function RegisterPage() {
                       <div className="flex flex-col items-center">
                         <Upload className="h-10 w-10 text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground">Click to upload logo</p>
+                        <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG, WEBP (max 5MB)</p>
                       </div>
                     )}
                     <input
                       type="file"
                       ref={fileInputRef}
                       className="hidden"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       onChange={handleLogoChange}
                     />
                   </div>

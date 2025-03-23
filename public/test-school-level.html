@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Level API Test</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1 {
+        color: #333;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      button {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      pre {
+        background-color: #f5f5f5;
+        padding: 12px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>School Level API Test</h1>
+
+    <div class="card">
+      <h2>Fetch School Levels</h2>
+      <button id="fetchLevels">Fetch School Levels</button>
+      <pre id="fetchResult">Results will appear here...</pre>
+    </div>
+
+    <div class="card">
+      <h2>Create School Level</h2>
+      <div>
+        <label for="levelName">Name:</label>
+        <input type="text" id="levelName" value="Test Level" />
+      </div>
+      <div>
+        <label for="levelDescription">Description:</label>
+        <input type="text" id="levelDescription" value="Test Description" />
+      </div>
+      <div>
+        <label for="levelOrder">Order:</label>
+        <input type="number" id="levelOrder" value="1" />
+      </div>
+      <button id="createLevel">Create School Level</button>
+      <pre id="createResult">Results will appear here...</pre>
+    </div>
+
+    <div class="card">
+      <h2>Fetch Single School Level</h2>
+      <div>
+        <label for="levelId">Level ID:</label>
+        <input type="text" id="levelId" placeholder="Enter level ID" />
+      </div>
+      <button id="fetchSingleLevel">Fetch Level</button>
+      <pre id="fetchSingleResult">Results will appear here...</pre>
+    </div>
+
+    <script>
+      document
+        .getElementById("fetchLevels")
+        .addEventListener("click", async () => {
+          try {
+            const response = await fetch("/api/school-levels");
+            const data = await response.json();
+            document.getElementById("fetchResult").textContent = JSON.stringify(
+              data,
+              null,
+              2
+            );
+          } catch (error) {
+            document.getElementById("fetchResult").textContent =
+              "Error: " + error.message;
+          }
+        });
+
+      document
+        .getElementById("createLevel")
+        .addEventListener("click", async () => {
+          try {
+            const name = document.getElementById("levelName").value;
+            const description =
+              document.getElementById("levelDescription").value;
+            const order = parseInt(document.getElementById("levelOrder").value);
+
+            const response = await fetch("/api/school-levels", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name,
+                description,
+                order,
+              }),
+            });
+
+            const data = await response.json();
+            document.getElementById("createResult").textContent =
+              JSON.stringify(data, null, 2);
+
+            // Update the levelId input with the newly created level's ID
+            if (data && data.id) {
+              document.getElementById("levelId").value = data.id;
+            }
+          } catch (error) {
+            document.getElementById("createResult").textContent =
+              "Error: " + error.message;
+          }
+        });
+
+      document
+        .getElementById("fetchSingleLevel")
+        .addEventListener("click", async () => {
+          try {
+            const levelId = document.getElementById("levelId").value;
+            if (!levelId) {
+              throw new Error("Please enter a level ID");
+            }
+
+            const response = await fetch(`/api/school-levels/${levelId}`);
+            const data = await response.json();
+            document.getElementById("fetchSingleResult").textContent =
+              JSON.stringify(data, null, 2);
+          } catch (error) {
+            document.getElementById("fetchSingleResult").textContent =
+              "Error: " + error.message;
+          }
+        });
+    </script>
+  </body>
+</html>

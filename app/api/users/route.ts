@@ -3,6 +3,8 @@ import { hash } from "bcryptjs"; // Changed from bcrypt to bcryptjs
 import prisma from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { uploadImage } from "@/lib/cloudinary";
+import { UserRole } from "@prisma/client";
+import { sendTeacherCredentialsEmail } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     // Only add role to filter if it exists, and make sure it's properly typed as an enum
     if (role) {
-      where.role = role.toUpperCase() as any;
+      where.role = role.toUpperCase() as UserRole;
     }
 
     // Add schoolId to filter if it exists
@@ -43,16 +45,41 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         schoolId: true,
-        gender: true,
-        dateOfBirth: true,
-        religion: true,
-        address: true,
-        phone: true,
-        country: true,
-        city: true,
-        state: true,
         profileImage: true,
         createdAt: true,
+        teacher: {
+          select: {
+            phone: true,
+            gender: true,
+            dateOfBirth: true,
+            address: true,
+            country: true,
+            city: true,
+            state: true,
+            qualifications: true,
+            specialization: true,
+            employeeId: true,
+            departmentId: true,
+            department: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        student: {
+          select: {
+            phone: true,
+            gender: true,
+            dateOfBirth: true,
+            address: true,
+            country: true,
+            city: true,
+            state: true,
+            religion: true,
+            bloodGroup: true,
+          },
+        },
         school: {
           select: {
             name: true,
@@ -75,180 +102,198 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getSession();
-
-  if (
-    !session ||
-    (session.role !== "super_admin" && session.role !== "school_admin")
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    // Check if the request is multipart/form-data
-    const contentType = request.headers.get("content-type") || "";
+    const session = await getSession();
 
-    let body;
-    let profileImageUrl = null;
-
-    if (contentType.includes("multipart/form-data")) {
-      // Handle multipart form data with file upload
-      const formData = await request.formData();
-
-      // Extract text fields
-      body = Object.fromEntries(
-        Array.from(formData.entries()).filter(
-          ([key, value]) => key !== "profileImage" && typeof value === "string"
-        )
-      );
-
-      // Handle profile image upload
-      const profileImage = formData.get("profileImage") as File;
-      if (profileImage && profileImage.size > 0) {
-        // Convert file to base64 for Cloudinary upload
-        const buffer = await profileImage.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString("base64");
-        const dataURI = `data:${profileImage.type};base64,${base64}`;
-
-        // Upload to Cloudinary
-        profileImageUrl = await uploadImage(dataURI);
-      }
-    } else {
-      // Handle regular JSON request
-      body = await request.json();
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const {
-      name,
-      email,
-      password,
-      role,
-      schoolId,
-      gender,
-      dateOfBirth,
-      religion,
-      address,
-      phone,
-      country,
-      city,
-      state,
-      classId,
-      parentId,
-    } = body;
+    const formData = await request.formData();
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const role = formData.get("role") as UserRole;
+    const profileImage = formData.get("profileImage") as string;
+
+    // Get role-specific data
+    const teacherData = formData.get("teacherData")
+      ? JSON.parse(formData.get("teacherData") as string)
+      : null;
+    const studentData = formData.get("studentData")
+      ? JSON.parse(formData.get("studentData") as string)
+      : null;
+    const parentData = formData.get("parentData")
+      ? JSON.parse(formData.get("parentData") as string)
+      : null;
+    const adminData = formData.get("adminData")
+      ? JSON.parse(formData.get("adminData") as string)
+      : null;
 
     // Validate required fields
     if (!name || !email || !password || !role) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+      return new NextResponse("Missing required fields", { status: 400 });
     }
 
     // Determine school ID based on user role
-    let finalSchoolId = schoolId;
-    if (session.role === "school_admin") {
-      finalSchoolId = session.schoolId;
-    } else if (
-      !finalSchoolId &&
-      session.role === "super_admin" &&
-      role !== "SUPER_ADMIN"
-    ) {
-      return NextResponse.json(
-        { error: "School ID is required for this user role" },
-        { status: 400 }
-      );
+    let finalSchoolId = session.schoolId;
+    if (session.role === "super_admin" && role !== UserRole.SUPER_ADMIN) {
+      return new NextResponse("School ID is required for this user role", {
+        status: 400,
+      });
     }
 
     // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
+      select: { id: true },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "Email already in use" },
-        { status: 400 }
-      );
+      return new NextResponse("Email already in use", { status: 400 });
     }
 
     // Hash password
     const hashedPassword = await hash(password, 10);
 
-    // Create user
+    // Get school info for email
+    const school = await prisma.school.findUnique({
+      where: { id: finalSchoolId },
+      select: { name: true, subdomain: true },
+    });
+
+    if (!school) {
+      return new NextResponse("School not found", { status: 400 });
+    }
+
+    // Create user with role-specific data
+    let userData: any = {
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      schoolId: finalSchoolId,
+      profileImage,
+    };
+
+    // Add nested create for specific user type
+    if (role === UserRole.TEACHER && teacherData) {
+      userData.teacher = {
+        create: {
+          phone: teacherData.phone,
+          gender: teacherData.gender,
+          dateOfBirth: teacherData.dateOfBirth
+            ? new Date(teacherData.dateOfBirth)
+            : undefined,
+          address: teacherData.address,
+          city: teacherData.city,
+          state: teacherData.state,
+          country: teacherData.country,
+          qualifications: teacherData.qualifications,
+          specialization: teacherData.specialization,
+          employeeId: teacherData.employeeId,
+        },
+      };
+    } else if (role === UserRole.STUDENT && studentData) {
+      userData.student = {
+        create: {
+          phone: studentData.phone,
+          gender: studentData.gender,
+          dateOfBirth: studentData.dateOfBirth
+            ? new Date(studentData.dateOfBirth)
+            : undefined,
+          address: studentData.address,
+          city: studentData.city,
+          state: studentData.state,
+          country: studentData.country,
+          religion: studentData.religion,
+          bloodGroup: studentData.bloodGroup,
+        },
+      };
+    } else if (role === UserRole.PARENT && parentData) {
+      userData.parent = {
+        create: {
+          phone: parentData.phone,
+          alternatePhone: parentData.alternatePhone,
+          occupation: parentData.occupation,
+          address: parentData.address,
+          city: parentData.city,
+          state: parentData.state,
+          country: parentData.country,
+        },
+      };
+    } else if (
+      (role === UserRole.SCHOOL_ADMIN || role === UserRole.SUPER_ADMIN) &&
+      adminData
+    ) {
+      userData.admin = {
+        create: {
+          adminType: adminData.adminType,
+          permissions: adminData.permissions,
+        },
+      };
+    }
+
+    // Create user with nested data
     const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role: role.toUpperCase(),
-        ...(finalSchoolId ? { schoolId: finalSchoolId } : {}),
-        ...(gender ? { gender } : {}),
-        ...(dateOfBirth ? { dateOfBirth: new Date(dateOfBirth) } : {}),
-        ...(religion ? { religion } : {}),
-        ...(address ? { address } : {}),
-        ...(phone ? { phone } : {}),
-        ...(country ? { country } : {}),
-        ...(city ? { city } : {}),
-        ...(state ? { state } : {}),
-        ...(profileImageUrl ? { profileImage: profileImageUrl } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        schoolId: true,
-        gender: true,
-        dateOfBirth: true,
-        religion: true,
-        address: true,
-        phone: true,
-        country: true,
-        city: true,
-        state: true,
-        profileImage: true,
-        createdAt: true,
+      data: userData,
+      include: {
+        teacher: true,
+        student: true,
+        parent: true,
+        admin: true,
       },
     });
 
-    // If user is a student and classId is provided, assign to class
-    if (role.toUpperCase() === "STUDENT" && classId) {
-      // Get current academic session
-      const currentSession = await prisma.academicSession.findFirst({
-        where: {
-          schoolId: finalSchoolId,
-          isCurrent: true,
-        },
+    // Send email with credentials
+    if (role === UserRole.TEACHER) {
+      await sendTeacherCredentialsEmail({
+        name,
+        email,
+        password,
+        schoolName: school.name,
+        schoolUrl: `https://${school.subdomain}.yourdomain.com`,
       });
+    }
 
-      if (currentSession) {
-        // Assign student to class
-        await prisma.studentClass.create({
-          data: {
-            studentId: user.id,
-            classId,
-            sessionId: currentSession.id,
-          },
+    return NextResponse.json(user);
+  } catch (error: any) {
+    console.error("[USERS_POST]", error);
+    // Improved error handling for database constraint violations
+    if (error.code === "P2002") {
+      // Check which field caused the unique constraint violation
+      const target = error.meta?.target;
+      if (target && target.includes("email")) {
+        return new NextResponse("Email address already exists in the system", {
+          status: 400,
         });
       }
-    }
-
-    // If parentId is provided, link student to parent
-    if (role.toUpperCase() === "STUDENT" && parentId) {
-      await prisma.studentParent.create({
-        data: {
-          studentId: user.id,
-          parentId,
-        },
+      return new NextResponse("A unique constraint was violated", {
+        status: 400,
       });
     }
 
-    return NextResponse.json(user, { status: 201 });
-  } catch (error) {
-    console.error("Error creating user:", error);
-    return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 }
-    );
+    // Handle validation errors
+    if (
+      error.name === "ValidationError" ||
+      error.message.includes("validation")
+    ) {
+      return new NextResponse(`Validation error: ${error.message}`, {
+        status: 400,
+      });
+    }
+
+    // Handle network errors when sending email
+    if (error.message?.includes("email") || error.message?.includes("SMTP")) {
+      // Still create the user but log the email sending failure
+      console.error("User created but failed to send email:", error);
+      return new NextResponse("User created but failed to send welcome email", {
+        status: 201,
+      });
+    }
+
+    return new NextResponse(error.message || "An unexpected error occurred", {
+      status: 500,
+    });
   }
 }

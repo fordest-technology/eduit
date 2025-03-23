@@ -1,11 +1,18 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { removeSessionCookie } from "@/lib/auth"
+import { NextResponse } from "next/server";
+import { clearSession } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
-  const response = NextResponse.json({ success: true }, { status: 200 })
+export async function POST() {
+  try {
+    const response = NextResponse.json({ success: true }, { status: 200 });
 
-  removeSessionCookie(response)
+    await clearSession(response);
 
-  return response
+    return response;
+  } catch (error) {
+    console.error("Logout error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
-
