@@ -13,18 +13,21 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
+    FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import toast from "react-hot-toast";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define form schema
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
     phone: z.string().optional(),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    password: z.string().min(6, "Password must be at least 6 characters").optional(),
     profileImage: z.instanceof(File).optional(),
 });
 
@@ -96,7 +99,19 @@ export default function ParentForm({ parent }: { parent?: any }) {
                 throw new Error(error || "Failed to save parent");
             }
 
-            toast.success(parent ? "Parent updated" : "Parent created");
+            const result = await response.json();
+
+            // Show appropriate message based on whether email was sent
+            if (parent) {
+                toast.success("Parent updated successfully");
+            } else {
+                if (result.emailSent === false) {
+                    toast.warning("Parent account created. However, there was an issue sending the login email. You may need to provide credentials manually.");
+                } else {
+                    toast.success(result.message || "Parent created successfully");
+                }
+            }
+
             router.push("/dashboard/parents");
             router.refresh();
         } catch (error: any) {
@@ -110,8 +125,24 @@ export default function ParentForm({ parent }: { parent?: any }) {
         <Card className="max-w-2xl mx-auto">
             <CardHeader>
                 <CardTitle>{parent ? "Edit Parent" : "Add New Parent"}</CardTitle>
+                <CardDescription>
+                    {parent
+                        ? "Update parent information in the system"
+                        : "Create a new parent account with automatically generated credentials"}
+                </CardDescription>
             </CardHeader>
             <CardContent>
+                {!parent && (
+                    <Alert className="mb-6 bg-blue-50">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Automatic credential generation</AlertTitle>
+                        <AlertDescription>
+                            When you create a new parent, the system will automatically generate a secure password and send the
+                            login credentials to the parent's email address if you don't provide a password.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(onSubmit)}
@@ -191,15 +222,20 @@ export default function ParentForm({ parent }: { parent?: any }) {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>
-                                        {parent ? "New Password (leave blank to keep current)" : "Password"}
+                                        {parent ? "New Password (leave blank to keep current)" : "Password (Optional)"}
                                     </FormLabel>
                                     <FormControl>
                                         <Input
                                             type="password"
-                                            placeholder="Password"
+                                            placeholder={parent ? "New password" : "Leave blank to auto-generate"}
                                             {...field}
                                         />
                                     </FormControl>
+                                    {!parent && (
+                                        <FormDescription>
+                                            If left blank, a secure password will be generated and sent to the parent's email.
+                                        </FormDescription>
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}

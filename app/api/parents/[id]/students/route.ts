@@ -44,7 +44,7 @@ export async function POST(
     }
 
     // Link the student to the parent
-    await prisma.parentStudent.create({
+    await prisma.studentParent.create({
       data: {
         parentId: params.id,
         studentId: studentId,
@@ -70,22 +70,30 @@ export async function GET(
     }
 
     // Get all students linked to the parent
-    const students = await prisma.parentStudent.findMany({
+    const students = await prisma.studentParent.findMany({
       where: {
         parentId: params.id,
       },
       include: {
         student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profileImage: true,
-            studentClass: {
+          include: {
+            user: {
               select: {
                 id: true,
                 name: true,
-                section: true,
+                email: true,
+                profileImage: true,
+              },
+            },
+            classes: {
+              include: {
+                class: {
+                  select: {
+                    id: true,
+                    name: true,
+                    section: true,
+                  },
+                },
               },
             },
           },

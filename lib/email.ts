@@ -75,6 +75,9 @@ interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  from?: string;
+  replyTo?: string;
+  attachments?: any[];
 }
 
 interface SendEmailOptions {
@@ -85,101 +88,104 @@ interface SendEmailOptions {
   debugId?: string;
 }
 
-export const sendEmail = async ({
-  to,
-  subject,
-  html,
-  text,
-  debugId = generateEmailDebugId(),
-}: SendEmailOptions) => {
-  const isProduction = process.env.NODE_ENV === "production";
-  console.log(`[Email ${debugId}] Attempting to send email to ${to}`);
-  console.log(`[Email ${debugId}] Subject: ${subject}`);
-  console.log(`[Email ${debugId}] Environment: ${process.env.NODE_ENV}`);
+/**
+ * Sends an email using the configured SMTP server
+ * @param options Email options including recipient, subject, and content
+ */
+export async function sendEmail(
+  options: EmailOptions
+): Promise<{ success: boolean; error?: string }> {
+  const {
+    to,
+    subject,
+    html,
+    from = process.env.EMAIL_FROM || "noreply@school.com",
+    replyTo = process.env.EMAIL_REPLY_TO || "support@school.com",
+    attachments = [],
+  } = options;
 
-  // Always log email content in development for debugging
-  if (!isProduction) {
-    console.log(`[Email ${debugId}] Email content (text):`);
-    console.log(text || html.replace(/<[^>]*>/g, ""));
+  // In development mode, just log the email rather than sending it
+  if (process.env.NODE_ENV !== "production") {
     console.log(
-      `[Email ${debugId}] HTML content available in logs (${html.length} chars)`
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     );
-  }
+    console.log(`📧 DEV MODE EMAIL: Would send to ${to}`);
+    console.log(`📧 Subject: ${subject}`);
+    console.log(`📧 From: ${from}`);
+    console.log("📧 Content: [HTML content omitted for clarity]");
+    console.log(
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    );
 
-  // Create test email file for debugging if in development
-  if (!isProduction) {
+    // Log to file in development for inspection
     try {
       const fs = require("fs");
       const path = require("path");
-      const emailsDir = path.join(process.cwd(), ".email-debug");
+      const debugDir = path.join(process.cwd(), ".debug-emails");
 
-      if (!fs.existsSync(emailsDir)) {
-        fs.mkdirSync(emailsDir, { recursive: true });
+      if (!fs.existsSync(debugDir)) {
+        fs.mkdirSync(debugDir, { recursive: true });
       }
 
-      const filename = path.join(
-        emailsDir,
-        `email-${debugId}-${Date.now()}.html`
-      );
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = path.join(debugDir, `email-${timestamp}.html`);
       fs.writeFileSync(filename, html);
-      console.log(`[Email ${debugId}] Debug email saved to ${filename}`);
+      console.log(`📧 Debug email saved to ${filename}`);
     } catch (err) {
-      console.error(`[Email ${debugId}] Could not save debug email:`, err);
+      console.warn("Could not save debug email to file", err);
     }
+
+    return { success: true };
   }
 
   try {
-    // Get a transporter - this will either be SMTP, alternative service, or mock
+    // Configure Nodemailer transport
     const transporter = createTransporter();
 
-    // Get email user from environment variables
-    const emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
+    // Add retry mechanism
+    let retries = 3;
+    let lastError: any = null;
 
-    // Send the email
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || emailUser || "noreply@eduit.app",
-      to,
-      subject,
-      text: text || html.replace(/<[^>]*>/g, ""),
-      html,
-    });
+    while (retries > 0) {
+      try {
+        // Send the email
+        await transporter.sendMail({
+          from,
+          to,
+          replyTo,
+          subject,
+          html,
+          attachments,
+        });
 
-    console.log(`[Email ${debugId}] Email sent: ${info.messageId}`);
-
-    return {
-      success: true,
-      messageId: info.messageId,
-      method: isProduction ? "production" : "development",
-    };
-  } catch (error: any) {
-    console.error(`[Email ${debugId}] Failed to send email:`, error.message);
-
-    // If we're in production, we should not silently fail
-    if (isProduction) {
-      // Log the error to your monitoring system
-      console.error(
-        `[Email ${debugId}] CRITICAL: Production email failed to send:`,
-        error
-      );
-
-      // You might want to notify admins or log to a monitoring service here
-
-      // Rethrow the error to be handled by the caller
-      throw new Error(`Failed to send email: ${error.message}`);
+        console.log(`Email sent successfully to ${to}`);
+        return { success: true };
+      } catch (error) {
+        lastError = error;
+        retries--;
+        if (retries > 0) {
+          console.log(
+            `Email sending failed, retrying (${retries} retries left)...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+        }
+      }
     }
 
-    // In development, we can return a simulated success for testing
-    console.log(
-      `[Email ${debugId}] DEV MODE: Simulating email success despite error`
-    );
+    // All retries failed
+    console.error("Error sending email after multiple retries:", lastError);
     return {
-      success: true,
-      messageId: `simulated-${debugId}`,
-      method: "simulated",
-      info: "This is a simulated success response for development. In production, this would have failed.",
+      success: false,
+      error: lastError?.message || "Unknown email error",
+    };
+  } catch (error: any) {
+    console.error("Error sending email:", error);
+    return {
+      success: false,
+      error: error?.message || "Unknown email error",
     };
   }
-};
+}
 
 interface WelcomeEmailParams {
   name: string;
@@ -291,7 +297,7 @@ export async function sendWelcomeEmail({
       to: email,
       subject,
       html,
-      debugId,
+      // debugId,
     });
     return result;
   } catch (error) {

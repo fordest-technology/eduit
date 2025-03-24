@@ -66,7 +66,7 @@ export function ParentSidebar() {
                             className={cn(
                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors",
                                 pathname === link.href
-                                    ? "bg-accent text-accent-foreground text-white"
+                                    ? "bg-accent text-accent-foreground"
                                     : "text-muted-foreground"
                             )}
                         >

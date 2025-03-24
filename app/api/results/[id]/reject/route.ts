@@ -1,49 +1,31 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    const id = params.id
+
+    // Check if result exists
+    const existingResult = await db.result.findUnique({
+      where: { id },
+    })
+
+    if (!existingResult) {
+      return NextResponse.json({ error: "Result not found" }, { status: 404 })
     }
 
-    const { role, schoolId } = session;
-    if (role !== "SUPER_ADMIN") {
-      return new NextResponse("Forbidden", { status: 403 });
-    }
-
-    const result = await prisma.result.update({
-      where: {
-        id: params.id,
-        schoolId,
-      },
+    // Update result status to rejected
+    const updatedResult = await db.result.update({
+      where: { id },
       data: {
-        isApproved: false,
+        status: "rejected",
       },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        subject: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+    })
 
-    return NextResponse.json(result);
+    return NextResponse.json(updatedResult)
   } catch (error) {
-    console.error("[RESULT_REJECT]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    console.error(`Failed to reject result with id ${params.id}:`, error)
+    return NextResponse.json({ error: "Failed to reject result" }, { status: 500 })
   }
 }
+

@@ -72,7 +72,7 @@ export default function AdminDashboardClient({
             </div>
 
             {/* Administrative Tools Section */}
-            <div className="mt-8">
+            {/* <div className="mt-8">
                 <h3 className="font-medium text-muted-foreground mb-4">Administrative Tools</h3>
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                     <Card className="col-span-1">
@@ -131,7 +131,7 @@ export default function AdminDashboardClient({
                         </CardFooter>
                     </Card>
                 </div>
-            </div>
+            </div> */}
         </>
     );
 } 

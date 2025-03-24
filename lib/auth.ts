@@ -46,7 +46,7 @@ export async function verifyJwt(token: string): Promise<UserJwtPayload | null> {
   }
 }
 
-export async function getSession() {
+export async function getSession(context?: unknown) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("session")?.value;
@@ -84,6 +84,20 @@ export async function setSessionCookie(response: NextResponse, token: string) {
   return response;
 }
 
+export async function clearSession(response: NextResponse) {
+  // Remove the session cookie
+  await removeSessionCookie(response);
+
+  // Add cache control headers to prevent caching
+  response.headers.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate"
+  );
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+
+  return response;
+}
 export async function removeSessionCookie(response: NextResponse) {
   response.cookies.set({
     name: "session",

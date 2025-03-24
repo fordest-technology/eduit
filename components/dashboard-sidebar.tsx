@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   School,
+  Coins,
   Users,
   BookOpen,
   Calendar,
@@ -142,6 +143,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "school_admin":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { title: "Fees Paynment", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
           { title: "Result", href: "/dashboard/results", icon: GraduationCap },
@@ -172,6 +174,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "parent":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { title: "Pay School Fees", href: "/dashboard/fees", icon: Coins },
           { title: "Children", href: "/dashboard/children", icon: GraduationCap },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },

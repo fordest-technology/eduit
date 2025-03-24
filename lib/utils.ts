@@ -5,44 +5,35 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function generatePassword(length: number = 12): string {
-  // Ensure we have all character types for a secure password
-  const uppercaseChars = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Removed confusing chars like I, O
-  const lowercaseChars = "abcdefghijkmnopqrstuvwxyz"; // Removed confusing chars like l
-  const numberChars = "23456789"; // Removed confusing chars like 0, 1
-  const specialChars = "!@#$%^&*_-+=";
-
-  // Combine all character sets
-  const allChars = uppercaseChars + lowercaseChars + numberChars + specialChars;
-
-  // Ensure minimum length
-  const finalLength = Math.max(length, 8);
-
-  // Generate password with at least one character from each set
+/**
+ * Generates a secure random password with the specified length
+ * @param length Length of the password
+ * @returns A secure random password
+ */
+export function generatePassword(length: number = 10): string {
+  const charset =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
   let password = "";
 
-  // Add one character from each required set
-  password += uppercaseChars.charAt(
-    Math.floor(Math.random() * uppercaseChars.length)
-  );
-  password += lowercaseChars.charAt(
-    Math.floor(Math.random() * lowercaseChars.length)
-  );
-  password += numberChars.charAt(
-    Math.floor(Math.random() * numberChars.length)
-  );
-  password += specialChars.charAt(
-    Math.floor(Math.random() * specialChars.length)
-  );
+  // Ensure password has at least one of each character type
+  password += charset.substring(0, 26).charAt(Math.floor(Math.random() * 26)); // lowercase
+  password += charset.substring(26, 52).charAt(Math.floor(Math.random() * 26)); // uppercase
+  password += charset.substring(52, 62).charAt(Math.floor(Math.random() * 10)); // number
+  password += charset
+    .substring(62)
+    .charAt(Math.floor(Math.random() * (charset.length - 62))); // special
 
-  // Fill the rest with random characters from all sets
-  for (let i = password.length; i < finalLength; i++) {
-    const randomIndex = Math.floor(Math.random() * allChars.length);
-    password += allChars[randomIndex];
+  // Fill the rest of the password
+  for (let i = 4; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    password += charset.charAt(randomIndex);
   }
 
   // Shuffle the password characters
-  return shuffleString(password);
+  return password
+    .split("")
+    .sort(() => 0.5 - Math.random())
+    .join("");
 }
 
 // Fisher-Yates shuffle algorithm to randomize the password

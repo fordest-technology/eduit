@@ -29,6 +29,9 @@ model User {
   school   School? @relation(fields: [schoolId], references: [id])
 
   approvedResults Result[] @relation("ResultApprover")
+  
+  // Fee management relationships
+  processedPayments PaymentRequest[]
 }
 
 model Admin {
@@ -87,11 +90,15 @@ model Student {
   updatedAt     DateTime    @updatedAt
 
   // Student relationships
-  classes    StudentClass[]
-  attendance Attendance[]
-  results    Result[]
-  parents    StudentParent[]
-  subjects   StudentSubject[]
+  classes          StudentClass[]
+  attendance       Attendance[]
+  results          Result[]
+  parents          StudentParent[]
+  subjects         StudentSubject[]
+  
+  // Fee management relationships
+  payments         StudentPayment[]
+  paymentRequests  PaymentRequest[]
 }
 
 model Parent {
@@ -134,6 +141,10 @@ model School {
   departments Department[]
   events      Event[]
   levels      SchoolLevel[]
+  
+  // Fee management relationships
+  bills            Bill[]
+  paymentAccounts  PaymentAccount[]
 }
 
 model Department {
@@ -382,6 +393,112 @@ enum ExamType {
   TEST
   MIDTERM
   FINAL
+}
+
+// Fee Management System Models
+model Bill {
+  id          String   @id @default(cuid())
+  name        String
+  amount      Float
+  description String?
+  schoolId    String
+  accountId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Bill relationships
+  school          School           @relation(fields: [schoolId], references: [id])
+  account         PaymentAccount   @relation(fields: [accountId], references: [id])
+  assignments     BillAssignment[]
+  paymentRequests PaymentRequest[]
+}
+
+model PaymentAccount {
+  id          String   @id @default(cuid())
+  name        String
+  accountNo   String
+  bankName    String
+  branchCode  String?
+  description String?
+  isActive    Boolean  @default(true)
+  schoolId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Payment Account relationships
+  school School @relation(fields: [schoolId], references: [id])
+  bills  Bill[]
+}
+
+model BillAssignment {
+  id        String             @id @default(cuid())
+  billId    String
+  targetType BillAssignmentType
+  targetId   String            // Can be classId or studentId depending on targetType
+  dueDate   DateTime
+  status    BillStatus         @default(PENDING)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  // Bill Assignment relationships
+  bill             Bill              @relation(fields: [billId], references: [id])
+  studentPayments  StudentPayment[]
+  paymentRequests  PaymentRequest[]
+}
+
+model StudentPayment {
+  id               String   @id @default(cuid())
+  billAssignmentId String
+  studentId        String
+  amountPaid       Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Student Payment relationships
+  billAssignment  BillAssignment    @relation(fields: [billAssignmentId], references: [id])
+  student         Student           @relation(fields: [studentId], references: [id])
+  paymentRequests PaymentRequest[]
+}
+
+model PaymentRequest {
+  id               String          @id @default(cuid())
+  billId           String
+  billAssignmentId String
+  studentPaymentId String?
+  studentId        String
+  amount           Float
+  receiptUrl       String?
+  status           PaymentStatus   @default(PENDING)
+  notes            String?
+  processedById    String?
+  processedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Payment Request relationships
+  bill           Bill            @relation(fields: [billId], references: [id])
+  billAssignment BillAssignment  @relation(fields: [billAssignmentId], references: [id])
+  studentPayment StudentPayment? @relation(fields: [studentPaymentId], references: [id])
+  student        Student         @relation(fields: [studentId], references: [id])
+  processedBy    User?           @relation(fields: [processedById], references: [id])
+}
+
+enum BillAssignmentType {
+  CLASS
+  STUDENT
+}
+
+enum BillStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // Add SchoolLevel model after all other models, before enums

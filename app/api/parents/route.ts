@@ -5,6 +5,9 @@ import { writeFile } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { mkdir } from "fs/promises";
+import { generatePassword } from "@/lib/utils";
+import { sendEmail } from "@/lib/email";
+import { hash } from "bcryptjs";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -110,7 +113,7 @@ export async function POST(request: NextRequest) {
     // Extract user fields
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    let password = formData.get("password") as string;
     const phone = formData.get("phone") as string | null;
 
     // Extract parent-specific fields
@@ -122,9 +125,9 @@ export async function POST(request: NextRequest) {
     const country = formData.get("country") as string;
 
     // Basic validation
-    if (!name || !email || !password) {
+    if (!name || !email) {
       return NextResponse.json(
-        { message: "Name, email and password are required" },
+        { message: "Name and email are required" },
         { status: 400 }
       );
     }
@@ -142,6 +145,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Generate a secure password if not provided
+    const originalPassword = password || generatePassword(10);
+    // Hash the password for storage
+    const hashedPassword = await hash(originalPassword, 10);
 
     // Handle profile image upload if exists
     let profileImagePath = null;
@@ -184,7 +192,7 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           email,
-          password,
+          password: hashedPassword,
           role: UserRole.PARENT,
           schoolId,
           profileImage: profileImagePath,
@@ -208,7 +216,65 @@ export async function POST(request: NextRequest) {
       return newUser;
     });
 
-    return NextResponse.json(result, { status: 201 });
+    // Get school name for the email
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true },
+    });
+
+    // Send login credentials via email
+    const schoolName = school?.name || "Our School";
+    const emailResult = await sendEmail({
+      to: email,
+      subject: `Your ${schoolName} Parent Account Credentials`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Welcome to ${schoolName}!</h2>
+          <p>Dear ${name},</p>
+          <p>Your parent account has been created successfully. You can now log in to the parent portal to view your children's academic information and manage fee payments.</p>
+          <p><strong>Your login credentials:</strong></p>
+          <ul>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Password:</strong> ${originalPassword}</li>
+          </ul>
+          <p><a href="${
+            process.env.NEXT_PUBLIC_APP_URL || "https://your-school-domain.com"
+          }/auth/signin" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">Login to Parent Portal</a></p>
+          <p>For security reasons, please change your password after your first login.</p>
+          <p>If you have any questions, please contact the school administration.</p>
+          <p>Thank you,<br>${schoolName} Administration</p>
+        </div>
+      `,
+    });
+
+    // Check if email was sent successfully
+    let responseMessage = "Parent account created successfully.";
+    if (emailResult.success) {
+      responseMessage +=
+        " Login credentials have been sent to the parent's email.";
+    } else {
+      // Log the error but don't fail the request - the parent was still created successfully
+      console.warn(
+        `Failed to send credentials email to ${email}:`,
+        emailResult.error
+      );
+      responseMessage +=
+        " However, there was an issue sending the login credentials email. Please provide the credentials manually.";
+
+      // For debugging in development
+      if (process.env.NODE_ENV !== "production") {
+        responseMessage += ` Credentials: Email: ${email}, Password: ${originalPassword}`;
+      }
+    }
+
+    return NextResponse.json(
+      {
+        ...result,
+        message: responseMessage,
+        emailSent: emailResult.success,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating parent:", error);
     return NextResponse.json(
