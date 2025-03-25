@@ -22,14 +22,14 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
 
     // Map Prisma UserRole to auth UserRole
     const roleMapping: Record<UserRole, AuthUserRole> = {
-        [UserRole.SUPER_ADMIN]: "super_admin",
-        [UserRole.SCHOOL_ADMIN]: "school_admin",
-        [UserRole.TEACHER]: "teacher",
-        [UserRole.STUDENT]: "student",
-        [UserRole.PARENT]: "parent",
+        [UserRole.SUPER_ADMIN]: "SUPER_ADMIN",
+        [UserRole.SCHOOL_ADMIN]: "SCHOOL_ADMIN",
+        [UserRole.TEACHER]: "TEACHER",
+        [UserRole.STUDENT]: "STUDENT",
+        [UserRole.PARENT]: "PARENT",
     };
 
-    const userRole = roleMapping[session.role] || "school_admin";
+    const userRole = roleMapping[session.role] || "SCHOOL_ADMIN";
 
     return (
         <div className="flex h-screen">
@@ -54,7 +54,12 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-y-auto md:ml-64">
+            <main
+                className={cn(
+                    "flex-1 overflow-y-auto transition-all duration-200 ease-in-out",
+                    isSidebarOpen ? "md:ml-64" : "ml-0"
+                )}
+            >
                 <div className="container mx-auto p-6">{children}</div>
             </main>
         </div>

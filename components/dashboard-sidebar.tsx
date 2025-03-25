@@ -332,7 +332,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           {groupedNavItems.users && groupedNavItems.users.length > 0 && (
             <>
               <div className={cn("mt-6 mb-2", collapsed ? "px-0 text-center" : "px-3")}>
-                <h3 className="text-xs font-medium text-muted-foreground">{!collapsed ? "Users" : "—"}</h3>
+                <h3 className="text-xs font-medium text-muted-foreground">{!collapsed ? "Account Management" : "—"}</h3>
               </div>
               <ul className="space-y-1">
                 {groupedNavItems.users.map((item) => {

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
                   { schoolId: session.schoolId },
                   {
                     schoolId:
-                      session.role === "super_admin" ? schoolId : undefined,
+                      session.role === "SCHOOL_ADMIN" ? schoolId : undefined,
                   },
                 ],
               },

@@ -88,22 +88,3 @@ export async function getDashboardStats(schoolId: string) {
     throw error;
   }
 }
-
-// // Example usage in an API route
-// export async function GET(req: Request) {
-//   const session = await getSession();
-
-//   if (!session || !session.schoolId) {
-//     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//   }
-
-//   try {
-//     const stats = await getDashboardStats(session.schoolId);
-//     return NextResponse.json(stats);
-//   } catch (error) {
-//     return NextResponse.json(
-//       { error: "Failed to fetch stats" },
-//       { status: 500 }
-//     );
-//   }
-// }

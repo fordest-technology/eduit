@@ -10,11 +10,11 @@ const JWT_SECRET = new TextEncoder().encode(
 );
 
 export type UserRole =
-  | "super_admin"
-  | "school_admin"
-  | "teacher"
-  | "student"
-  | "parent";
+  | "SUPER_ADMIN"
+  | "SCHOOL_ADMIN"
+  | "TEACHER"
+  | "STUDENT"
+  | "PARENT";
 
 export interface UserJwtPayload {
   id: string;
@@ -175,11 +175,11 @@ export async function createSession(userId: string) {
 
   // Convert Prisma's enum to our UserRole type
   const roleMap: Record<PrismaUserRole, UserRole> = {
-    [PrismaUserRole.SUPER_ADMIN]: "super_admin",
-    [PrismaUserRole.SCHOOL_ADMIN]: "school_admin",
-    [PrismaUserRole.TEACHER]: "teacher",
-    [PrismaUserRole.STUDENT]: "student",
-    [PrismaUserRole.PARENT]: "parent",
+    [PrismaUserRole.SUPER_ADMIN]: "SUPER_ADMIN",
+    [PrismaUserRole.SCHOOL_ADMIN]: "SCHOOL_ADMIN",
+    [PrismaUserRole.TEACHER]: "TEACHER",
+    [PrismaUserRole.STUDENT]: "STUDENT",
+    [PrismaUserRole.PARENT]: "PARENT",
   };
 
   const role = roleMap[user.role];

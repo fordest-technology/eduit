@@ -26,8 +26,8 @@ export async function GET(
     // Check if user has access to this event
     if (
       !event.isPublic &&
-      session.role !== "super_admin" &&
-      (session.role !== "school_admin" || event.schoolId !== session.schoolId)
+      session.role !== "SUPER_ADMIN" &&
+      (session.role !== "SCHOOL_ADMIN" || event.schoolId !== session.schoolId)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -51,7 +51,7 @@ export async function PUT(
 
     if (
       !session ||
-      (session.role !== "super_admin" && session.role !== "school_admin")
+      (session.role !== "SUPER_ADMIN" && session.role !== "SCHOOL_ADMIN")
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -79,7 +79,7 @@ export async function PUT(
 
     // Check if user has permission to update this event
     if (
-      session.role !== "super_admin" &&
+      session.role !== "SUPER_ADMIN" &&
       existingEvent.schoolId !== session.schoolId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -95,7 +95,7 @@ export async function PUT(
         endDate: endDate ? new Date(endDate) : null,
         location,
         isPublic: isPublic ?? true,
-        ...(session.role === "super_admin" && schoolId ? { schoolId } : {}),
+        ...(session.role === "SUPER_ADMIN" && schoolId ? { schoolId } : {}),
       },
     });
 
@@ -118,7 +118,7 @@ export async function DELETE(
 
     if (
       !session ||
-      (session.role !== "super_admin" && session.role !== "school_admin")
+      (session.role !== "SUPER_ADMIN" && session.role !== "SCHOOL_ADMIN")
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -136,7 +136,7 @@ export async function DELETE(
 
     // Check if user has permission to delete this event
     if (
-      session.role !== "super_admin" &&
+      session.role !== "SUPER_ADMIN" &&
       existingEvent.schoolId !== session.schoolId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

@@ -20,9 +20,12 @@ export default async function AdmissionsPage() {
     if (!session) {
         redirect("/auth/signin");
     }
+    const allowedRoles = new Map<string, boolean>([
+        ["super_admin", true],
+        ["school_admin", true],
+    ]);
 
-    // Only super admin and school admin can access this page
-    if (session.role !== "super_admin" && session.role !== "school_admin") {
+    if (!allowedRoles.has(session.role)) {
         redirect("/dashboard");
     }
 

@@ -128,8 +128,7 @@ export default async function DashboardPage() {
     stats = dashboardStats
 
     // Handle role-specific additional data fetching
-    if (session.role === "parent") {
-      // Fetch children linked to this parent
+    if (session.role === 'PARENT') {
       const parentChildren = await prisma.studentParent.findMany({
         where: { parentId: session.id },
         include: {
@@ -220,23 +219,23 @@ export default async function DashboardPage() {
 
   // Get role-specific title and description
   const roleTitle = {
-    super_admin: "Super Admin Dashboard",
-    school_admin: "School Admin Dashboard",
-    teacher: "Teacher Dashboard",
-    parent: "Parent Dashboard",
-    student: "Student Dashboard"
+    SUPER_ADMIN: "Super Admin Dashboard",
+    SCHOOL_ADMIN: "School Admin Dashboard",
+    TEACHER: "Teacher Dashboard",
+    PARENT: "Parent Dashboard",
+    STUDENT: "Student Dashboard"
   }[session.role] || "Welcome to your dashboard"
 
   const roleDescription = {
-    super_admin: "Manage all schools and system settings",
-    school_admin: "Manage your school's settings and users",
-    teacher: "View your classes and student performance",
-    student: "Track your academic progress",
-    parent: "Monitor your children's academic journey"
+    SUPER_ADMIN: "Manage all schools and system settings",
+    SCHOOL_ADMIN: "Manage your school's settings and users",
+    TEACHER: "View your classes and student performance",
+    STUDENT: "Track your academic progress",
+    PARENT: "Monitor your children's academic journey"
   }[session.role] || "Welcome to your dashboard"
 
   // Render parent dashboard
-  if (session.role === "parent") {
+  if (session.role === "PARENT") {
     return (
       <ParentDashboard
         data={{
@@ -311,7 +310,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Admin Dashboard or Regular Stats */}
-      {(session.role === "super_admin" || session.role === "school_admin") ? (
+      {(session.role === "SUPER_ADMIN" || session.role === "SCHOOL_ADMIN") ? (
         <AdminDashboardClient stats={stats} />
       ) : null}
 

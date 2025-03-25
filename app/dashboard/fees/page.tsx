@@ -494,7 +494,6 @@ export default async function FeeDashboardPage() {
                     heading="School Fees"
                     text="Make payments and view payment history for your children"
                     showBanner={true}
-                    color={themeColor}
                 />
 
                 {/* Parent Summary Cards */}
