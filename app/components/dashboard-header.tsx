@@ -15,7 +15,7 @@ export function DashboardHeader({ heading, text, showBanner = false, icon, actio
     const { colors } = useColors()
 
     return (
-        <div className="flex flex-col gap-2 mb-8">
+        <div className="flex flex-col gap-2 mb-8 z-0">
             {showBanner && (
                 <div
                     className="w-full rounded-lg p-6 py-8 mb-6 shadow-md relative overflow-hidden"

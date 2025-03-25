@@ -32,7 +32,7 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
     const userRole = roleMapping[session.role] || "SCHOOL_ADMIN";
 
     return (
-        <div className="flex h-screen">
+        <div className="relative flex min-h-screen max-h-screen overscroll-y-hidden">
             {/* Mobile sidebar toggle */}
             <Button
                 variant="ghost"
@@ -46,7 +46,7 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed inset-y-0 left-0 z-40 w-64 bg-background border-r transition-transform duration-200 ease-in-out md:translate-x-0",
+                    "fixed md:relative h-full w-fit bg-background border-r transition-transform duration-200 ease-in-out",
                     isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
@@ -54,13 +54,10 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
             </aside>
 
             {/* Main content */}
-            <main
-                className={cn(
-                    "flex-1 overflow-y-auto transition-all duration-200 ease-in-out",
-                    isSidebarOpen ? "md:ml-64" : "ml-0"
-                )}
-            >
-                <div className="container mx-auto p-6">{children}</div>
+            <main className="flex-1 w-full min-h-screen">
+                <div className="container mx-auto p-6">
+                    {children}
+                </div>
             </main>
         </div>
     )

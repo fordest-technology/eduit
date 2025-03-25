@@ -266,18 +266,18 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     <TooltipProvider delayDuration={0}>
       <div
         className={cn(
-          "flex h-screen flex-col border-r transition-all duration-300 ease-in-out",
+          "flex h-screen flex-col border-r transition-all duration-300 ease-in-out z-50 bg-white",
           collapsed ? "w-[4.5rem]" : "w-64",
         )}
         style={{
-          backgroundColor: activeColorHsl ? `hsl(${activeColorHsl.split(' ')[0]} 40% 90%)` : undefined,
+          backgroundColor: activeColorHsl ? `hsl(${activeColorHsl.split(' ')[0]} 40% 95%)` : undefined,
         }}
       >
         {/* Header */}
-        <div className="flex h-14 items-center border-b px-4">
+        <div className="flex h-14 items-center border-b px-4 z-50 ">
           {schoolInfo?.logo ? (
             <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
-              <div className="h-8 w-8 rounded-md overflow-hidden flex-shrink-0">
+              <div className="h-8 w-8 rounded-md overflow-hidden flex-shrink-0 z-50">
                 <img
                   src={schoolInfo.logo || "/placeholder.svg"}
                   alt={schoolInfo.name}
@@ -297,7 +297,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className="flex-1 overflow-y-auto py-4 px-3 z-50">
           {/* Main navigation items */}
           <ul className="space-y-1">
             {groupedNavItems.main.map((item) => {
