@@ -63,13 +63,12 @@ export async function getSession(context?: unknown) {
 }
 
 export async function setSessionCookie(response: NextResponse, token: string) {
-  // Determine if we are in a secure environment (production)
-  // For local development, we don't want to set secure flag
   const isSecure = process.env.NODE_ENV === "production";
   const sameSite = isSecure ? ("none" as const) : ("lax" as const);
-  const domain = process.env.COOKIE_DOMAIN || undefined;
 
-  // Set HttpOnly cookie that can't be accessed by JavaScript
+  // Get the domain from environment variable or request
+  const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
+
   response.cookies.set({
     name: "session",
     value: token,
@@ -78,7 +77,7 @@ export async function setSessionCookie(response: NextResponse, token: string) {
     secure: isSecure,
     sameSite: sameSite,
     maxAge: 60 * 60 * 8, // 8 hours
-    domain: domain,
+    domain: cookieDomain, // This will allow the cookie to work across subdomains
   });
 
   return response;
@@ -98,14 +97,20 @@ export async function clearSession(response: NextResponse) {
 
   return response;
 }
+
 export async function removeSessionCookie(response: NextResponse) {
+  const isSecure = process.env.NODE_ENV === "production";
+  const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
+
   response.cookies.set({
     name: "session",
     value: "",
     httpOnly: true,
     path: "/",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
+    sameSite: isSecure ? "none" : "lax",
     maxAge: 0,
+    domain: cookieDomain, // Make sure to use the same domain when removing
   });
 
   return response;
@@ -125,6 +130,22 @@ export async function requireAuth(
 
   if (!user) {
     return { authenticated: false, user: null };
+  }
+
+  // Check if user belongs to the school in the subdomain
+  const host = request.headers.get("host") || "";
+  const isSubdomain = host.split(".").length > 2;
+
+  if (isSubdomain) {
+    const subdomain = host.split(".")[0];
+    const school = await prisma.school.findUnique({
+      where: { subdomain },
+      select: { id: true },
+    });
+
+    if (school && user.schoolId !== school.id) {
+      return { authenticated: false, user: null };
+    }
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {

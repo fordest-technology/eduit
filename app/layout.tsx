@@ -1,16 +1,15 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { getSession } from "@/lib/auth";
-import { Toaster } from "@/components/ui/toaster";
+import "./globals.css";
+import { CustomSessionProvider } from "@/providers/session-provider";
 import { ColorProvider } from "@/contexts/color-context";
-import { Providers } from "./_components/providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "EduIT - School Management System",
-  description: "Modern school management system for educational institutions",
+  title: "EduIT",
+  description: "School Management System",
 };
 
 // Helper function to convert hex to HSL
@@ -115,12 +114,11 @@ export default function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: generateColorVariables("#22c55e", "#f59e0b") }} />
       </head>
       <body className={inter.className}>
-        <Providers>
+        <CustomSessionProvider>
           <ColorProvider>
             {children}
           </ColorProvider>
-          <Toaster />
-        </Providers>
+        </CustomSessionProvider>
       </body>
     </html>
   );

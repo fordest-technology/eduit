@@ -12,38 +12,73 @@ type ColorContextType = {
     setColors: (colors: SchoolColors) => void
 }
 
+const DEFAULT_COLORS = {
+    primaryColor: "#3b82f6", // Default blue
+    secondaryColor: "#1f2937", // Default gray
+}
+
 const ColorContext = createContext<ColorContextType | undefined>(undefined)
 
 export function ColorProvider({ children }: { children: React.ReactNode }) {
-    const [colors, setColors] = useState<SchoolColors>({
-        primaryColor: "#3b82f6", // Default blue
-        secondaryColor: "#1f2937", // Default gray
-    })
+    const [colors, setColors] = useState<SchoolColors>(DEFAULT_COLORS)
+
+    // Function to fetch colors from current school
+    const fetchCurrentSchoolColors = async () => {
+        try {
+            const response = await fetch("/api/schools/current")
+            if (!response.ok) throw new Error("Failed to fetch school colors")
+            const data = await response.json()
+
+            if (data.school?.primaryColor && data.school?.secondaryColor) {
+                setColors({
+                    primaryColor: data.school.primaryColor,
+                    secondaryColor: data.school.secondaryColor,
+                })
+
+                // Set CSS variables
+                document.documentElement.style.setProperty('--primary-color', data.school.primaryColor)
+                document.documentElement.style.setProperty('--secondary-color', data.school.secondaryColor)
+            }
+        } catch (error) {
+            console.error("Error fetching school colors:", error)
+        }
+    }
+
+    // Function to fetch colors from subdomain
+    const fetchSubdomainColors = async () => {
+        try {
+            const host = window.location.host
+            const subdomain = host.split('.')[0]
+
+            if (!subdomain || subdomain === 'localhost:3000') {
+                return // Don't fetch for localhost
+            }
+
+            const response = await fetch(`/api/public/schools/${subdomain}`)
+            if (!response.ok) throw new Error("Failed to fetch subdomain colors")
+
+            const data = await response.json()
+            if (data.school?.primaryColor) {
+                setColors({
+                    primaryColor: data.school.primaryColor,
+                    secondaryColor: data.school.secondaryColor || DEFAULT_COLORS.secondaryColor,
+                })
+
+                // Set CSS variables
+                document.documentElement.style.setProperty('--primary-color', data.school.primaryColor)
+                document.documentElement.style.setProperty('--secondary-color', data.school.secondaryColor || DEFAULT_COLORS.secondaryColor)
+            }
+        } catch (error) {
+            console.error("Error fetching subdomain colors:", error)
+        }
+    }
 
     useEffect(() => {
-        // Fetch school colors when the provider mounts
-        async function fetchSchoolColors() {
-            try {
-                const response = await fetch("/api/schools/current")
-                if (!response.ok) throw new Error("Failed to fetch school colors")
-                const data = await response.json()
+        // First try to fetch current school colors
+        fetchCurrentSchoolColors()
 
-                if (data.school?.primaryColor && data.school?.secondaryColor) {
-                    setColors({
-                        primaryColor: data.school.primaryColor,
-                        secondaryColor: data.school.secondaryColor,
-                    })
-
-                    // Set CSS variables
-                    document.documentElement.style.setProperty('--primary-color', data.school.primaryColor)
-                    document.documentElement.style.setProperty('--secondary-color', data.school.secondaryColor)
-                }
-            } catch (error) {
-                console.error("Error fetching school colors:", error)
-            }
-        }
-
-        fetchSchoolColors()
+        // Then try to fetch subdomain colors
+        fetchSubdomainColors()
     }, [])
 
     return (

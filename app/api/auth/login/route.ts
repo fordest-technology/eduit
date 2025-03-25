@@ -6,72 +6,49 @@ import { UserRole } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body;
 
-    // Basic validation
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { message: "Missing email or password" },
         { status: 400 }
       );
     }
 
-    // Find user by email
+    // Find user
     const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        parent: true,
-        admin: true,
-        student: true,
-        teacher: true,
-      },
+      where: { email: email.toLowerCase() },
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid credentials. Please check your email and password." },
+        { message: "Invalid credentials" },
         { status: 401 }
       );
     }
 
     // Verify password
-    const isValid = await compare(password, user.password);
-
-    if (!isValid) {
+    const isValidPassword = await compare(password, user.password);
+    if (!isValidPassword) {
       return NextResponse.json(
-        { error: "Invalid credentials. Please check your email and password." },
+        { message: "Invalid credentials" },
         { status: 401 }
-      );
-    }
-
-    // Check if the user is a parent and properly linked
-    if (user.role === UserRole.PARENT && !user.parent) {
-      return NextResponse.json(
-        {
-          error:
-            "Your parent account is not properly configured. Please contact the school administrator.",
-        },
-        { status: 403 }
       );
     }
 
     // Create session token
     const token = await createSession(user.id);
 
-    // Create response with user info and success message
-    const response = NextResponse.json(
-      {
-        success: true,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          profileImage: user.profileImage,
-        },
+    // Create response
+    const response = NextResponse.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
       },
-      { status: 200 }
-    );
+    });
 
     // Set session cookie
     await setSessionCookie(response, token);
@@ -80,7 +57,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
-      { error: "An unexpected error occurred. Please try again later." },
+      { message: "Internal server error" },
       { status: 500 }
     );
   }

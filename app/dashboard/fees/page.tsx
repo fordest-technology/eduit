@@ -8,6 +8,13 @@ import { DashboardHeader } from "@/app/components/dashboard-header"
 import { BillStatus, UserRole } from "@prisma/client"
 import { ParentFeeDashboard } from "./_components/parent-fee-dashboard (1)"
 // import { ParentFeeDashboard } from "./_components/parent-fee-dashboard"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { CreditCard, DollarSign, FileText, AlertCircle, CheckCircle, Clock, Plus } from "lucide-react"
+import { formatCurrency } from "@/app/lib/utils"
+import { Button } from "@/components/ui/button"
+// import { formatCurrency } from "@/lib/utils"
 
 export const metadata: Metadata = {
     title: "Fee Management",
@@ -358,6 +365,14 @@ export default async function FeeDashboardPage() {
         redirect("/login")
     }
 
+    // Fetch school theme color
+    const school = await prisma.school.findUnique({
+        where: { id: user.schoolId },
+        select: { primaryColor: true, secondaryColor: true } // Adjusted to match existing properties
+    })
+
+    const themeColor = school?.primaryColor || 'blue' // Fallback to 'blue' if primaryColor is not available
+
     // Check user role based on the role field, admin and parent relationship
     const isAdmin = user.role === UserRole.SUPER_ADMIN || user.role === UserRole.SCHOOL_ADMIN || !!user.admin
     const isParent = user.role === UserRole.PARENT || !!user.parent
@@ -370,8 +385,104 @@ export default async function FeeDashboardPage() {
                 <DashboardHeader
                     heading="Fee Management"
                     text="Manage school fees, payment accounts, and process payment requests"
+                    showBanner={true}
+                // color={themeColor}
                 />
-                <FeeDashboardContent data={feeData} />
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-blue-700">
+                                <DollarSign className="mr-2 h-5 w-5" />
+                                Total Billed
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-blue-800">
+                                {formatCurrency(feeData.feeSummary.totalBilled)}
+                            </p>
+                            <p className="text-sm text-blue-600 mt-1">Total fees billed</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-purple-700">
+                                <CheckCircle className="mr-2 h-5 w-5" />
+                                Total Paid
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-purple-800">
+                                {formatCurrency(feeData.feeSummary.totalPaid)}
+                            </p>
+                            <p className="text-sm text-purple-600 mt-1">Total payments received</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
+                                <Clock className="mr-2 h-5 w-5" />
+                                Pending
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-emerald-800">
+                                {formatCurrency(feeData.feeSummary.totalPending)}
+                            </p>
+                            <p className="text-sm text-emerald-600 mt-1">Awaiting payment</p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Main Content Card */}
+                <Card className="border-primary/10 shadow-md">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Fee Bills</CardTitle>
+                                <CardDescription>Manage and track all fee bills</CardDescription>
+                            </div>
+                            <Button className="inline-flex items-center justify-center">
+                                <Plus className="mr-2 h-4 w-4" /> Create New Bill
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <FeeDashboardContent data={feeData} />
+                    </CardContent>
+                </Card>
+
+                {/* Payment Accounts Section */}
+                <Card className="border-primary/10">
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Payment Accounts</CardTitle>
+                                <CardDescription>Manage school payment accounts</CardDescription>
+                            </div>
+                            <Button variant="outline">
+                                <Plus className="mr-2 h-4 w-4" /> Add Account
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Payment accounts content */}
+                    </CardContent>
+                </Card>
+
+                {/* Payment Requests Section */}
+                <Card className="border-primary/10">
+                    <CardHeader>
+                        <CardTitle>Payment Requests</CardTitle>
+                        <CardDescription>Review and process payment requests</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Payment requests content */}
+                    </CardContent>
+                </Card>
             </div>
         )
     } else if (isParent) {
@@ -379,8 +490,71 @@ export default async function FeeDashboardPage() {
 
         return (
             <div className="space-y-6">
-                <DashboardHeader heading="School Fees" text="Make payments and view payment history for your children" />
-                <ParentFeeDashboard data={parentData} />
+                <DashboardHeader
+                    heading="School Fees"
+                    text="Make payments and view payment history for your children"
+                    showBanner={true}
+                    color={themeColor}
+                />
+
+                {/* Parent Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-blue-700">
+                                <FileText className="mr-2 h-5 w-5" />
+                                Total Billed
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-blue-800">
+                                {formatCurrency(parentData.stats.totalBilled)}
+                            </p>
+                            <p className="text-sm text-blue-600 mt-1">Total fees billed</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-purple-700">
+                                <CheckCircle className="mr-2 h-5 w-5" />
+                                Total Paid
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-purple-800">
+                                {formatCurrency(parentData.stats.totalPaid)}
+                            </p>
+                            <p className="text-sm text-purple-600 mt-1">Total payments made</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
+                                <CreditCard className="mr-2 h-5 w-5" />
+                                Balance Due
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-emerald-800">
+                                {formatCurrency(parentData.stats.remainingBalance)}
+                            </p>
+                            <p className="text-sm text-emerald-600 mt-1">Outstanding balance</p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Parent Main Content */}
+                <Card className="border-primary/10 shadow-md">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                        <CardTitle>Outstanding Bills</CardTitle>
+                        <CardDescription>View and pay pending bills</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <ParentFeeDashboard data={parentData} />
+                    </CardContent>
+                </Card>
             </div>
         )
     }
@@ -389,25 +563,23 @@ export default async function FeeDashboardPage() {
     return (
         <div className="space-y-6">
             <DashboardHeader heading="Fee Management" text="View and manage school fees" />
-            <div className="rounded-md bg-yellow-50 p-4 border border-yellow-200">
-                <div className="flex">
-                    <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path
-                                fillRule="evenodd"
-                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                clipRule="evenodd"
-                            />
-                        </svg>
-                    </div>
-                    <div className="ml-3">
-                        <h3 className="text-sm font-medium text-yellow-800">Access Restricted</h3>
-                        <div className="mt-2 text-sm text-yellow-700">
-                            <p>You don't have permission to access the fee management system. Please contact your administrator.</p>
+            <Card className="border border-yellow-200">
+                <CardHeader className="bg-yellow-50 border-b border-yellow-200">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <AlertCircle className="h-5 w-5 text-yellow-400" />
+                        </div>
+                        <div className="ml-3">
+                            <CardTitle className="text-sm font-medium text-yellow-800">Access Restricted</CardTitle>
                         </div>
                     </div>
-                </div>
-            </div>
+                </CardHeader>
+                <CardContent className="bg-yellow-50">
+                    <p className="text-sm text-yellow-700">
+                        You don't have permission to access the fee management system. Please contact your administrator.
+                    </p>
+                </CardContent>
+            </Card>
         </div>
     )
 }

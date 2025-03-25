@@ -18,9 +18,9 @@ export function DashboardHeader({ heading, text, showBanner = false, icon, actio
         <div className="flex flex-col gap-2 mb-8">
             {showBanner && (
                 <div
-                    className="w-full rounded-lg p-6 mb-6 shadow-md relative overflow-hidden"
+                    className="w-full rounded-lg p-6 py-8 mb-6 shadow-md relative overflow-hidden"
                     style={{
-                        background: `linear-gradient(135deg, ${colors.primaryColor}88 0%, ${colors.secondaryColor}88 100%)`,
+                        background: `linear-gradient(120deg, ${colors.primaryColor}88 0%, ${colors.secondaryColor}88 100%)`,
                         borderLeft: `4px solid ${colors.primaryColor}`,
                     }}
                 >

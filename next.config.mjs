@@ -1,6 +1,6 @@
-let userConfig = undefined
+let userConfig = undefined;
 try {
-  userConfig = await import('./v0-user-next.config')
+  userConfig = await import("./v0-user-next.config");
 } catch (e) {
   // ignore error
 }
@@ -21,28 +21,64 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-}
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // Handle subdomains in development
+        {
+          source: "/:path*",
+          has: [
+            {
+              type: "host",
+              value: "(?<subdomain>[^.]+)\\.localhost:3000",
+            },
+          ],
+          destination: "/:path*",
+        },
+      ],
+    };
+  },
 
-mergeConfig(nextConfig, userConfig)
+  // Add hostname configuration for development
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "*",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+mergeConfig(nextConfig, userConfig);
 
 function mergeConfig(nextConfig, userConfig) {
   if (!userConfig) {
-    return
+    return;
   }
 
   for (const key in userConfig) {
     if (
-      typeof nextConfig[key] === 'object' &&
+      typeof nextConfig[key] === "object" &&
       !Array.isArray(nextConfig[key])
     ) {
       nextConfig[key] = {
         ...nextConfig[key],
         ...userConfig[key],
-      }
+      };
     } else {
-      nextConfig[key] = userConfig[key]
+      nextConfig[key] = userConfig[key];
     }
   }
 }
 
-export default nextConfig
+export default nextConfig;
