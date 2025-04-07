@@ -35,7 +35,7 @@ export default async function AttendancePage() {
     }
     // Fetch data based on user role
     let classes: any[] = []
-    let students: any[] = []
+    const students: any[] = []
 
     if (session.role === "teacher") {
         // Get teacher's classes

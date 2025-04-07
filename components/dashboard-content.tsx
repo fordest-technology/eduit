@@ -32,7 +32,7 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
     const userRole = roleMapping[session.role] || "SCHOOL_ADMIN";
 
     return (
-        <div className="relative flex min-h-screen max-h-screen overscroll-y-hidden">
+        <div className="relative flex h-screen overflow-hidden">
             {/* Mobile sidebar toggle */}
             <Button
                 variant="ghost"
@@ -46,7 +46,7 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed md:relative h-full w-fit bg-background border-r transition-transform duration-200 ease-in-out",
+                    "fixed md:relative h-screen w-fit bg-background border-r transition-transform duration-200 ease-in-out overflow-y-auto scrollbar-hide",
                     isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
@@ -54,11 +54,11 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 w-full min-h-screen">
+            <main className="flex-1 w-full h-screen overflow-y-auto">
                 <div className="container mx-auto p-6">
                     {children}
                 </div>
             </main>
         </div>
     )
-} 
+}

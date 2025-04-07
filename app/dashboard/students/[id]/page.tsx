@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2, UserIcon, School, GraduationCap, UserPlus } from "lucide-react"
+import { Loader2, UserIcon, School, GraduationCap, UserPlus, Mail, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StudentDetails } from "./student-details"
 import { Pencil } from "lucide-react"
@@ -51,10 +51,20 @@ import {
 import {
     AlertTriangle,
 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import Link from "next/link"
 
 interface StudentClassRecord {
     id: string;
-    class: Class;
+    class: Class & {
+        level?: {
+            id: string;
+            name: string;
+            description?: string | null;
+            order: number;
+        } | null;
+        section?: string | null;
+    };
     session: AcademicSession;
     sessionId: string;
     classId: string;
@@ -152,6 +162,36 @@ function ActionButtons({ onEditClick, onClassClick }: { onEditClick: () => void,
     );
 }
 
+// Create skeleton loading components
+const StudentCardSkeleton = () => (
+    <Card className="bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200">
+        <CardContent className="p-4 flex items-center">
+            <Skeleton className="h-5 w-5 mr-2 rounded-full" />
+            <div className="w-full">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-5 w-40" />
+            </div>
+        </CardContent>
+    </Card>
+)
+
+const StudentDetailsSkeleton = () => (
+    <div className="rounded-lg border shadow-sm p-6 space-y-4">
+        <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid grid-cols-2 gap-4 pt-4">
+            {[...Array(6)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-40" />
+                </div>
+            ))}
+        </div>
+    </div>
+)
+
 export default function StudentDetailsPage() {
     const params = useParams()
     const router = useRouter()
@@ -164,6 +204,7 @@ export default function StudentDetailsPage() {
     const [editingStudent, setEditingStudent] = useState<any>(null)
     const [departments, setDepartments] = useState<any[]>([])
     const [schoolInfo, setSchoolInfo] = useState<any>(null)
+    const [currentSession, setCurrentSession] = useState<AcademicSession | null>(null)
 
     // Class assignment state
     const [classes, setClasses] = useState<any[]>([])
@@ -202,13 +243,19 @@ export default function StudentDetailsPage() {
 
                 // The API returns data in { student: {...}, availableDepartments: [...], ... } format
                 const studentData = responseData.student;
+                const activeSession = responseData.currentSession;
 
                 if (!studentData) {
                     console.error("No student data in response:", responseData);
                     throw new Error('Student data not found in response');
                 }
 
-                // Map the nested student data to match the expected format
+                // Set current class and session directly from API response
+                let currentClassObj = studentData.currentClass;
+                setCurrentClass(currentClassObj);
+                setCurrentSession(activeSession);
+                
+                // Set student data with all classes included
                 const formattedStudent = {
                     ...studentData,
                     // Include nested properties at the top level for ComplexStudent type
@@ -226,19 +273,14 @@ export default function StudentDetailsPage() {
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     } : null,
-                    studentClass: studentData.currentClass ? [studentData.currentClass] : [],
-                    // Set empty arrays for properties required by ComplexStudent type
+                    studentClass: studentData.classes || [],
+                    // Set arrays for properties required by ComplexStudent type
                     parents: studentData.parents || [],
-                    attendance: [],
-                    results: [],
+                    attendance: studentData.attendance || [],
+                    results: studentData.results || [],
                 }
 
-                setStudent(formattedStudent)
-
-                // Set current class if available
-                if (studentData.currentClass) {
-                    setCurrentClass(studentData.currentClass)
-                }
+                setStudent(formattedStudent);
 
                 // Format student data for edit form
                 if (studentData) {
@@ -260,16 +302,9 @@ export default function StudentDetailsPage() {
                     setEditingStudent(formattedStudentData)
                 }
 
-                // Set available departments from API response
+                // Set available data from API response
                 if (responseData.availableDepartments) {
                     setDepartments(responseData.availableDepartments)
-                } else {
-                    // Fetch departments separately if not included in response
-                    const deptRes = await fetch('/api/departments')
-                    if (deptRes.ok) {
-                        const deptData = await deptRes.json()
-                        setDepartments(deptData)
-                    }
                 }
 
                 // Fetch current school info for UI styling
@@ -303,11 +338,15 @@ export default function StudentDetailsPage() {
             })
             .then(data => {
                 const studentData = data.student;
+                const activeSession = data.currentSession;
+                
                 if (studentData) {
+                    // Set current class and session directly from API response
+                    let currentClassObj = studentData.currentClass;
+                    
                     // Map the nested student data to match the expected format
                     const formattedStudent = {
                         ...studentData,
-                        // Include nested properties at the top level for ComplexStudent type
                         id: studentData.id,
                         name: studentData.name,
                         email: studentData.email,
@@ -322,18 +361,15 @@ export default function StudentDetailsPage() {
                             createdAt: new Date(),
                             updatedAt: new Date(),
                         } : null,
-                        studentClass: studentData.currentClass ? [studentData.currentClass] : [],
+                        studentClass: studentData.classes || [],
                         parents: studentData.parents || [],
-                        attendance: [],
-                        results: [],
+                        attendance: studentData.attendance || [],
+                        results: studentData.results || [],
                     }
 
-                    setStudent(formattedStudent)
-
-                    // Set current class if available
-                    if (studentData.currentClass) {
-                        setCurrentClass(studentData.currentClass)
-                    }
+                    setStudent(formattedStudent);
+                    setCurrentClass(currentClassObj);
+                    setCurrentSession(activeSession);
                 }
             })
             .catch(err => {
@@ -357,30 +393,36 @@ export default function StudentDetailsPage() {
             forceReassign: false,
         });
 
-        // Fetch available classes
+        // Fetch available classes and sessions
         setIsFetchingClassData(true);
-        Promise.all([
-            fetch("/api/classes").then(res => res.json()),
-            fetch("/api/academic-sessions?active=true").then(res => res.json())
-        ])
-            .then(([classesData, sessionsData]) => {
-                console.log("Available classes:", classesData);
-                console.log("Academic sessions:", sessionsData);
-
-                if (Array.isArray(classesData)) {
-                    setClasses(classesData);
+        fetch(`/api/students/${params.id}`)
+            .then(res => res.json())
+            .then(data => {
+                const classesData = data.availableClasses || [];
+                const sessionsData = data.availableSessions || [];
+                
+                setClasses(classesData);
+                
+                // If sessions not directly available, fetch them
+                if (!sessionsData || sessionsData.length === 0) {
+                    return fetch("/api/academic-sessions?active=true")
+                        .then(res => res.json())
+                        .then(sessions => {
+                            setSessions(sessions);
+                            // Set default session to current if available
+                            const currentSession = sessions.find(s => s.isCurrent);
+                            if (currentSession) {
+                                form.setValue("sessionId", currentSession.id);
+                            }
+                        });
                 } else {
-                    console.error("Invalid classes data format:", classesData);
-                    toast.error("Failed to load classes data");
-                }
-
-                const sessions = Array.isArray(sessionsData) ? sessionsData : [];
-                setSessions(sessions);
-
-                // Set default session to current if available
-                const currentSession = sessions.find(s => s.isCurrent);
-                if (currentSession) {
-                    form.setValue("sessionId", currentSession.id);
+                    setSessions(sessionsData);
+                    // Set default session to current if available
+                    const currentSession = sessionsData.find(s => s.isCurrent);
+                    if (currentSession) {
+                        form.setValue("sessionId", currentSession.id);
+                    }
+                    return Promise.resolve();
                 }
             })
             .catch(err => {
@@ -430,15 +472,7 @@ export default function StudentDetailsPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        )
-    }
-
-    if (error || !student) {
+    if (error && !student) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen">
                 <h2 className="text-xl font-semibold text-red-500 mb-2">
@@ -460,65 +494,208 @@ export default function StudentDetailsPage() {
         : {};
 
     return (
-        <div className="space-y-6">
-            {/* Banner Header */}
+        <div className="space-y-8 pb-10">
+            {/* Banner Header - Keeping this as is */}
             <DashboardHeader
                 heading={student?.name || "Student Details"}
                 text="View and manage student information"
                 showBanner={true}
                 icon={<GraduationCap className="h-6 w-6 mr-2" />}
                 action={
-                    <ActionButtons
-                        onEditClick={() => {
-                            setShowEditModal(true)
-                            setEditingStudent(student)
-                        }}
-                        onClassClick={handleAddToClass}
-                    />
+                    loading ? (
+                        <Button variant="outline" disabled>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Loading...
+                        </Button>
+                    ) : (
+                        <ActionButtons
+                            onEditClick={() => {
+                                setShowEditModal(true)
+                                setEditingStudent(student)
+                            }}
+                            onClassClick={handleAddToClass}
+                        />
+                    )
                 }
             />
 
-            {/* Student Info Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardContent className="p-4 flex items-center">
-                        <UserIcon className="h-5 w-5 mr-2 text-blue-600" />
-                        <div>
-                            <p className="text-sm font-medium text-blue-600">Email</p>
-                            <p className="font-medium">{student?.email}</p>
+            <div className="container max-w-6xl mx-auto px-4">
+                {/* Summary Cards - Using consistent design patterns */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {loading ? (
+                        <>
+                            <StudentCardSkeleton />
+                            <StudentCardSkeleton />
+                            <StudentCardSkeleton />
+                        </>
+                    ) : (
+                        <>
+                            <Card className="overflow-hidden border border-slate-200 shadow-sm hover:shadow transition-all duration-200">
+                                <div className="h-2 bg-blue-500" aria-hidden="true"></div>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4">
+                                            <Mail className="h-5 w-5 text-blue-600" />
+                                        </div>
+                                        <h3 className="font-medium text-slate-900">Contact</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-sm text-slate-500">Email Address</p>
+                                            <p className="font-medium text-slate-900 truncate max-w-[220px]" title={student?.email || ""}>
+                                                {student?.email}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-slate-500">Phone Number</p>
+                                            <p className="font-medium text-slate-900">
+                                                {student?.phone || "Not provided"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="overflow-hidden border border-slate-200 shadow-sm hover:shadow transition-all duration-200">
+                                <div className="h-2 bg-emerald-500" aria-hidden="true"></div>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mr-4">
+                                            <School className="h-5 w-5 text-emerald-600" />
+                                        </div>
+                                        <h3 className="font-medium text-slate-900">Class Information</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-sm text-slate-500">Current Class</p>
+                                            <p className="font-medium text-slate-900">
+                                                {currentClass ? 
+                                                  `${currentClass.name}${currentClass.section ? ` - ${currentClass.section}` : ''}` 
+                                                  : "Not Assigned"}
+                                            </p>
+                                        </div>
+                                        {currentClass && currentClass.level && (
+                                            <div>
+                                                <p className="text-sm text-slate-500">Level</p>
+                                                <p className="font-medium text-slate-900">
+                                                    {currentClass.level.name}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {currentClass && (
+                                            <div>
+                                                <p className="text-sm text-slate-500">Roll Number</p>
+                                                <p className="font-medium text-slate-900">
+                                                    {currentClass.rollNumber || "Not assigned"}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="overflow-hidden border border-slate-200 shadow-sm hover:shadow transition-all duration-200">
+                                <div className="h-2 bg-purple-500" aria-hidden="true"></div>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-4">
+                                            <GraduationCap className="h-5 w-5 text-purple-600" />
+                                        </div>
+                                        <h3 className="font-medium text-slate-900">Academic</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-sm text-slate-500">Department</p>
+                                            <p className="font-medium text-slate-900">
+                                                {student?.department?.name || "Not Assigned"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-slate-500">Session</p>
+                                            <p className="font-medium text-slate-900">
+                                                {currentSession?.name || currentClass?.session?.name || "Not Available"}
+                                                {currentSession?.isCurrent && " (Current)"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </>
+                    )}
+                </div>
+
+                {/* Main student details in a clean card with improved visual hierarchy */}
+                <Card className="overflow-hidden border border-slate-200 shadow-sm">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-slate-900">Student Information</h3>
+                        {!loading && (
+                            <div className="flex items-center space-x-2">
+                                <div className="flex items-center bg-blue-50 text-blue-700 text-xs font-medium rounded-full px-3 py-1">
+                                    <span>ID: {student?.id.slice(0, 8)}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    {loading ? (
+                        <div className="p-6">
+                            <StudentDetailsSkeleton />
                         </div>
-                    </CardContent>
+                    ) : (
+                        <StudentDetails
+                            student={student as ComplexStudent}
+                            currentClass={currentClass}
+                            currentSession={currentSession}
+                        />
+                    )}
                 </Card>
 
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                    <CardContent className="p-4 flex items-center">
-                        <School className="h-5 w-5 mr-2 text-green-600" />
-                        <div>
-                            <p className="text-sm font-medium text-green-600">Class</p>
-                            <p className="font-medium">{currentClass?.name || "Not Assigned"}</p>
+                {/* Quick Actions Section - Added for better usability */}
+                {!loading && student && (
+                    <div className="mt-8">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <Button 
+                                variant="outline" 
+                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
+                                onClick={() => {
+                                    setShowEditModal(true)
+                                    setEditingStudent(student)
+                                }}
+                            >
+                                <Pencil className="h-5 w-5 text-slate-600" />
+                                <span className="text-sm font-medium">Edit Details</span>
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
+                                onClick={handleAddToClass}
+                            >
+                                <UserPlus className="h-5 w-5 text-slate-600" />
+                                <span className="text-sm font-medium">Manage Class</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
+                                asChild
+                            >
+                                <Link href={`/dashboard/students/${student.id}/attendance`}>
+                                    <Calendar className="h-5 w-5 text-slate-600" />
+                                    <span className="text-sm font-medium">Attendance</span>
+                                </Link>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
+                                asChild
+                            >
+                                <Link href={`/dashboard/students/${student.id}/results`}>
+                                    <GraduationCap className="h-5 w-5 text-slate-600" />
+                                    <span className="text-sm font-medium">Results</span>
+                                </Link>
+                            </Button>
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardContent className="p-4 flex items-center">
-                        <GraduationCap className="h-5 w-5 mr-2 text-purple-600" />
-                        <div>
-                            <p className="text-sm font-medium text-purple-600">Department</p>
-                            <p className="font-medium">{student?.department?.name || "Not Assigned"}</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Main student details */}
-            <div className="rounded-lg border shadow-sm"
-                style={{ borderColor: schoolInfo?.primaryColor || 'border-border' }}>
-                <StudentDetails
-                    student={student as ComplexStudent}
-                    currentClass={currentClass}
-                    currentSession={null}
-                />
+                    </div>
+                )}
             </div>
 
             {/* Student Edit Modal */}
@@ -535,7 +712,7 @@ export default function StudentDetailsPage() {
                 />
             )}
 
-            {/* Inline Add to Class Dialog */}
+            {/* Add to Class Dialog - Improved for better user experience */}
             <Dialog open={showClassModal} onOpenChange={setShowClassModal}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
@@ -597,7 +774,8 @@ export default function StudentDetailsPage() {
                                             <SelectContent>
                                                 {classes.map((cls) => (
                                                     <SelectItem key={cls.id} value={cls.id}>
-                                                        {cls.name} - {cls.section}
+                                                        {cls.name}{cls.section ? ` - ${cls.section}` : ""} 
+                                                        {cls.level ? ` (${cls.level.name})` : ""}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

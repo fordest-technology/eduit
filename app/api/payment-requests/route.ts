@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     const isParent = user.role === UserRole.PARENT;
 
     // Determine which payment requests to fetch based on role
-    let whereClause: any = {};
+    const whereClause: any = {};
 
     if (status) {
       whereClause.status = status;
