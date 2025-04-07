@@ -15,8 +15,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check authorization - only admins can link parents and students
-    if (session.role !== "super_admin" && session.role !== "school_admin") {
+    // Check authorization - only admins and teachers can link parents and students
+    if (
+      session.role !== "super_admin" &&
+      session.role !== "school_admin" &&
+      session.role !== "teacher"
+    ) {
       return new NextResponse(
         JSON.stringify({
           error: "You do not have permission to perform this action",

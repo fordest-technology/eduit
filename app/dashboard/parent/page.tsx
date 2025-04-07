@@ -16,7 +16,7 @@ export default async function ParentDashboardPage() {
         redirect("/login")
     }
 
-    if (session.role !== "parent") {
+    if (session.role !== "PARENT") {
         redirect("/dashboard")
     }
 

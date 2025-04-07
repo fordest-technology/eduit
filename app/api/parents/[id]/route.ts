@@ -58,6 +58,50 @@ export async function GET(
       return new NextResponse("Forbidden", { status: 403 });
     }
 
+    // Get all students not linked to any parent
+    const availableStudents = await prisma.user.findMany({
+      where: {
+        role: UserRole.STUDENT,
+        schoolId: parent.schoolId,
+        student: {
+          parents: {
+            none: {}, // This ensures we only get students not linked to any parent
+          },
+        },
+      },
+      include: {
+        student: {
+          include: {
+            classes: {
+              where: session
+                ? {
+                    sessionId: session.id,
+                  }
+                : undefined,
+              include: {
+                class: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Format available students
+    const formattedAvailableStudents = availableStudents.map((student) => {
+      const currentClass =
+        student.student?.classes && student.student.classes.length > 0
+          ? student.student.classes[0].class.name
+          : "No Class Assigned";
+
+      return {
+        id: student.student?.id || "",
+        name: student.name,
+        class: currentClass,
+        profileImage: student.profileImage,
+      };
+    });
+
     // Format children data
     const children =
       parent.parent?.children.map((relation) => ({
@@ -76,6 +120,7 @@ export async function GET(
     return NextResponse.json({
       ...parentWithoutPassword,
       children,
+      availableStudents: formattedAvailableStudents,
     });
   } catch (error) {
     console.error("[PARENT_GET]", error);

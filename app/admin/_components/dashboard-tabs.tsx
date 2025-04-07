@@ -1,10 +1,9 @@
-"use client"
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
     Users,
     GraduationCap,
@@ -14,11 +13,6 @@ import {
     TrendingUp,
     BookOpen
 } from "lucide-react";
-import { SchoolDetailsDialog } from "./school-details-dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { Suspense } from "react";
-import { DashboardTabs } from "./dashboard-tabs";
 
 interface SchoolStats {
     id: string;
@@ -40,88 +34,6 @@ interface DashboardStats {
     totalParents: number;
     totalSubjects: number;
     activeUsers: number;
-}
-
-// Server component for fetching stats
-async function getDashboardStats(): Promise<DashboardStats> {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`, {
-        cache: 'no-store'
-    });
-    if (!response.ok) {
-        throw new Error('Failed to fetch dashboard statistics');
-    }
-    return response.json();
-}
-
-// Server component for fetching schools
-async function getSchools(): Promise<SchoolStats[]> {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/schools`, {
-        cache: 'no-store'
-    });
-    if (!response.ok) {
-        throw new Error('Failed to fetch schools');
-    }
-    return response.json();
-}
-
-// Loading skeleton component
-function DashboardSkeleton() {
-    return (
-        <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {Array(6).fill(null).map((_, i) => (
-                    <div key={i} className="rounded-lg border p-4">
-                        <div className="flex items-center justify-between">
-                            <Skeleton className="h-4 w-[100px]" />
-                            <Skeleton className="h-4 w-4 rounded" />
-                        </div>
-                        <div className="mt-2">
-                            <Skeleton className="h-8 w-[60px] mb-2" />
-                            <Skeleton className="h-4 w-[120px]" />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-// Main server component
-export async function AdminDashboard() {
-    try {
-        const [stats, schools] = await Promise.all([
-            getDashboardStats(),
-            getSchools()
-        ]);
-
-        return (
-            <div className="container mx-auto py-10 space-y-8">
-                <div className="flex justify-between items-center">
-                    <div className="space-y-1">
-                        <h1 className="text-4xl font-bold tracking-tight">Admin Dashboard</h1>
-                        <p className="text-muted-foreground">
-                            Manage your educational system and view key metrics
-                        </p>
-                    </div>
-                </div>
-
-                <Suspense fallback={<DashboardSkeleton />}>
-                    <DashboardTabs stats={stats} schools={schools} />
-                </Suspense>
-            </div>
-        );
-    } catch (error) {
-        return (
-            <div className="container mx-auto py-10">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        Failed to load dashboard data. Please try refreshing the page.
-                    </AlertDescription>
-                </Alert>
-            </div>
-        );
-    }
 }
 
 interface StatsCardProps {
@@ -256,5 +168,79 @@ function SchoolsTable({
                 searchKey="name"
             />
         </div>
+    );
+}
+
+export function DashboardTabs({ stats, schools }: { stats: DashboardStats; schools: SchoolStats[] }) {
+    return (
+        <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="schools">Schools</TabsTrigger>
+                <TabsTrigger value="admin-tools">Admin Tools</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <StatsCard
+                        title="Total Schools"
+                        value={stats.totalSchools.toString()}
+                        description="Active educational institutions"
+                        icon={<SchoolIcon className="h-4 w-4 text-blue-600" />}
+                    />
+                    <StatsCard
+                        title="Total Teachers"
+                        value={stats.totalTeachers.toString()}
+                        description="Registered teaching staff"
+                        icon={<Users className="h-4 w-4 text-green-600" />}
+                    />
+                    <StatsCard
+                        title="Total Students"
+                        value={stats.totalStudents.toString()}
+                        description="Enrolled students"
+                        icon={<GraduationCap className="h-4 w-4 text-purple-600" />}
+                    />
+                    <StatsCard
+                        title="Total Parents"
+                        value={stats.totalParents.toString()}
+                        description="Registered parents"
+                        icon={<Users className="h-4 w-4 text-orange-600" />}
+                    />
+                    <StatsCard
+                        title="Total Subjects"
+                        value={stats.totalSubjects.toString()}
+                        description="Available courses"
+                        icon={<BookOpen className="h-4 w-4 text-red-600" />}
+                    />
+                    <StatsCard
+                        title="Active Users"
+                        value={stats.activeUsers.toString()}
+                        description="Users active today"
+                        icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+                    />
+                </div>
+            </TabsContent>
+
+            <TabsContent value="schools" className="space-y-6">
+                <SchoolsTable data={schools} />
+            </TabsContent>
+
+            <TabsContent value="admin-tools" className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <AdminToolCard
+                        title="User Management"
+                        description="Manage system users and their roles"
+                        icon={<UserCog className="h-6 w-6 text-blue-600" />}
+                        action={() => { }}
+                    />
+                    <AdminToolCard
+                        title="System Settings"
+                        description="Configure global system settings"
+                        icon={<Settings className="h-6 w-6 text-purple-600" />}
+                        action={() => { }}
+                    />
+                </div>
+            </TabsContent>
+        </Tabs>
     );
 } 

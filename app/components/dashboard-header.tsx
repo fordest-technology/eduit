@@ -9,9 +9,17 @@ interface DashboardHeaderProps {
     showBanner?: boolean
     icon?: ReactNode
     action?: ReactNode
+    children?: React.ReactNode
 }
 
-export function DashboardHeader({ heading, text, showBanner = false, icon, action }: DashboardHeaderProps) {
+export function DashboardHeader({
+    heading,
+    text,
+    showBanner = false,
+    icon,
+    action,
+    children,
+}: DashboardHeaderProps) {
     const { colors } = useColors()
 
     return (
@@ -51,6 +59,12 @@ export function DashboardHeader({ heading, text, showBanner = false, icon, actio
                         </div>
                     </div>
                     {action && <div>{action}</div>}
+                </div>
+            )}
+
+            {children && (
+                <div className="mt-4">
+                    {children}
                 </div>
             )}
         </div>

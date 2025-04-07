@@ -14,7 +14,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { toast } from "sonner"
-import { Loader2, Trash, Edit, Plus, Eye, MoreHorizontal, Mail, Phone, User, Search, Users } from "lucide-react"
+import { Loader2, Trash, Edit, Plus, Eye, MoreHorizontal, Mail, Phone, User, Search, Users, UserPlus } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     DropdownMenu,
@@ -295,8 +295,140 @@ export default function ParentsTable({ initialParents = [], userRole, schoolId, 
         router.push(`/dashboard/parents/${id}`);
     };
 
+    const handleLinkStudent = async (parentId: string, studentId: string) => {
+        try {
+            const response = await fetch(`/api/parents/${parentId}/link-student`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ studentId }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to link student');
+            }
+
+            toast.success('Student linked successfully');
+            await fetchParents();
+        } catch (error) {
+            console.error('Error linking student:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to link student');
+        }
+    };
+
+    const handleUnlinkStudent = async (parentId: string, studentId: string) => {
+        try {
+            const response = await fetch(`/api/parents/${parentId}/link-student`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ studentId }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to unlink student');
+            }
+
+            toast.success('Student unlinked successfully');
+            await fetchParents();
+        } catch (error) {
+            console.error('Error unlinking student:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to unlink student');
+        }
+    };
+
     // Check if user has permission to manage parents
     const canManageParents = userRole === "super_admin" || userRole === "school_admin"
+
+    // Add a new dialog for linking students
+    const [showLinkStudentDialog, setShowLinkStudentDialog] = useState(false);
+    const [selectedParentForLinking, setSelectedParentForLinking] = useState<Parent | null>(null);
+    const [availableStudents, setAvailableStudents] = useState<any[]>([]);
+    const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+
+    const fetchAvailableStudents = async () => {
+        if (!selectedParentForLinking) return;
+
+        try {
+            setIsLoadingStudents(true);
+            const response = await fetch('/api/students');
+            if (!response.ok) throw new Error('Failed to fetch students');
+
+            const data = await response.json();
+            // Filter out students already linked to any parent
+            const unlinkedStudents = data.filter((student: any) => !student.parentId);
+            setAvailableStudents(unlinkedStudents);
+        } catch (error) {
+            console.error('Error fetching students:', error);
+            toast.error('Failed to fetch available students');
+        } finally {
+            setIsLoadingStudents(false);
+        }
+    };
+
+    useEffect(() => {
+        if (showLinkStudentDialog) {
+            fetchAvailableStudents();
+        }
+    }, [showLinkStudentDialog]);
+
+    const LinkStudentDialog = () => (
+        <Dialog open={showLinkStudentDialog} onOpenChange={setShowLinkStudentDialog}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Link Student to Parent</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    {isLoadingStudents ? (
+                        <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                    ) : availableStudents.length === 0 ? (
+                        <p className="text-muted-foreground">No available students to link</p>
+                    ) : (
+                        <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                                Select a student to link to {selectedParentForLinking?.name}
+                            </p>
+                            <div className="space-y-2">
+                                {availableStudents.map((student) => (
+                                    <div
+                                        key={student.id}
+                                        className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent cursor-pointer"
+                                        onClick={() => {
+                                            if (selectedParentForLinking) {
+                                                handleLinkStudent(selectedParentForLinking.id, student.id);
+                                                setShowLinkStudentDialog(false);
+                                            }
+                                        }}
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <Avatar>
+                                                <AvatarImage src={student.profileImage} />
+                                                <AvatarFallback>
+                                                    {student.name.charAt(0)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{student.name}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {student.class || 'No class assigned'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 
     return (
         <div>
@@ -432,6 +564,16 @@ export default function ParentsTable({ initialParents = [], userRole, schoolId, 
                                                         >
                                                             <Trash className="mr-2 h-4 w-4" />
                                                             Delete Parent
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            key="link-student"
+                                                            onClick={() => {
+                                                                setSelectedParentForLinking(parent);
+                                                                setShowLinkStudentDialog(true);
+                                                            }}
+                                                        >
+                                                            <UserPlus className="mr-2 h-4 w-4" />
+                                                            Link Student
                                                         </DropdownMenuItem>
                                                     </>
                                                 )}
@@ -587,6 +729,8 @@ export default function ParentsTable({ initialParents = [], userRole, schoolId, 
                 title="Delete Parent"
                 description={`Are you sure you want to delete ${selectedParent?.name}? This action cannot be undone and will remove all associated data.`}
             />
+
+            <LinkStudentDialog />
         </div>
     )
 } 

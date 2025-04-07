@@ -62,7 +62,7 @@ export default function SchoolLevelsPage() {
                 }
 
                 // Only admin can access this page
-                if (sessionData.role !== "super_admin" && sessionData.role !== "school_admin") {
+                if (sessionData.role !== "SUPER_ADMIN" && sessionData.role !== "SCHOOL_ADMIN") {
                     router.push("/dashboard")
                     return
                 }

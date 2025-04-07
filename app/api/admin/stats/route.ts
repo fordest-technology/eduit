@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/db";
 import { UserRole } from "@prisma/client";
 
 export async function GET() {
   const session = await getSession();
 
-  if (!session || session.role !== "super_admin") {
+  if (!session || session.role !== "SUPER_ADMIN") {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
@@ -48,7 +48,6 @@ export async function GET() {
       prisma.subject.count(),
 
       // Count active users in the last 24 hours
-      // Since we don't have lastActive field, we'll use updatedAt as a proxy
       prisma.user.count({
         where: {
           updatedAt: {

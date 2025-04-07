@@ -16,7 +16,7 @@ export default async function AdminPage() {
     }
 
     // Only super admins can access this page
-    if (session.role !== "super_admin") {
+    if (session.role !== "SUPER_ADMIN") {
         redirect("/dashboard");
     }
 

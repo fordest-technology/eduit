@@ -17,6 +17,8 @@ model User {
   profileImage String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  emailVerified DateTime?
+  image        String?
 
   // One-to-one relationships with specific user types
   admin   Admin?
@@ -32,6 +34,12 @@ model User {
   
   // Fee management relationships
   processedPayments PaymentRequest[]
+
+  accounts      Account[]
+  sessions      Session[]
+  activityLogs  UserActivityLog[]
+
+  @@index([schoolId])
 }
 
 model Admin {
@@ -517,4 +525,61 @@ model SchoolLevel {
   subjects Subject[]
 
   @@unique([schoolId, name])
+}
+
+model UserActivityLog {
+    id        String   @id @default(cuid())
+    userId    String
+    page      String
+    action    String
+    metadata  Json?
+    createdAt DateTime @default(now())
+    user      User     @relation(fields: [userId], references: [id])
+
+    @@index([userId])
+    @@index([page])
+    @@index([createdAt])
+}
+
+model ApiRequestLog {
+    id        String   @id @default(cuid())
+    route     String
+    method    String
+    status    Int
+    duration  Int
+    metadata  Json?
+    createdAt DateTime @default(now())
+
+    @@index([route])
+    @@index([createdAt])
+}
+
+model Account {
+    id                String  @id @default(cuid())
+    userId            String
+    type              String
+    provider          String
+    providerAccountId String
+    refresh_token     String? @db.Text
+    access_token      String? @db.Text
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? @db.Text
+    session_state     String?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+    @@index([userId])
+}
+
+model Session {
+    id           String   @id @default(cuid())
+    sessionToken String   @unique
+    userId       String
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import ParentModal from "../parent-modal";
 import Link from "next/link";
-import { Pencil, Trash, UserPlus, Search } from "lucide-react";
+import { Pencil, Trash, UserPlus, Search, Loader2, Users } from "lucide-react";
 
 type ChildrenType = {
     id: string;
@@ -24,11 +24,12 @@ type ChildrenType = {
     linkId: string;
 };
 
-type StudentType = {
+interface StudentType {
     id: string;
     name: string;
     class: string;
-};
+    profileImage?: string;
+}
 
 interface ParentDetailsProps {
     parent: any;
@@ -40,7 +41,7 @@ interface ParentDetailsProps {
 export default function ParentDetails({
     parent,
     children,
-    availableStudents,
+    availableStudents: initialAvailableStudents,
     canManage,
 }: ParentDetailsProps) {
     const router = useRouter();
@@ -51,12 +52,17 @@ export default function ParentDetails({
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [relation, setRelation] = useState<string>("");
+    const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
+    const [studentToUnlink, setStudentToUnlink] = useState<ChildrenType | null>(null);
+    const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+    const [availableStudents, setAvailableStudents] = useState<StudentType[]>(initialAvailableStudents || []);
 
     // Filter students based on search term
     const filteredStudents = useMemo(() => {
+        if (!availableStudents || availableStudents.length === 0) return [];
         return availableStudents.filter(student =>
             student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.class.toLowerCase().includes(searchTerm.toLowerCase())
+            (student.class && student.class.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [availableStudents, searchTerm]);
 
@@ -102,6 +108,39 @@ export default function ParentDetails({
         });
     };
 
+    // Handle opening the link dialog
+    const handleOpenLinkDialog = async () => {
+        setIsLoadingStudents(true);
+        try {
+            // Refresh available students
+            const response = await fetch(`/api/parents/${parent.id}`);
+            if (!response.ok) {
+                throw new Error("Failed to fetch available students");
+            }
+            const data = await response.json();
+
+            // Set the available students from the response
+            if (data.availableStudents && Array.isArray(data.availableStudents)) {
+                setAvailableStudents(data.availableStudents);
+            } else {
+                console.error("Invalid available students data:", data);
+                throw new Error("Invalid response format from server");
+            }
+
+            setShowLinkDialog(true);
+        } catch (error) {
+            console.error("Error fetching available students:", error);
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to load available students",
+                variant: "destructive",
+            });
+            setAvailableStudents([]); // Reset available students on error
+        } finally {
+            setIsLoadingStudents(false);
+        }
+    };
+
     // Handle link students to parent
     const handleLinkStudents = async () => {
         if (selectedStudents.length === 0) {
@@ -115,7 +154,6 @@ export default function ParentDetails({
 
         setLoading(true);
         try {
-            // Use parent-students endpoint to link multiple students at once
             const response = await fetch(`/api/parent-students`, {
                 method: "POST",
                 headers: {
@@ -155,18 +193,23 @@ export default function ParentDetails({
     };
 
     // Handle unlink student
-    const handleUnlinkStudent = async (linkId: string) => {
+    const handleUnlinkStudent = async (student: ChildrenType) => {
+        setStudentToUnlink(student);
+        setShowUnlinkDialog(true);
+    };
+
+    const confirmUnlinkStudent = async () => {
+        if (!studentToUnlink) return;
+
         setLoading(true);
         try {
-            const response = await fetch(
-                `/api/parent-students/${linkId}`,
-                {
-                    method: "DELETE",
-                }
-            );
+            const response = await fetch(`/api/parent-students/${studentToUnlink.linkId}`, {
+                method: 'DELETE',
+            });
 
             if (!response.ok) {
-                throw new Error("Failed to unlink student");
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to unlink student');
             }
 
             toast({
@@ -183,6 +226,8 @@ export default function ParentDetails({
             });
         } finally {
             setLoading(false);
+            setShowUnlinkDialog(false);
+            setStudentToUnlink(null);
         }
     };
 
@@ -263,148 +308,88 @@ export default function ParentDetails({
                 </CardContent>
             </Card>
 
-            {/* Children/Students Tab */}
-            <Tabs defaultValue="children">
-                <TabsList>
-                    <TabsTrigger value="children">Children</TabsTrigger>
-                </TabsList>
-                <TabsContent value="children">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Children</CardTitle>
-                            {canManage && availableStudents.length > 0 && (
-                                <Dialog open={showLinkDialog} onOpenChange={handleDialogChange}>
-                                    <DialogTrigger asChild>
-                                        <Button size="sm">
-                                            <UserPlus className="h-4 w-4 mr-2" />
-                                            Link Students
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[600px]">
-                                        <DialogHeader>
-                                            <DialogTitle>Link Students to Parent</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                            <div className="relative">
-                                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Search students by name or class"
-                                                    className="pl-8"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label>Relation (Applied to all selected students)</Label>
-                                                <Input
-                                                    placeholder="e.g. Father, Mother, Guardian"
-                                                    value={relation}
-                                                    onChange={(e) => setRelation(e.target.value)}
-                                                />
-                                            </div>
-
-                                            <div className="border rounded-md overflow-hidden">
-                                                <div className="p-2 bg-muted font-medium">
-                                                    Available Students ({filteredStudents.length})
-                                                </div>
-                                                <div className="divide-y max-h-[300px] overflow-auto">
-                                                    {filteredStudents.length > 0 ? (
-                                                        filteredStudents.map((student) => (
-                                                            <div key={student.id} className="flex items-center p-2 hover:bg-muted/50">
-                                                                <Checkbox
-                                                                    id={`student-${student.id}`}
-                                                                    checked={selectedStudents.includes(student.id)}
-                                                                    onCheckedChange={() => handleStudentToggle(student.id)}
-                                                                    className="mr-2"
-                                                                />
-                                                                <Label
-                                                                    htmlFor={`student-${student.id}`}
-                                                                    className="flex-1 cursor-pointer flex items-center justify-between"
-                                                                >
-                                                                    <span>{student.name}</span>
-                                                                    <span className="text-sm text-muted-foreground">{student.class}</span>
-                                                                </Label>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="p-4 text-center text-muted-foreground">
-                                                            {searchTerm ? "No students match your search" : "No available students"}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {selectedStudents.length > 0 && (
-                                                <div className="text-sm font-medium">
-                                                    {selectedStudents.length} student(s) selected
-                                                </div>
-                                            )}
+            {/* Children List */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Linked Students</CardTitle>
+                    {canManage && (
+                        <div className="flex items-center space-x-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowLinkDialog(true)}
+                                disabled={loading}
+                            >
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Link Student
+                            </Button>
+                        </div>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    {children.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <Users className="h-12 w-12 text-muted-foreground mb-2" />
+                            <p className="text-muted-foreground">No students linked to this parent</p>
+                            {/* {canManage && ( */}
+                            <Button
+                                variant="outline"
+                                className="mt-4"
+                                onClick={() => setShowLinkDialog(true)}
+                            >
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Link a Student
+                            </Button>
+                            {/* )} */}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {children.map((child) => (
+                                <div
+                                    key={child.id}
+                                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <Avatar className="h-10 w-10">
+                                            <AvatarFallback className="bg-primary/10 text-primary">
+                                                {child.name.charAt(0)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-medium">{child.name}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {child.class} • {child.relation}
+                                            </p>
                                         </div>
-                                        <DialogFooter>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleDialogChange(false)}
-                                                disabled={loading}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button onClick={handleLinkStudents} disabled={loading || selectedStudents.length === 0}>
-                                                {loading ? "Linking..." : "Link Selected Students"}
-                                            </Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-                            )}
-                        </CardHeader>
-                        <CardContent>
-                            {children.length > 0 ? (
-                                <div className="divide-y">
-                                    {children.map((child) => (
-                                        <div
-                                            key={child.id}
-                                            className="py-4 flex justify-between items-center"
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            asChild
                                         >
-                                            <div>
-                                                <p className="font-medium">{child.name}</p>
-                                                <div className="text-sm text-muted-foreground">
-                                                    <p>Class: {child.class}</p>
-                                                    <p>Relation: {child.relation}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex space-x-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    asChild
-                                                >
-                                                    <Link href={`/dashboard/students/${child.id}`}>
-                                                        View
-                                                    </Link>
-                                                </Button>
-                                                {canManage && (
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={() => handleUnlinkStudent(child.linkId)}
-                                                        disabled={loading}
-                                                    >
-                                                        Unlink
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+                                            <Link href={`/dashboard/students/${child.id}`}>
+                                                <Users className="h-4 w-4 mr-2" />
+                                                View Student
+                                            </Link>
+                                        </Button>
+                                        {/* {canManage && ( */}
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => handleUnlinkStudent(child)}
+                                            disabled={loading}
+                                        >
+                                            <Trash className="h-4 w-4 mr-2" />
+                                            Unassign Student
+                                        </Button>
+                                        {/* )} */}
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    No children linked to this parent.
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog
@@ -431,6 +416,142 @@ export default function ParentDetails({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Unlink Confirmation Dialog */}
+            <AlertDialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Unassign Student</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to unassign {studentToUnlink?.name} from this parent?
+                            This will remove the parent-student relationship and cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmUnlinkStudent}
+                            disabled={loading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Unassigning...
+                                </>
+                            ) : (
+                                "Unassign Student"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Link Student Dialog */}
+            <Dialog open={showLinkDialog} onOpenChange={handleDialogChange}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Link Students</DialogTitle>
+                        <DialogDescription>
+                            Select students to link with this parent
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="search">Search Students</Label>
+                                <div className="relative">
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="search"
+                                        placeholder="Search by name or class..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        disabled={loading || isLoadingStudents}
+                                        className="pl-8"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="relation">Relation (Optional)</Label>
+                                <Input
+                                    id="relation"
+                                    placeholder="e.g. Father, Mother, Guardian"
+                                    value={relation}
+                                    onChange={(e) => setRelation(e.target.value)}
+                                    disabled={loading || isLoadingStudents}
+                                />
+                            </div>
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                {isLoadingStudents ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="h-6 w-6 animate-spin" />
+                                    </div>
+                                ) : filteredStudents.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-4 text-center">
+                                        <Users className="h-8 w-8 text-muted-foreground mb-2" />
+                                        <p className="text-sm text-muted-foreground">
+                                            {searchTerm ? "No students found matching your search" : "No available students found"}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    filteredStudents.map((student) => (
+                                        <div
+                                            key={student.id}
+                                            className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-accent"
+                                        >
+                                            <Checkbox
+                                                id={`student-${student.id}`}
+                                                checked={selectedStudents.includes(student.id)}
+                                                onCheckedChange={() => handleStudentToggle(student.id)}
+                                                disabled={loading || isLoadingStudents}
+                                            />
+                                            <Label htmlFor={`student-${student.id}`} className="flex-1">
+                                                <div className="flex items-center space-x-3">
+                                                    <Avatar>
+                                                        <AvatarImage src={student.profileImage} />
+                                                        <AvatarFallback>
+                                                            {student.name.charAt(0)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="font-medium">{student.name}</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {student.class || 'No class assigned'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </Label>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowLinkDialog(false)}
+                            disabled={loading || isLoadingStudents}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleLinkStudents}
+                            disabled={loading || isLoadingStudents || selectedStudents.length === 0}
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Linking...
+                                </>
+                            ) : (
+                                "Link Students"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 } 

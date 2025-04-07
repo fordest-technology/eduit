@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { UserRole } from "@prisma/client";
 
 export async function DELETE(
   req: Request,
@@ -55,10 +56,11 @@ export async function DELETE(
     // Check authorization
     const parentUser = relationship.parent.user;
 
-    // Only admins or the parent can unlink
+    // Allow super admins, school admins, and teachers to unlink
     if (
-      session.role !== "super_admin" &&
-      session.role !== "school_admin" &&
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN &&
+      session.role !== UserRole.TEACHER &&
       session.id !== parentUser.id
     ) {
       return new NextResponse(
@@ -69,9 +71,10 @@ export async function DELETE(
       );
     }
 
-    // School admins can only manage parents in their school
+    // School admins and teachers can only manage parents in their school
     if (
-      session.role === "school_admin" &&
+      (session.role === UserRole.SCHOOL_ADMIN ||
+        session.role === UserRole.TEACHER) &&
       parentUser.schoolId !== session.schoolId
     ) {
       return new NextResponse(
