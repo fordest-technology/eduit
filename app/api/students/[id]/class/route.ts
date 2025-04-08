@@ -228,7 +228,11 @@ export async function GET(
           include: {
             classes: {
               include: {
-                class: true,
+                class: {
+                  include: {
+                    level: true,
+                  },
+                },
                 session: true,
               },
               orderBy: {

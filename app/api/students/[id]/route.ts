@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch student with all necessary relations
+    // Fetch student with all necessary relations including level data
     const studentData = await prisma.student.findUnique({
       where: { id: params.id },
       include: {
@@ -23,8 +23,17 @@ export async function GET(
         department: true,
         classes: {
           include: {
-            class: true,
+            class: {
+              include: {
+                level: true, // Include level data
+              },
+            },
             session: true,
+          },
+          orderBy: {
+            session: {
+              endDate: "desc", // Order by most recent session first
+            },
           },
         },
         subjects: {
@@ -74,15 +83,68 @@ export async function GET(
     let currentClass = null;
     let currentClassRecord = null;
 
-    if (currentSession) {
+    if (currentSession && studentData.classes.length > 0) {
+      // Try to find class for current session
       currentClassRecord = studentData.classes.find(
-        (sc: any) => sc.sessionId === currentSession.id
+        (sc) => sc.sessionId === currentSession.id
       );
 
+      // If no class found for current session, use the most recent class
+      if (!currentClassRecord && studentData.classes.length > 0) {
+        currentClassRecord = studentData.classes[0]; // Already ordered by most recent
+      }
+
       if (currentClassRecord) {
-        currentClass = currentClassRecord.class;
+        // Include the roll number from studentClass in the class object
+        currentClass = {
+          ...currentClassRecord.class,
+          rollNumber: currentClassRecord.rollNumber,
+          session: currentClassRecord.session,
+        };
       }
     }
+
+    // Fetch all departments for the school
+    const availableDepartments = await prisma.department.findMany({
+      where: {
+        schoolId: studentData.user.schoolId || "",
+      },
+    });
+
+    // Fetch all classes for the school
+    const availableClasses = await prisma.class.findMany({
+      where: {
+        schoolId: studentData.user.schoolId || "",
+      },
+      include: {
+        level: true, // Include level data
+      },
+    });
+
+    // Fetch all available subjects for the school
+    const availableSubjects = await prisma.subject.findMany({
+      where: {
+        schoolId: studentData.user.schoolId || "",
+      },
+    });
+
+    // Fetch all parents in the school
+    const availableParents = await prisma.parent.findMany({
+      where: {
+        user: {
+          schoolId: studentData.user.schoolId || "",
+        },
+      },
+      select: {
+        id: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
 
     // Prepare data for the form
     const formData = {
@@ -90,7 +152,7 @@ export async function GET(
       userId: studentData.userId,
       name: studentData.user.name,
       email: studentData.user.email,
-      phone: studentData.user.phone,
+      phone: studentData.phone,
       profileImage: studentData.user.profileImage,
       schoolId: studentData.user.schoolId,
       departmentId: studentData.departmentId,
@@ -102,17 +164,18 @@ export async function GET(
       gender: studentData.gender,
       religion: studentData.religion,
       bloodGroup: studentData.bloodGroup,
-      subjectIds: studentData.subjects.map((s: any) => s.subject.id),
-      parentIds: studentData.parents.map((p: any) => p.parent.id),
+      subjectIds: studentData.subjects.map((s) => s.subject.id),
+      parentIds: studentData.parents.map((p) => p.parent.id),
       currentClass: currentClass,
       currentSession: currentSession,
       classId: currentClassRecord?.classId,
       sessionId: currentClassRecord?.sessionId,
       rollNumber: currentClassRecord?.rollNumber,
+      classes: studentData.classes, // Include all classes
 
       // Add formatted data for display
-      subjects: studentData.subjects.map((s: any) => s.subject),
-      parents: studentData.parents.map((p: any) => ({
+      subjects: studentData.subjects.map((s) => s.subject),
+      parents: studentData.parents.map((p) => ({
         id: p.parent.id,
         name: p.parent.user.name,
         email: p.parent.user.email,
@@ -121,48 +184,25 @@ export async function GET(
       })),
     };
 
-    // Fetch available options for dropdowns
-    const [departments, classes, subjects, parents] = await Promise.all([
-      prisma.department.findMany({
-        where: { schoolId: studentData.user.schoolId || "" },
-      }),
-      prisma.class.findMany({
-        where: { schoolId: studentData.user.schoolId || "" },
-      }),
-      prisma.subject.findMany({
-        where: { schoolId: studentData.user.schoolId || "" },
-      }),
-      prisma.parent.findMany({
-        where: {
-          user: {
-            schoolId: studentData.user.schoolId || "",
-          },
-        },
-        include: {
-          user: true,
-        },
-      }),
-    ]);
-
-    // Format parent data
-    const availableParents = parents.map((parent: any) => ({
-      id: parent.id,
-      name: parent.user.name,
-      email: parent.user.email,
-      phone: parent.user.phone,
-    }));
-
-    return NextResponse.json({
+    // Format the response with all available data
+    const responseData = {
       student: formData,
-      availableDepartments: departments,
-      availableClasses: classes,
-      availableSubjects: subjects,
-      availableParents: availableParents,
-    });
+      availableDepartments,
+      availableClasses,
+      availableSubjects,
+      availableParents: availableParents.map((p) => ({
+        id: p.id,
+        name: p.user.name,
+        email: p.user.email,
+      })),
+      currentSession,
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error("Error fetching student:", error);
+    console.error("Error fetching student data:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "Failed to fetch student data" },
       { status: 500 }
     );
   }

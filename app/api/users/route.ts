@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine school ID based on user role
-    let finalSchoolId = session.schoolId;
+    const finalSchoolId = session.schoolId;
     if (session.role === "super_admin" && role !== UserRole.SUPER_ADMIN) {
       return new NextResponse("School ID is required for this user role", {
         status: 400,
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user with role-specific data
-    let userData: any = {
+    const userData: any = {
       name,
       email,
       password: hashedPassword,

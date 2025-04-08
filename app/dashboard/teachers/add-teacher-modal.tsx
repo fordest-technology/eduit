@@ -237,7 +237,7 @@ export function AddTeacherModal({
 
                     // Get school information including name and URL
                     let schoolName = "School";
-                    let schoolId = result.schoolId;
+                    const schoolId = result.schoolId;
                     let schoolUrl = window.location.origin;
 
                     try {

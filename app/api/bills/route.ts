@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const studentId = searchParams.get("studentId");
 
     // Base query to get all bills for the school
-    let query: any = {
+    const query: any = {
       where: { schoolId: user.schoolId },
       include: {
         account: true,

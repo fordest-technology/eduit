@@ -129,24 +129,24 @@ export default function TeachersPage() {
         fetchSessionAndData()
     }, [router])
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        )
-    }
+    // if (loading) {
+    //     return (
+    //         <div className="flex items-center justify-center min-h-screen">
+    //             <Loader2 className="h-8 w-8 animate-spin" />
+    //         </div>
+    //     )
+    // }
 
-    if (error || !session) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-                <p className="text-red-500">{error || "Not authorized"}</p>
-                <Button onClick={() => router.push("/dashboard")}>
-                    Back to Dashboard
-                </Button>
-            </div>
-        )
-    }
+    // if (error || !session) {
+    //     return (
+    //         <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+    //             <p className="text-red-500">{error || "Not authorized"}</p>
+    //             <Button onClick={() => router.push("/dashboard")}>
+    //                 Back to Dashboard
+    //             </Button>
+    //         </div>
+    //     )
+    // }
 
     return (
         <div className="space-y-6">

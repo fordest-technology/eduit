@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     // Extract user fields
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
-    let password = formData.get("password") as string;
+    const password = formData.get("password") as string;
     const phone = formData.get("phone") as string | null;
 
     // Extract parent-specific fields
