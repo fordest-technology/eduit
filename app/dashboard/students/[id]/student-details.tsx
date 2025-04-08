@@ -20,6 +20,16 @@ import {
     BookIcon,
     ActivityIcon,
     AlertCircle,
+    MapPin,
+    Calendar,
+    User as UserIcon,
+    Mail,
+    Phone,
+    Flag,
+    Bookmark,
+    School,
+    Building,
+    Hash
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -53,6 +63,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import StudentModal from "../../students/student-modal";
+import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 // Types to match the actual schema
 interface StudentClassRecord {
@@ -190,8 +202,13 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
         return `${Math.round((presentCount / attendance.length) * 100)}%`;
     };
 
-    const formatDate = (date: Date) => {
-        return new Date(date).toLocaleDateString();
+    const formatDate = (date: Date | string | null) => {
+        if (!date) return "Not Available";
+        try {
+            return format(new Date(date), "PPP");
+        } catch (error) {
+            return "Invalid Date";
+        }
     };
 
     const handleDeleteStudent = async () => {
@@ -338,398 +355,267 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
     };
 
     return (
-        <div className="container mx-auto py-10">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Student Profile Card */}
-                <Card className="md:col-span-1">
-                    <CardHeader className="flex flex-col items-center space-y-2">
-                        <Avatar className="h-24 w-24">
-                            <AvatarImage src={student.profileImage || undefined} />
-                            <AvatarFallback>{student.name?.[0]}</AvatarFallback>
-                        </Avatar>
-                        <CardTitle className="text-xl">{student.name}</CardTitle>
-                        <CardDescription>
-                            {currentClass?.name}
-                            {currentClass?.section ? ` (${currentClass.section})` : ""}
-                        </CardDescription>
-                        <div className="flex flex-wrap gap-2 mt-4">
-                            <StudentModal
-                                student={student}
-                                departments={departments}
-                                trigger={
-                                    <Button variant="outline" size="sm">
-                                        <PenIcon className="h-4 w-4 mr-2" />
-                                        Edit
-                                    </Button>
-                                }
-                                onSuccess={() => router.refresh()}
-                            />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={openParentsDialog}
-                                disabled={isParentLoading}
-                            >
-                                <UsersIcon className="h-4 w-4 mr-2" />
-                                Parents
-                            </Button>
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={`/dashboard/students/${student.id}/attendance`}>
-                                    <GraduationCapIcon className="h-4 w-4 mr-2" />
-                                    Attendance
-                                </Link>
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setIsDeleteDialogOpen(true)}
-                            >
-                                <Trash2Icon className="h-4 w-4 mr-2" />
-                                Delete
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <MailIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                                <span>{student.email}</span>
-                            </div>
-                            {student.phone && (
-                                <div className="flex items-center">
-                                    <PhoneIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                                    <span>{student.phone}</span>
-                                </div>
-                            )}
-                            {student.address && (
-                                <div className="flex items-center">
-                                    <HomeIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                                    <span>{student.address}</span>
-                                </div>
-                            )}
-                            {student.dateOfBirth && (
-                                <div className="flex items-center">
-                                    <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                                    <span>DOB: {formatDate(student.dateOfBirth)}</span>
-                                </div>
-                            )}
-                            {student.department && (
-                                <div className="flex items-center">
-                                    <BookIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                                    <span>Department: {student.department.name}</span>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Main Content */}
-                <div className="md:col-span-2">
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="grid grid-cols-3 mb-6">
-                            <TabsTrigger value="overview">Overview</TabsTrigger>
-                            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                            <TabsTrigger value="performance">Performance</TabsTrigger>
-                            <TabsTrigger value="parents">Parents</TabsTrigger>
-                        </TabsList>
-
-                        {/* Overview Tab */}
-                        <TabsContent value="overview" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Student Summary</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <h3 className="text-lg font-medium">Personal Details</h3>
-                                            <div className="space-y-2 mt-2">
-                                                <div><span className="font-medium">Gender:</span> {student.gender || "Not specified"}</div>
-                                                <div><span className="font-medium">Date of Birth:</span> {student.dateOfBirth ? formatDate(student.dateOfBirth) : "Not specified"}</div>
-                                                <div><span className="font-medium">Religion:</span> {student.religion || "Not specified"}</div>
-                                                <div><span className="font-medium">State:</span> {student.state || "Not specified"}</div>
-                                                <div><span className="font-medium">City:</span> {student.city || "Not specified"}</div>
-                                                <div><span className="font-medium">Country:</span> {student.country || "Not specified"}</div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-medium">Academic Details</h3>
-                                            <div className="space-y-2 mt-2">
-                                                <div><span className="font-medium">Current Class:</span> {currentClass ? `${currentClass.name} ${currentClass.section || ""}` : "Not assigned"}</div>
-                                                <div><span className="font-medium">Department:</span> {student.department?.name || "Not assigned"}</div>
-                                                <div><span className="font-medium">Session:</span> {currentSession?.name || "Not in session"}</div>
-                                                <div><span className="font-medium">Attendance:</span> {calculateAttendancePercentage()}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Parents */}
-                            <TabsContent value="parents" className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-medium">Parents Information</h3>
-                                    <Button onClick={openParentsDialog}>
-                                        <UsersIcon className="mr-2 h-4 w-4" />
-                                        Add Parent
-                                    </Button>
-                                </div>
-                                <div className="grid gap-4">
-                                    {student.parents && student.parents.length > 0 ? (
-                                        student.parents.map((sp) => (
-                                            <ParentCard key={sp.id} sp={sp} />
-                                        ))
-                                    ) : (
-                                        <Card>
-                                            <CardContent className="flex items-center justify-center p-6">
-                                                <div className="text-center">
-                                                    <UsersIcon className="mx-auto h-8 w-8 text-muted-foreground" />
-                                                    <p className="mt-2 text-sm text-muted-foreground">
-                                                        No parents have been added yet
-                                                    </p>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    )}
-                                </div>
-                            </TabsContent>
-                        </TabsContent>
-
-                        {/* Attendance Tab */}
-                        <TabsContent value="attendance" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Attendance History</CardTitle>
-                                    <CardDescription>
-                                        Recent attendance records for {student.name}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {student.attendance && student.attendance.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {student.attendance.map((record) => (
-                                                <div key={record.id} className="flex items-center justify-between border p-3 rounded-md">
-                                                    <div className="flex items-center gap-3">
-                                                        {record.status === AttendanceStatus.PRESENT ? (
-                                                            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                                                        ) : (
-                                                            <XCircleIcon className="h-5 w-5 text-red-500" />
-                                                        )}
-                                                        <div>
-                                                            <p className="font-medium">{formatDate(record.date)}</p>
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {record.remarks || "General"}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <span className={`text-sm font-medium ${record.status === AttendanceStatus.PRESENT ? "text-green-500" : "text-red-500"
-                                                        }`}>
-                                                        {record.status}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-muted-foreground">No attendance records found</p>
-                                    )}
-                                    <div className="mt-6">
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link href={`/dashboard/students/${student.id}/attendance`}>
-                                                <GraduationCapIcon className="h-4 w-4 mr-2" />
-                                                View All Attendance
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        {/* Performance Tab */}
-                        <TabsContent value="performance" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Academic Performance</CardTitle>
-                                    <CardDescription>
-                                        Examination results for {student.name}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {student.results && student.results.length > 0 ? (
-                                        <div className="space-y-4">
-                                            {student.results.map((result) => (
-                                                <div key={result.id} className="border p-4 rounded-md">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <h4 className="font-medium">{result.examType}</h4>
-                                                            <p className="text-sm text-muted-foreground">{result.subject.name}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-sm">
-                                                                {result.marks}/{result.totalMarks}
-                                                            </span>
-                                                            <span className={`px-2 py-1 rounded text-xs font-medium ${result.grade && parseInt(result.grade) >= 70 ? "bg-green-100 text-green-800" :
-                                                                result.grade && parseInt(result.grade) >= 50 ? "bg-yellow-100 text-yellow-800" :
-                                                                    "bg-red-100 text-red-800"
-                                                                }`}>
-                                                                {result.grade || "N/A"}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                                                        <div
-                                                            className={`h-2 rounded-full ${result.grade && parseInt(result.grade) >= 70 ? "bg-green-500" :
-                                                                result.grade && parseInt(result.grade) >= 50 ? "bg-yellow-500" :
-                                                                    "bg-red-500"
-                                                                }`}
-                                                            style={{ width: `${(result.marks / result.totalMarks) * 100}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-muted-foreground">No examination results found</p>
-                                    )}
-                                    <div className="mt-6">
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link href={`/dashboard/students/${student.id}/results`}>
-                                                <ActivityIcon className="h-4 w-4 mr-2" />
-                                                View All Results
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                    </Tabs>
+        <div className="p-6">
+            {/* Personal Information Section */}
+            <div className="mb-8">
+                <div className="flex items-center mb-5">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 mr-3">
+                        <UserIcon className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h3 className="text-md font-semibold text-slate-900">Personal Information</h3>
                 </div>
-            </div>
-
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete this student
-                            and all associated data including attendance, results, and class assignments.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleteLoading}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => {
-                                e.preventDefault();
-                                handleDeleteStudent();
-                            }}
-                            disabled={isDeleteLoading}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            {isDeleteLoading ? "Deleting..." : "Delete"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Parents Management Dialog */}
-            <Dialog open={isParentsDialogOpen} onOpenChange={setIsParentsDialogOpen}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Manage Parents</DialogTitle>
-                        <DialogDescription>
-                            Link a parent or guardian to this student
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="parent">Select Parent</Label>
-                                <Select
-                                    value={selectedParentId}
-                                    onValueChange={setSelectedParentId}
-                                    disabled={isParentLoading}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select parent" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availableParents.length > 0 ? (
-                                            availableParents.map((parent) => (
-                                                <SelectItem key={parent.id} value={parent.id}>
-                                                    {parent.name} ({parent.email})
-                                                </SelectItem>
-                                            ))
-                                        ) : (
-                                            <SelectItem value="none" disabled>
-                                                No available parents
-                                            </SelectItem>
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="relation">Relation</Label>
-                                <Input
-                                    id="relation"
-                                    placeholder="e.g. Father, Mother, Guardian"
-                                    value={parentRelation}
-                                    onChange={(e) => setParentRelation(e.target.value)}
-                                    disabled={isParentLoading}
-                                />
-                            </div>
-                        </div>
-
-                        {availableParents.length === 0 && (
-                            <div className="mt-4 flex items-center p-3 text-sm rounded-md bg-amber-50 text-amber-800 border border-amber-200">
-                                <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
-                                <p>No available parents to link. Add parents to the system first.</p>
-                            </div>
-                        )}
-
-                        <Separator className="my-6" />
-
-                        <div className="mb-4">
-                            <h3 className="text-sm font-medium mb-2">Current Parents</h3>
-                            {student.parents && student.parents.length > 0 ? (
-                                <div className="space-y-2">
-                                    {student.parents.map((sp) => (
-                                        <div key={sp.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded-md">
-                                            <span>
-                                                {sp?.parent?.name ?? 'Unknown Parent'}
-                                                {sp?.relation ? ` (${sp.relation})` : ''}
-                                            </span>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleRemoveParent(sp.id)}
-                                            >
-                                                <Trash2Icon className="h-4 w-4 text-red-500" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">No parents linked yet</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500">Full Name</p>
+                        <p className="font-medium text-slate-900">{student.name}</p>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Date of Birth
+                        </p>
+                        <p className="font-medium text-slate-900">{formatDate(student.dateOfBirth)}</p>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500">Gender</p>
+                        <div className="flex items-center">
+                            <p className="font-medium text-slate-900">{student.gender || "Not specified"}</p>
+                            {student.gender && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                    {student.gender}
+                                </Badge>
                             )}
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsParentsDialogOpen(false)}
-                            disabled={isParentLoading}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleAddParent}
-                            disabled={!selectedParentId || isParentLoading}
-                        >
-                            Add Parent
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    
+                    {student.religion && (
+                        <div className="space-y-1.5">
+                            <p className="text-sm text-slate-500 flex items-center">
+                                <Bookmark className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                                Religion
+                            </p>
+                            <p className="font-medium text-slate-900">{student.religion}</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+            
+            <Separator className="my-6" />
+            
+            {/* Contact Information Section */}
+            <div className="mb-8">
+                <div className="flex items-center mb-5">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 mr-3">
+                        <Mail className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <h3 className="text-md font-semibold text-slate-900">Contact Information</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500">Email Address</p>
+                        <p className="font-medium text-slate-900">{student.email}</p>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <Phone className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Phone Number
+                        </p>
+                        <p className="font-medium text-slate-900">{student.phone || "Not available"}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <Separator className="my-6" />
+            
+            {/* Address Information Section */}
+            <div className="mb-8">
+                <div className="flex items-center mb-5">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 mr-3">
+                        <MapPin className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <h3 className="text-md font-semibold text-slate-900">Address Information</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1.5 md:col-span-2">
+                        <p className="text-sm text-slate-500">Address</p>
+                        <p className="font-medium text-slate-900">{student.address || "Not available"}</p>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500">City</p>
+                        <p className="font-medium text-slate-900">{student.city || "Not available"}</p>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500">State</p>
+                        <p className="font-medium text-slate-900">{student.state || "Not available"}</p>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <Flag className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Country
+                        </p>
+                        <p className="font-medium text-slate-900">{student.country || "Not available"}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <Separator className="my-6" />
+            
+            {/* Academic Information Section */}
+            <div>
+                <div className="flex items-center mb-5">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 mr-3">
+                        {/* <GraduationCap className="h-4 w-4 text-purple-600" /> */}
+                    </div>
+                    <h3 className="text-md font-semibold text-slate-900">Academic Information</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <Building className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Department
+                        </p>
+                        <div className="flex items-center">
+                            <p className="font-medium text-slate-900">
+                                {student.department?.name || "Not assigned"}
+                            </p>
+                            {student.department && (
+                                <Badge className="ml-2 bg-purple-100 text-purple-800 hover:bg-purple-200 border-transparent">
+                                    Department
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <School className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Current Class
+                        </p>
+                        <div className="flex items-center">
+                            <p className="font-medium text-slate-900">
+                                {currentClass 
+                                    ? `${currentClass.name}${currentClass.section ? ` - ${currentClass.section}` : ''}`
+                                    : "Not assigned"}
+                            </p>
+                            {currentClass && (
+                                <Badge className="ml-2 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-transparent">
+                                    Active
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {currentClass && currentClass.level && (
+                        <div className="space-y-1.5">
+                            <p className="text-sm text-slate-500 flex items-center">
+                                <GraduationCap className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                                Education Level
+                            </p>
+                            <div className="flex items-center">
+                                <p className="font-medium text-slate-900">{currentClass.level.name}</p>
+                                <Badge className="ml-2 bg-blue-100 text-blue-800 hover:bg-blue-200 border-transparent">
+                                    Level {currentClass.level.order}
+                                </Badge>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {currentClass && (
+                        <div className="space-y-1.5">
+                            <p className="text-sm text-slate-500 flex items-center">
+                                <Hash className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                                Roll Number
+                            </p>
+                            <p className="font-medium text-slate-900">{currentClass.rollNumber || "Not assigned"}</p>
+                        </div>
+                    )}
+                    
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Academic Session
+                        </p>
+                        <div className="flex items-center">
+                            <p className="font-medium text-slate-900">
+                                {currentSession?.name || currentClass?.session?.name || "Not available"}
+                            </p>
+                            {(currentSession?.isCurrent || currentClass?.session?.isCurrent) && (
+                                <Badge className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-200 border-transparent">
+                                    Current
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {student.schoolId && (
+                        <div className="space-y-1.5">
+                            <p className="text-sm text-slate-500">School ID</p>
+                            <p className="font-medium text-slate-900 text-sm">
+                                <code className="px-1 py-0.5 bg-slate-100 rounded text-slate-800">
+                                    {student.schoolId.slice(0, 12)}...
+                                </code>
+                            </p>
+                        </div>
+                    )}
+                </div>
+                
+                {student.studentClass && student.studentClass.length > 1 && (
+                    <div className="mt-6">
+                        <div className="flex items-center mb-3">
+                            <h4 className="text-sm font-medium text-slate-900">Class History</h4>
+                        </div>
+                        <div className="border rounded-md overflow-hidden">
+                            <table className="min-w-full divide-y divide-slate-200">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Class</th>
+                                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Level</th>
+                                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Session</th>
+                                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Roll Number</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-200">
+                                    {student.studentClass
+                                        .filter(sc => 
+                                            // Filter out the current class that's already shown above
+                                            !(currentClass && sc.classId === currentClass.id && sc.sessionId === (currentSession?.id || currentClass.session?.id))
+                                        )
+                                        .map((sc, index) => (
+                                            <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
+                                                    {sc.class.name}
+                                                    {sc.class.section ? ` - ${sc.class.section}` : ''}
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
+                                                    {sc.class.level?.name || "N/A"}
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
+                                                    {sc.session.name}
+                                                    {sc.session.isCurrent && 
+                                                        <Badge variant="outline" className="ml-2 text-xs">Current</Badge>
+                                                    }
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
+                                                    {sc.rollNumber || "N/A"}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 } 

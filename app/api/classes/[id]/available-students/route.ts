@@ -41,6 +41,7 @@ export async function GET(
       },
       include: {
         level: true,
+        department: true,
       },
     });
 

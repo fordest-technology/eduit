@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let userWhereClause: any = {
+    const userWhereClause: any = {
       role: UserRole.TEACHER,
     };
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       userWhereClause.schoolId = schoolId;
     }
 
-    let teacherWhereClause: any = {};
+    const teacherWhereClause: any = {};
 
     // Add department filter if provided
     if (departmentId) {

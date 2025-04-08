@@ -49,6 +49,7 @@ export default function SessionsPage() {
         students: 0,
         currentSession: "None"
     })
+    const [normalizedRole, setNormalizedRole] = useState<string>("")
 
     useEffect(() => {
         async function fetchSessionAndData() {
@@ -68,14 +69,25 @@ export default function SessionsPage() {
                     return
                 }
 
+                // Normalize role for consistent usage
+                const normalizedRole = sessionData.role === "SCHOOL_ADMIN" ? "school_admin" : sessionData.role;
+                setNormalizedRole(normalizedRole)
+                
                 // Only admin can access this page
-                if (sessionData.role !== "super_admin" && sessionData.role !== "school_admin") {
+                if (normalizedRole !== "super_admin" && normalizedRole !== "school_admin") {
                     router.push("/dashboard")
                     return
                 }
 
-                // Fetch academic sessions
-                const sessionsRes = await fetch('/api/academic-sessions', {
+                // Fetch academic sessions - ensure proper filtering by schoolId for school_admin
+                let url = '/api/sessions';
+                
+                // Add schoolId for filtering if school_admin
+                if (normalizedRole === "school_admin" && sessionData.schoolId) {
+                    url += `?schoolId=${sessionData.schoolId}`;
+                }
+                
+                const sessionsRes = await fetch(url, {
                     headers: {
                         'Cache-Control': 'no-cache',
                         'Pragma': 'no-cache',
@@ -91,7 +103,7 @@ export default function SessionsPage() {
                 setSessions(sessionsData)
 
                 // If super admin, fetch all schools for the dropdown
-                if (sessionData.role === "super_admin") {
+                if (normalizedRole === "super_admin") {
                     const schoolsRes = await fetch('/api/schools')
                     if (schoolsRes.ok) {
                         const schoolsData = await schoolsRes.json()
@@ -217,7 +229,7 @@ export default function SessionsPage() {
                     <SessionsTable
                         initialSessions={sessions}
                         schools={schools}
-                        userRole={session.role}
+                        userRole={normalizedRole}
                         userSchoolId={session.schoolId ?? ""}
                     />
                 </CardContent>
