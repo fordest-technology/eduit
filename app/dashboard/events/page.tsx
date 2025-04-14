@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth"
 import prisma from "@/lib/db"
 import { redirect } from "next/navigation"
 import { EventsTable } from "./events-table"
+import { UserRole } from "@prisma/client"
 
 export default async function EventsPage() {
   const session = await getSession()
@@ -12,13 +13,13 @@ export default async function EventsPage() {
   }
 
   // Only super admin and school admin can access this page
-  if (session.role !== "super_admin" && session.role !== "school_admin") {
+  if (session.role !== UserRole.SUPER_ADMIN && session.role !== UserRole.SCHOOL_ADMIN) {
     redirect("/dashboard")
   }
 
   // Fetch schools for super admin
   let schools: { id: string; name: string }[] = []
-  if (session.role === "super_admin") {
+  if (session.role === UserRole.SUPER_ADMIN) {
     schools = await prisma.school.findMany({
       select: {
         id: true,

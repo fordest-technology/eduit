@@ -1,10 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+declare global {
+  var prisma: PrismaClient | undefined;
+}
 
-// Create a connection pool
 const prismaClientSingleton = () => {
   return new PrismaClient({
     log:
@@ -19,31 +18,32 @@ const prismaClientSingleton = () => {
   });
 };
 
-// Ensure we only create one instance of PrismaClient
-export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+const prisma = globalThis.prisma ?? prismaClientSingleton();
 
-// In development, store the PrismaClient instance in the global object
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalThis.prisma = prisma;
 }
 
-// Add error handling middleware
-prisma.$use(async (params, next) => {
+export { prisma };
+
+// Error handling wrapper function
+export async function withErrorHandling<T>(
+  operation: () => Promise<T>
+): Promise<T> {
   try {
-    return await next(params);
+    return await operation();
   } catch (error: any) {
     // Handle connection errors
     if (error?.code === "P1017" || error?.code === "P2021") {
-      // Reconnect on connection errors
       await prisma.$disconnect();
       await prisma.$connect();
-      return await next(params);
+      return await operation();
     }
     throw error;
+  } finally {
+    // Ensure connection is properly managed
+    if (process.env.NODE_ENV === "production") {
+      await prisma.$disconnect();
+    }
   }
-});
-
-// Ensure proper cleanup on process exit
-process.on("beforeExit", async () => {
-  await prisma.$disconnect();
-});
+}

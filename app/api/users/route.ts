@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { hash } from "bcryptjs"; // Changed from bcrypt to bcryptjs
+import { hash } from "bcryptjs";
 import prisma from "@/lib/db";
+import { Database } from "@/lib/db/index";
 import { getSession } from "@/lib/auth";
 import { uploadImage } from "@/lib/cloudinary";
 import { UserRole } from "@prisma/client";
@@ -11,7 +12,8 @@ export async function GET(request: NextRequest) {
 
   if (
     !session ||
-    (session.role !== "super_admin" && session.role !== "school_admin")
+    (session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN)
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -20,76 +22,73 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get("role");
     const schoolId =
-      session.role === "super_admin"
+      session.role === UserRole.SUPER_ADMIN
         ? searchParams.get("schoolId") || undefined
         : session.schoolId;
 
-    // Create the where object with proper typing for role
     const where: any = {};
-
-    // Only add role to filter if it exists, and make sure it's properly typed as an enum
     if (role) {
       where.role = role.toUpperCase() as UserRole;
     }
-
-    // Add schoolId to filter if it exists
     if (schoolId) {
       where.schoolId = schoolId;
     }
 
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        schoolId: true,
-        profileImage: true,
-        createdAt: true,
-        teacher: {
-          select: {
-            phone: true,
-            gender: true,
-            dateOfBirth: true,
-            address: true,
-            country: true,
-            city: true,
-            state: true,
-            qualifications: true,
-            specialization: true,
-            employeeId: true,
-            departmentId: true,
-            department: {
-              select: {
-                name: true,
+    const users = await Database.query(() =>
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          schoolId: true,
+          profileImage: true,
+          createdAt: true,
+          teacher: {
+            select: {
+              phone: true,
+              gender: true,
+              dateOfBirth: true,
+              address: true,
+              country: true,
+              city: true,
+              state: true,
+              qualifications: true,
+              specialization: true,
+              employeeId: true,
+              departmentId: true,
+              department: {
+                select: {
+                  name: true,
+                },
               },
             },
           },
-        },
-        student: {
-          select: {
-            phone: true,
-            gender: true,
-            dateOfBirth: true,
-            address: true,
-            country: true,
-            city: true,
-            state: true,
-            religion: true,
-            bloodGroup: true,
+          student: {
+            select: {
+              phone: true,
+              gender: true,
+              dateOfBirth: true,
+              address: true,
+              country: true,
+              city: true,
+              state: true,
+              religion: true,
+              bloodGroup: true,
+            },
+          },
+          school: {
+            select: {
+              name: true,
+            },
           },
         },
-        school: {
-          select: {
-            name: true,
-          },
+        orderBy: {
+          createdAt: "desc",
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+      })
+    );
 
     return NextResponse.json(users);
   } catch (error) {
@@ -116,7 +115,6 @@ export async function POST(request: NextRequest) {
     const role = formData.get("role") as UserRole;
     const profileImage = formData.get("profileImage") as string;
 
-    // Get role-specific data
     const teacherData = formData.get("teacherData")
       ? JSON.parse(formData.get("teacherData") as string)
       : null;
@@ -130,43 +128,44 @@ export async function POST(request: NextRequest) {
       ? JSON.parse(formData.get("adminData") as string)
       : null;
 
-    // Validate required fields
     if (!name || !email || !password || !role) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
-    // Determine school ID based on user role
     const finalSchoolId = session.schoolId;
-    if (session.role === "super_admin" && role !== UserRole.SUPER_ADMIN) {
+    if (
+      session.role === UserRole.SUPER_ADMIN &&
+      role !== UserRole.SUPER_ADMIN
+    ) {
       return new NextResponse("School ID is required for this user role", {
         status: 400,
       });
     }
 
-    // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
+    const existingUser = await Database.query(() =>
+      prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      })
+    );
 
     if (existingUser) {
       return new NextResponse("Email already in use", { status: 400 });
     }
 
-    // Hash password
     const hashedPassword = await hash(password, 10);
 
-    // Get school info for email
-    const school = await prisma.school.findUnique({
-      where: { id: finalSchoolId },
-      select: { name: true, subdomain: true },
-    });
+    const school = await Database.query(() =>
+      prisma.school.findUnique({
+        where: { id: finalSchoolId },
+        select: { name: true, subdomain: true },
+      })
+    );
 
     if (!school) {
       return new NextResponse("School not found", { status: 400 });
     }
 
-    // Create user with role-specific data
     const userData: any = {
       name,
       email,
@@ -176,7 +175,6 @@ export async function POST(request: NextRequest) {
       profileImage,
     };
 
-    // Add nested create for specific user type
     if (role === UserRole.TEACHER && teacherData) {
       userData.teacher = {
         create: {
@@ -234,66 +232,34 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Create user with nested data
-    const user = await prisma.user.create({
-      data: userData,
-      include: {
-        teacher: true,
-        student: true,
-        parent: true,
-        admin: true,
-      },
-    });
+    const user = await Database.query(() =>
+      prisma.user.create({
+        data: userData,
+        include: {
+          teacher: true,
+          student: true,
+          parent: true,
+          admin: true,
+        },
+      })
+    );
 
-    // Send email with credentials
     if (role === UserRole.TEACHER) {
       await sendTeacherCredentialsEmail({
-        name,
         email,
         password,
+        name,
         schoolName: school.name,
         schoolUrl: `https://${school.subdomain}.yourdomain.com`,
       });
     }
 
     return NextResponse.json(user);
-  } catch (error: any) {
-    console.error("[USERS_POST]", error);
-    // Improved error handling for database constraint violations
-    if (error.code === "P2002") {
-      // Check which field caused the unique constraint violation
-      const target = error.meta?.target;
-      if (target && target.includes("email")) {
-        return new NextResponse("Email address already exists in the system", {
-          status: 400,
-        });
-      }
-      return new NextResponse("A unique constraint was violated", {
-        status: 400,
-      });
-    }
-
-    // Handle validation errors
-    if (
-      error.name === "ValidationError" ||
-      error.message.includes("validation")
-    ) {
-      return new NextResponse(`Validation error: ${error.message}`, {
-        status: 400,
-      });
-    }
-
-    // Handle network errors when sending email
-    if (error.message?.includes("email") || error.message?.includes("SMTP")) {
-      // Still create the user but log the email sending failure
-      console.error("User created but failed to send email:", error);
-      return new NextResponse("User created but failed to send welcome email", {
-        status: 201,
-      });
-    }
-
-    return new NextResponse(error.message || "An unexpected error occurred", {
-      status: 500,
-    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    return NextResponse.json(
+      { error: "Failed to create user" },
+      { status: 500 }
+    );
   }
 }

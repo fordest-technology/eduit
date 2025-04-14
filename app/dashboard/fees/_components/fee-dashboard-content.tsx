@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BillsTab } from "./bills-tab"
 import { PaymentAccountsTab } from "./payment-accounts-tab"
 import { PaymentRequestsTab } from "./payment-requests-tab"
-import { CreditCard, DollarSign, FileText, Users } from "lucide-react"
+import { CreditCard, DollarSign, FileText, Users, TrendingUp, AlertCircle } from "lucide-react"
 
 interface FeeDashboardContentProps {
     data: {
@@ -35,6 +35,10 @@ export function FeeDashboardContent({ data }: FeeDashboardContentProps) {
         }).format(amount)
     }
 
+    const getPercentage = (value: number, total: number) => {
+        return total > 0 ? ((value / total) * 100).toFixed(1) : "0.0"
+    }
+
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -56,30 +60,32 @@ export function FeeDashboardContent({ data }: FeeDashboardContentProps) {
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(data.feeSummary.totalPaid)}</div>
                         <p className="text-xs text-muted-foreground">
-                            {((data.feeSummary.totalPaid / data.feeSummary.totalBilled) * 100 || 0).toFixed(1)}% of total billed
+                            {getPercentage(data.feeSummary.totalPaid, data.feeSummary.totalBilled)}% of total billed
                         </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                        <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
                         <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(data.feeSummary.totalPending)}</div>
                         <p className="text-xs text-muted-foreground">
-                            {((data.feeSummary.totalPending / data.feeSummary.totalBilled) * 100 || 0).toFixed(1)}% of total billed
+                            {getPercentage(data.feeSummary.totalPending, data.feeSummary.totalBilled)}% of total billed
                         </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Payment Requests</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Overdue Payments</CardTitle>
+                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{data.feeSummary.pendingRequests}</div>
-                        <p className="text-xs text-muted-foreground">Pending payment requests</p>
+                        <div className="text-2xl font-bold">{formatCurrency(data.feeSummary.totalOverdue)}</div>
+                        <p className="text-xs text-muted-foreground">
+                            {getPercentage(data.feeSummary.totalOverdue, data.feeSummary.totalBilled)}% of total billed
+                        </p>
                     </CardContent>
                 </Card>
             </div>

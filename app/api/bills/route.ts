@@ -1,104 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma, PrismaClient } from "@prisma/client";
 
-// GET /api/bills - Get all bills for the school
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getSession(null);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: session.id },
-      include: { admin: true },
-    });
-
-    if (!user || !user.admin || !user.schoolId) {
-      return NextResponse.json(
-        { error: "Only school admins can access bills" },
-        { status: 403 }
-      );
-    }
-
-    const searchParams = req.nextUrl.searchParams;
-    const status = searchParams.get("status");
-    const classId = searchParams.get("classId");
-    const studentId = searchParams.get("studentId");
-
-    // Base query to get all bills for the school
-    const query: any = {
-      where: { schoolId: user.schoolId },
-      include: {
-        account: true,
-        assignments: {
-          include: {
-            studentPayments: {
-              include: {
-                student: {
-                  include: {
-                    user: {
-                      select: {
-                        name: true,
-                        email: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    };
-
-    // Apply filters based on query parameters
-    if (classId || studentId || status) {
-      query.include.assignments.where = {};
-
-      if (classId) {
-        query.include.assignments.where.AND = [
-          { targetType: "CLASS" },
-          { targetId: classId },
-        ];
-      }
-
-      if (studentId) {
-        query.include.assignments.where.OR = [
-          {
-            AND: [{ targetType: "STUDENT" }, { targetId: studentId }],
-          },
-          {
-            studentPayments: {
-              some: {
-                studentId: studentId,
-              },
-            },
-          },
-        ];
-      }
-
-      if (status) {
-        query.include.assignments.where.status = status;
-      }
-    }
-
-    const bills = await prisma.bill.findMany(query);
-
-    return NextResponse.json(bills);
-  } catch (error) {
-    console.error("Error fetching bills:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch bills" },
-      { status: 500 }
-    );
-  }
+interface CreateBillItem {
+  name: string;
+  amount: number;
+  description?: string | null;
 }
 
-// POST /api/bills - Create a new bill
+interface CreateBillRequest {
+  name: string;
+  items: CreateBillItem[];
+  accountId: string;
+}
+
+type TransactionClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;
+
 export async function POST(req: NextRequest) {
   try {
+    // 1. Authentication & Authorization
     const session = await getSession(null);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -109,71 +33,199 @@ export async function POST(req: NextRequest) {
       include: { admin: true },
     });
 
-    if (!user || !user.admin || !user.schoolId) {
+    if (!user?.admin || !user.schoolId) {
       return NextResponse.json(
         { error: "Only school admins can create bills" },
         { status: 403 }
       );
     }
 
+    // 2. Request Validation
     const body = await req.json();
-    const { name, amount, description, accountId, assignments } = body;
+    const { name, items, accountId } = body as CreateBillRequest;
 
-    if (
-      !name ||
-      !amount ||
-      !accountId ||
-      !assignments ||
-      assignments.length === 0
-    ) {
+    if (!name?.trim() || !items?.length || !accountId?.trim()) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Check if payment account exists and belongs to the school
-    const accountExists = await prisma.paymentAccount.findFirst({
-      where: {
-        id: accountId,
-        schoolId: user.schoolId,
-      },
-    });
-
-    if (!accountExists) {
+    // 3. Data Validation
+    const hasInvalidAmount = items.some(
+      (item) => isNaN(item.amount) || item.amount <= 0
+    );
+    if (hasInvalidAmount) {
       return NextResponse.json(
-        { error: "Invalid payment account" },
+        { error: "All items must have valid positive amounts" },
         { status: 400 }
       );
     }
 
-    // Create bill with assignments
-    const bill = await prisma.bill.create({
-      data: {
-        name,
-        amount,
-        description,
+    // 4. Business Logic
+    const totalAmount = items.reduce((total, item) => total + item.amount, 0);
+
+    const account = await prisma.paymentAccount.findFirst({
+      where: {
+        id: accountId,
         schoolId: user.schoolId,
-        accountId,
-        assignments: {
-          create: assignments.map((assignment: any) => ({
-            targetType: assignment.targetType,
-            targetId: assignment.targetId,
-            dueDate: new Date(assignment.dueDate),
-          })),
-        },
-      },
-      include: {
-        assignments: true,
-        account: true,
+        isActive: true,
       },
     });
 
-    return NextResponse.json(bill, { status: 201 });
+    if (!account) {
+      return NextResponse.json(
+        { error: "Invalid or inactive payment account" },
+        { status: 400 }
+      );
+    }
+
+    // 5. Transaction with proper error handling
+    try {
+      const result = await prisma.$transaction(
+        async (prisma) => {
+          // Create the bill with only the fields that exist in the schema
+          const bill = await prisma.bill.create({
+            data: {
+              name: name.trim(),
+              amount: totalAmount,
+              schoolId: user.schoolId as string,
+              accountId: accountId,
+            },
+          });
+
+          // Create bill items with description field
+          const billItems = [];
+          for (const item of items) {
+            const billItem = await prisma.billItem.create({
+              data: {
+                billId: bill.id,
+                name: item.name.trim(),
+                amount: item.amount,
+              },
+            });
+            billItems.push(billItem);
+          }
+
+          // Return complete bill with relations
+          const completeBill = await prisma.bill.findUnique({
+            where: { id: bill.id },
+            include: {
+              items: true,
+              account: {
+                select: {
+                  id: true,
+                  name: true,
+                  accountNo: true,
+                  bankName: true,
+                  branchCode: true,
+                  description: true,
+                  isActive: true,
+                },
+              },
+            },
+          });
+
+          if (!completeBill) {
+            throw new Error("Failed to create bill");
+          }
+
+          return completeBill;
+        },
+        {
+          timeout: 10000,
+          maxWait: 5000,
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        }
+      );
+
+      return NextResponse.json(result, { status: 201 });
+    } catch (transactionError) {
+      console.error("Transaction failed:", transactionError);
+      throw new Error(
+        `Transaction failed: ${
+          transactionError instanceof Error
+            ? transactionError.message
+            : "Unknown error"
+        }`
+      );
+    }
   } catch (error) {
-    console.error("Error creating bill:", error);
+    console.error("Error in bill creation endpoint:", error);
+
     return NextResponse.json(
-      { error: "Failed to create bill" },
+      {
+        error: error instanceof Error ? error.message : "Failed to create bill",
+        ...(process.env.NODE_ENV === "development" && {
+          stack: error instanceof Error ? error.stack : undefined,
+          details: error,
+        }),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    // 1. Authentication & Authorization
+    const session = await getSession(null);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.id },
+      include: { admin: true },
+    });
+
+    if (!user?.schoolId) {
+      return NextResponse.json(
+        { error: "User not associated with a school" },
+        { status: 403 }
+      );
+    }
+
+    // 2. Fetch bills with related data
+    const bills = await prisma.bill.findMany({
+      where: {
+        schoolId: user.schoolId,
+      },
+      include: {
+        items: true,
+        account: {
+          select: {
+            id: true,
+            name: true,
+            accountNo: true,
+            bankName: true,
+            branchCode: true,
+            description: true,
+            isActive: true,
+          },
+        },
+        assignments: {
+          include: {
+            studentPayments: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json(bills);
+  } catch (error) {
+    console.error("Error fetching bills:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Failed to fetch bills",
+        ...(process.env.NODE_ENV === "development" && {
+          stack: error instanceof Error ? error.stack : undefined,
+          details: error,
+        }),
+      },
       { status: 500 }
     );
   }
