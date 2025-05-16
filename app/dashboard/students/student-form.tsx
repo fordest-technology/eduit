@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import * as z from "zod";
+import { Student, Class, Department, StudentClass, AcademicSession } from "@prisma/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
     Form,
@@ -22,101 +25,132 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import {
-    Department,
-    Class,
-    User,
-    AcademicSession,
-    StudentClass
-} from "@prisma/client";
 import { Textarea } from "@/components/ui/textarea";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle
-} from "@/components/ui/card";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { CalendarIcon, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
+import Image from "next/image";
 
-interface StudentWithRelations extends User {
-    department: Department | null;
-    studentClass: (StudentClass & {
-        class: Class;
+interface StudentWithUser extends Omit<Student, 'user'> {
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        profileImage?: string | null;
+    };
+    studentClass: Array<StudentClass & {
+        class: Class & {
+            level: { name: string };
+        };
         session: AcademicSession;
+    }>;
+}
+
+interface StudentFormProps {
+    student?: StudentWithUser;
+    classes?: (Class & {
+        level: { name: string };
     })[];
+    departments?: Department[];
+    currentSession?: { id: string };
 }
 
 const genderOptions = [
-    { value: "male", label: "Male" },
-    { value: "female", label: "Female" },
-    { value: "other", label: "Other" },
+    { value: "MALE", label: "Male" },
+    { value: "FEMALE", label: "Female" },
+    { value: "OTHER", label: "Other" },
+];
+
+const bloodGroupOptions = [
+    { value: "A+", label: "A+" },
+    { value: "A-", label: "A-" },
+    { value: "B+", label: "B+" },
+    { value: "B-", label: "B-" },
+    { value: "AB+", label: "AB+" },
+    { value: "AB-", label: "AB-" },
+    { value: "O+", label: "O+" },
+    { value: "O-", label: "O-" },
 ];
 
 const formSchema = z.object({
-    name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-    email: z.string().email({ message: "Please enter a valid email address." }),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-    dateOfBirth: z.date().optional(),
-    gender: z.string().optional(),
-    religion: z.string().optional(),
-    rollNumber: z.string().optional(),
+    name: z.string().min(2, {
+        message: "Name must be at least 2 characters.",
+    }),
+    email: z.string().email({
+        message: "Please enter a valid email address.",
+    }),
+    password: z.string().min(6, {
+        message: "Password must be at least 6 characters.",
+    }).optional(),
     departmentId: z.string().optional(),
     classId: z.string().optional(),
-    state: z.string().optional(),
-    city: z.string().optional(),
-    country: z.string().optional(),
+    rollNumber: z.string().optional(),
+    gender: z.enum(["MALE", "FEMALE", "OTHER", "none"], {
+        required_error: "Please select a gender",
+    }).optional(),
+    dateOfBirth: z.date().optional(),
+    phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, {
+        message: "Please enter a valid phone number"
+    }).optional(),
+    address: z.string().max(255, {
+        message: "Address must not exceed 255 characters"
+    }).optional(),
+    city: z.string().max(100, {
+        message: "City must not exceed 100 characters"
+    }).optional(),
+    state: z.string().max(100, {
+        message: "State must not exceed 100 characters"
+    }).optional(),
+    country: z.string().max(100, {
+        message: "Country must not exceed 100 characters"
+    }).optional(),
+    bloodGroup: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], {
+        required_error: "Please select a blood group",
+    }).optional(),
+    religion: z.string().max(50, {
+        message: "Religion must not exceed 50 characters"
+    }).optional(),
+    profileImage: z.any().optional(),
 });
 
-interface StudentFormProps {
-    student?: StudentWithRelations;
-    departments: Department[];
-    classes: Class[];
-    currentSession: AcademicSession | null;
-    isEdit?: boolean;
-}
-
-export function StudentForm({
+const StudentForm = ({
     student,
-    departments,
-    classes,
+    classes = [],
+    departments = [],
     currentSession,
-    isEdit = false,
-}: StudentFormProps) {
-    const router = useRouter();
+}: StudentFormProps) => {
+    const [isLoading, setIsLoading] = useState(false);
     const [isPending, startTransition] = useTransition();
+    const router = useRouter();
     const [profileImage, setProfileImage] = useState<File | null>(null);
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(
-        student?.profileImage || null
+        student?.user?.profileImage || null
     );
+    const isEdit = !!student;
 
+    // Initialize form with default values
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: student?.name || "",
-            email: student?.email || "",
+            name: student?.user?.name || "",
+            email: student?.user?.email || "",
             phone: student?.phone || "",
             address: student?.address || "",
             dateOfBirth: student?.dateOfBirth ? new Date(student.dateOfBirth) : undefined,
-            gender: student?.gender || undefined,
-            religion: student?.religion || undefined,
-            rollNumber: student?.studentClass[0]?.rollNumber || "",
-            departmentId: student?.department?.id || undefined,
-            classId: student?.studentClass[0]?.classId || undefined,
+            gender: (student?.gender as "MALE" | "FEMALE" | "OTHER" | "none") || "none",
+            religion: student?.religion || "",
+            rollNumber: student?.studentClass?.[0]?.rollNumber || "",
+            departmentId: student?.departmentId || undefined,
+            classId: student?.studentClass?.[0]?.classId || undefined,
             state: student?.state || "",
             city: student?.city || "",
             country: student?.country || "",
+            bloodGroup: (student?.bloodGroup as "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-") || undefined,
         },
     });
 
@@ -134,57 +168,84 @@ export function StudentForm({
         setProfileImageUrl(null);
     }
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        startTransition(async () => {
-            try {
-                const formData = new FormData();
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        try {
+            setIsLoading(true);
+            await new Promise<void>((resolve, reject) => {
+                startTransition(async () => {
+                    try {
+                        // Remove undefined values and convert dates to ISO strings
+                        const cleanedValues = Object.entries(values).reduce((acc, [key, value]) => {
+                            if (value !== undefined) {
+                                if (value instanceof Date) {
+                                    acc[key] = value.toISOString();
+                                } else if (!(value instanceof File)) {
+                                    acc[key] = value;
+                                }
+                            }
+                            return acc;
+                        }, {} as Record<string, any>);
 
-                // Append all form values
-                Object.entries(values).forEach(([key, value]) => {
-                    if (value !== undefined) {
-                        if (key === 'dateOfBirth' && value) {
-                            formData.append(key, (value as Date).toISOString());
-                        } else {
-                            formData.append(key, value as string);
+                        // Handle file upload if present
+                        if (profileImage) {
+                            const formData = new FormData();
+                            formData.append('profileImage', profileImage);
+
+                            // Upload profile image first
+                            const uploadResponse = await fetch('/api/upload', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (!uploadResponse.ok) {
+                                throw new Error('Failed to upload profile image');
+                            }
+
+                            const { url } = await uploadResponse.json();
+                            cleanedValues.profileImage = url;
                         }
+
+                        // Add current session if available
+                        if (currentSession) {
+                            cleanedValues.sessionId = currentSession.id;
+                        }
+
+                        const response = await fetch(
+                            isEdit ? `/api/students/${student?.id}` : '/api/students',
+                            {
+                                method: isEdit ? 'PATCH' : 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(cleanedValues),
+                            }
+                        );
+
+                        if (!response.ok) {
+                            const error = await response.text();
+                            throw new Error(error || 'Failed to save student');
+                        }
+
+                        toast.success(
+                            isEdit ? 'Student updated successfully' : 'Student created successfully'
+                        );
+                        router.refresh();
+                        router.push('/dashboard/students');
+                        resolve();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        toast.error(error instanceof Error ? error.message : 'An error occurred');
+                        reject(error);
                     }
                 });
-
-                // Append the profile image if it exists
-                if (profileImage) {
-                    formData.append('profileImage', profileImage);
-                }
-
-                // Add the current session ID if it exists
-                if (currentSession) {
-                    formData.append('sessionId', currentSession.id);
-                }
-
-                const url = isEdit
-                    ? `/api/students/${student?.id}`
-                    : '/api/students';
-
-                const method = isEdit ? 'PATCH' : 'POST';
-
-                const response = await fetch(url, {
-                    method,
-                    body: formData,
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to save student');
-                }
-
-                toast.success(`Student ${isEdit ? 'updated' : 'created'} successfully`);
-                router.push('/dashboard/students');
-                router.refresh();
-            } catch (error) {
-                console.error('Error submitting form:', error);
-                toast.error(error instanceof Error ? error.message : 'An unknown error occurred');
-            }
-        });
-    }
+            });
+        } catch (error) {
+            console.error('Error:', error);
+            toast.error(error instanceof Error ? error.message : 'An error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const currentClassId = student?.studentClass[0]?.classId;
     const currentClass = classes.find((c) => c.id === currentClassId);
@@ -222,7 +283,7 @@ export function StudentForm({
                                 </>
                             ) : (
                                 <div className="flex h-full items-center justify-center">
-                                    {student?.name?.charAt(0) || "?"}
+                                    {student?.user?.name?.charAt(0) || "?"}
                                 </div>
                             )}
                         </div>
@@ -423,9 +484,9 @@ export function StudentForm({
                                     name="rollNumber"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Roll Number</FormLabel>
+                                            <FormLabel>Roll Number (Optional)</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="e.g. 101" {...field} />
+                                                <Input placeholder="e.g. 101 (Optional)" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

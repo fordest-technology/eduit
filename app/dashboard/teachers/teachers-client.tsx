@@ -37,30 +37,72 @@ import Link from "next/link"
 import { TeacherSubjectsModal } from "./teacher-subjects-modal"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Teacher, User, Department } from "@prisma/client"
 
-export interface TeacherStats {
-    total: number
-    departments: number
-    withClasses: number
+interface TeacherData {
+    id: string;
+    name: string;
+    email: string;
+    profileImage: string | null;
+    phone: string | null;
+    employeeId: string | null;
+    qualifications: string | null;
+    specialization: string | null;
+    joiningDate: Date | null;
+    departmentId: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    dateOfBirth: Date | null;
+    gender: string | null;
+    emergencyContact: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
+    department?: Department;
+    stats: {
+        totalClasses: number;
+        totalStudents: number;
+        totalSubjects: number;
+    };
+    subjects: Array<{
+        id: string;
+        name: string;
+    }>;
+    classes: Array<{
+        id: string;
+        name: string;
+        studentCount: number;
+    }>;
+}
+
+interface TeacherStats {
+    total: number;
+    subjects: number;
+    departments: number;
+    withClasses: number;
+    activeStudents: number;
+    activeClasses: number;
 }
 
 export interface TeachersClientProps {
-    teachers: Teacher[]
-    stats: TeacherStats
-    error?: string
+    teachers: TeacherData[];
+    stats: TeacherStats;
+    error?: string;
 }
 
 export function TeachersClient({ teachers, stats, error }: TeachersClientProps) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [isSubjectsModalOpen, setIsSubjectsModalOpen] = useState(false)
-    const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
-    const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([])
+    const [selectedTeacher, setSelectedTeacher] = useState<TeacherData | null>(null)
+    const [filteredTeachers, setFilteredTeachers] = useState<TeacherData[]>([])
     const [searchQuery, setSearchQuery] = useState("")
     const [filterDepartment, setFilterDepartment] = useState("all")
     const [departments, setDepartments] = useState<{ id: string, name: string }[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(false)
     const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(true)
-    const [isDataInitialized, setIsDataInitialized] = useState(false)
+    const [isRefreshing, setIsRefreshing] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
@@ -83,92 +125,75 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
     }, [])
 
     useEffect(() => {
-        if (teachers.length > 0 && !isDataInitialized) {
+        if (teachers.length > 0) {
             setFilteredTeachers(teachers)
-            setIsDataInitialized(true)
             setIsLoading(false)
         }
-    }, [teachers, isDataInitialized])
+    }, [teachers])
 
     useEffect(() => {
-        if (!isDataInitialized) return
-
         let filtered = [...teachers]
 
-        // Apply search filter
+        // Filter by search query
         if (searchQuery) {
             filtered = filtered.filter((teacher) =>
                 teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (teacher.department && teacher.department.toLowerCase().includes(searchQuery.toLowerCase()))
+                teacher.email.toLowerCase().includes(searchQuery.toLowerCase())
             )
         }
 
-        // Apply department filter
-        if (filterDepartment !== "all" && filterDepartment !== "none") {
-            filtered = filtered.filter(teacher => teacher.departmentId === filterDepartment)
-        } else if (filterDepartment === "none") {
-            filtered = filtered.filter(teacher => !teacher.departmentId)
+        // Filter by department
+        if (filterDepartment !== "all") {
+            filtered = filtered.filter(
+                (teacher) => teacher.departmentId === filterDepartment
+            )
         }
 
         setFilteredTeachers(filtered)
-    }, [searchQuery, filterDepartment, teachers, isDataInitialized])
+    }, [searchQuery, filterDepartment, teachers])
 
     const fetchTeachers = async () => {
-        setIsLoading(true)
         try {
-            const response = await fetch('/api/teachers', {
-                method: 'GET',
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache',
-                },
-            })
-
+            const response = await fetch("/api/teachers")
             if (!response.ok) {
-                throw new Error(`Error fetching teachers: ${response.status}`)
+                throw new Error("Failed to fetch teachers")
             }
-
             const data = await response.json()
-
-            if (data && Array.isArray(data)) {
-                // Correctly format the data for the component
-                const formattedData = data.map((teacher: any) => ({
-                    id: teacher.id,
-                    userId: teacher.userId || "",
-                    name: teacher.name,
-                    email: teacher.email,
-                    phone: teacher.phone || "",
-                    department: teacher.department || "No Department",
-                    departmentId: teacher.departmentId,
-                    classes: teacher.classes || "0",
-                    subjects: teacher.subjects || "0",
-                    school: teacher.school || "Unknown School",
-                    profileImage: teacher.profileImage,
+            if (Array.isArray(data)) {
+                const formattedData = data.map((teacher) => ({
+                    ...teacher,
+                    name: teacher.user.name,
+                    email: teacher.user.email,
                 }))
-
                 setFilteredTeachers(formattedData)
-                setIsDataInitialized(true)
             } else {
                 console.error("Invalid data format received:", data)
                 toast.error("Received invalid data format. Please refresh.")
             }
         } catch (error) {
             console.error("Error fetching teachers:", error)
-            toast.error("Failed to fetch teachers. Please try again.")
+            toast.error("Failed to fetch teachers")
         } finally {
             setIsLoading(false)
         }
     }
 
-    const handleSuccess = () => {
-        setIsLoading(true)
-        fetchTeachers()
-        router.refresh()
-        setIsAddModalOpen(false)
+    const handleSuccess = async () => {
+        setIsRefreshing(true)
+        try {
+            await fetchTeachers()
+            router.refresh()
+            setIsAddModalOpen(false)
+            toast.success("Teachers updated successfully")
+        } catch (error) {
+            console.error("Error refreshing teachers:", error)
+            toast.error("Failed to refresh teachers data")
+        } finally {
+            setIsRefreshing(false)
+        }
     }
 
-    const handleManageSubjects = (teacher: Teacher) => {
+    const handleManageSubjects = (teacher: TeacherData) => {
         setSelectedTeacher(teacher)
         setIsSubjectsModalOpen(true)
     }
@@ -323,7 +348,7 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                                     className="pl-9 w-full"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    disabled={isLoading}
+                                    disabled={isLoading || isRefreshing}
                                 />
                                 {searchQuery && (
                                     <Button
@@ -331,7 +356,7 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                                         size="icon"
                                         className="absolute right-1 top-1 h-7 w-7"
                                         onClick={() => setSearchQuery("")}
-                                        disabled={isLoading}
+                                        disabled={isLoading || isRefreshing}
                                     >
                                         <X className="h-4 w-4" />
                                     </Button>
@@ -339,10 +364,10 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                <Select 
-                                    value={filterDepartment} 
+                                <Select
+                                    value={filterDepartment}
                                     onValueChange={setFilterDepartment}
-                                    disabled={isDepartmentsLoading || isLoading}
+                                    disabled={isDepartmentsLoading || isLoading || isRefreshing}
                                 >
                                     <SelectTrigger className="w-full sm:w-[180px]">
                                         {isDepartmentsLoading ? (
@@ -364,24 +389,33 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                                 </Select>
 
                                 {(searchQuery || filterDepartment !== "all") && (
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={resetFilters} 
-                                        size="sm" 
+                                    <Button
+                                        variant="outline"
+                                        onClick={resetFilters}
+                                        size="sm"
                                         className="mt-1 sm:mt-0"
-                                        disabled={isLoading}
+                                        disabled={isLoading || isRefreshing}
                                     >
                                         Clear Filters
                                     </Button>
                                 )}
 
-                                <Button 
-                                    onClick={() => setIsAddModalOpen(true)} 
+                                <Button
+                                    onClick={() => setIsAddModalOpen(true)}
                                     className="ml-auto"
-                                    disabled={isLoading}
+                                    disabled={isLoading || isRefreshing}
                                 >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Teacher
+                                    {isRefreshing ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add Teacher
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </div>
@@ -428,12 +462,12 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-600">
-                                                        {teacher.classes || 0}
+                                                        {teacher.classes.length}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs font-medium text-secondary">
-                                                        {teacher.subjects || 0}
+                                                        {teacher.subjects.length}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">

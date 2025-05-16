@@ -68,25 +68,53 @@ const bloodGroupOptions = [
 // Define the form schema with user and student fields separately
 const formSchema = z.object({
     // User model fields
-    name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-    email: z.string().email({ message: "Please enter a valid email address." }),
-    password: z.string().min(6).optional(),
+    name: z.string()
+        .min(2, { message: "Name must be at least 2 characters." })
+        .max(100, { message: "Name must not exceed 100 characters." })
+        .transform(val => val.trim()),
+    email: z.string()
+        .email({ message: "Please enter a valid email address." })
+        .transform(val => val.toLowerCase().trim()),
+    password: z.string()
+        .min(6, { message: "Password must be at least 6 characters." }),
     profileImage: z.any().optional(),
 
     // Student model fields
-    admissionDate: z.date().optional(),
+    admissionDate: z.date({
+        required_error: "Admission date is required.",
+        invalid_type_error: "Please select a valid date.",
+    }),
     departmentId: z.string().optional(),
-    address: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    country: z.string().optional(),
-    phone: z.string().optional(),
-    dateOfBirth: z.date().optional(),
-    gender: z.string().optional(),
-    religion: z.string().optional(),
-    bloodGroup: z.string().optional(),
+    address: z.string({
+        required_error: "Address is required.",
+    }).max(200, { message: "Address must not exceed 200 characters." }),
+    city: z.string({
+        required_error: "City is required.",
+    }).max(50, { message: "City must not exceed 50 characters." }),
+    state: z.string({
+        required_error: "State is required.",
+    }).max(50, { message: "State must not exceed 50 characters." }),
+    country: z.string({
+        required_error: "Country is required.",
+    }).max(50, { message: "Country must not exceed 50 characters." }),
+    phone: z.string({
+        required_error: "Phone number is required.",
+    }).regex(/^\+?[1-9]\d{1,14}$/, { message: "Please enter a valid phone number." }),
+    dateOfBirth: z.date({
+        required_error: "Date of birth is required.",
+        invalid_type_error: "Please select a valid date.",
+    }),
+    gender: z.enum(["male", "female", "other"], {
+        required_error: "Please select a gender.",
+    }),
+    religion: z.string({
+        required_error: "Religion is required.",
+    }).max(50, { message: "Religion must not exceed 50 characters." }),
+    bloodGroup: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], {
+        required_error: "Please select a blood group.",
+    }),
 
-    // StudentClass relationship
+    // StudentClass relationship - now optional
     levelId: z.string().optional(),
     classId: z.string().optional(),
     sessionId: z.string().optional(),
@@ -119,6 +147,18 @@ interface AcademicSession {
     isCurrent: boolean
 }
 
+interface StudentRequestData {
+    name: string;
+    email: string;
+    password?: string;
+    phone?: string;
+    departmentId?: string;
+    classId?: string;
+    rollNumber?: string;
+    levelId?: string;
+    id?: string;
+}
+
 interface AddStudentModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
@@ -142,7 +182,7 @@ export function AddStudentModal({
     const [filteredClasses, setFilteredClasses] = useState<Class[]>([])
     const router = useRouter()
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             // User fields
@@ -157,10 +197,10 @@ export function AddStudentModal({
             city: "",
             state: "",
             country: "",
-            dateOfBirth: undefined,
+            dateOfBirth: new Date(),
             gender: "male",
             religion: "",
-            bloodGroup: "",
+            bloodGroup: "A+",
 
             // Relationships
             departmentId: "",
@@ -188,10 +228,10 @@ export function AddStudentModal({
                 city: studentToEdit.city || "",
                 state: studentToEdit.state || "",
                 country: studentToEdit.country || "",
-                dateOfBirth: studentToEdit.dateOfBirth ? new Date(studentToEdit.dateOfBirth) : undefined,
+                dateOfBirth: studentToEdit.dateOfBirth ? new Date(studentToEdit.dateOfBirth) : new Date(),
                 gender: studentToEdit.gender || "male",
                 religion: studentToEdit.religion || "",
-                bloodGroup: studentToEdit.bloodGroup || "",
+                bloodGroup: studentToEdit.bloodGroup || "A+",
 
                 // Relationships
                 departmentId: studentToEdit.departmentId || "",
@@ -290,78 +330,57 @@ export function AddStudentModal({
         setProfileImageUrl(null);
     }
 
-    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const onSubmit = async (values: FormValues) => {
         try {
-            setIsLoading(true)
+            setIsLoading(true);
 
+            // Create FormData object
             const formData = new FormData();
 
-            // Add user fields
-            formData.append('name', values.name);
-            formData.append('email', values.email);
-            if (values.password) formData.append('password', values.password);
-            formData.append('role', UserRole.STUDENT);
+            // Append all form values
+            Object.entries(values).forEach(([key, value]) => {
+                if (value instanceof Date) {
+                    formData.append(key, value.toISOString());
+                } else if (value !== undefined && value !== null) {
+                    formData.append(key, value.toString());
+                }
+            });
 
-            // Add student fields
-            if (values.admissionDate) formData.append('admissionDate', values.admissionDate.toISOString());
-            if (values.phone) formData.append('phone', values.phone);
-            if (values.address) formData.append('address', values.address);
-            if (values.city) formData.append('city', values.city);
-            if (values.state) formData.append('state', values.state);
-            if (values.country) formData.append('country', values.country);
-            if (values.dateOfBirth) formData.append('dateOfBirth', values.dateOfBirth.toISOString());
-            if (values.gender) formData.append('gender', values.gender);
-            if (values.religion) formData.append('religion', values.religion);
-            if (values.bloodGroup) formData.append('bloodGroup', values.bloodGroup);
-
-            // Add relationships
-            if (values.departmentId) formData.append('departmentId', values.departmentId);
-            if (values.classId) formData.append('classId', values.classId);
-            if (values.sessionId) formData.append('sessionId', values.sessionId);
-            if (values.rollNumber) formData.append('rollNumber', values.rollNumber);
-
-            // Append the profile image if it exists
+            // Append profile image if exists
             if (profileImage) {
-                formData.append('profileImage', profileImage);
+                formData.append("profileImage", profileImage);
             }
 
-            let url = "/api/students";
-            let method = "POST";
-
-            // If editing existing student
-            if (studentToEdit?.id) {
-                url = `/api/students/${studentToEdit.id}`;
-                method = "PUT";
-                formData.append('id', studentToEdit.id);
-            }
-
-            const response = await fetch(url, {
-                method: method,
+            // Make API request
+            const response = await fetch("/api/students", {
+                method: "POST",
                 body: formData,
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || "Failed to process student data");
+                // Handle validation errors
+                if (response.status === 400 && data.errors) {
+                    const errorMessages = Object.entries(data.errors)
+                        .map(([field, message]) => `${field}: ${message}`)
+                        .join('\n');
+                    throw new Error(`Validation failed:\n${errorMessages}`);
+                }
+                throw new Error(data.message || "Failed to create student");
             }
 
-            toast.success(studentToEdit ? "Student updated successfully" : "Student added successfully");
-
-            // Force an immediate page refresh to show new student
-            router.refresh();
-
-            if (onSuccess) onSuccess();
-            form.reset();
-            setProfileImage(null);
-            setProfileImageUrl(null);
+            toast.success("Student created successfully");
+            onSuccess?.();
             onOpenChange(false);
+            router.refresh();
         } catch (error) {
-            console.error("Error processing student data:", error);
-            toast.error(error instanceof Error ? error.message : "Failed to process student data");
+            console.error("Error creating student:", error);
+            toast.error(error instanceof Error ? error.message : "Failed to create student");
         } finally {
             setIsLoading(false);
         }
-    }
+    };
 
     return (
         <Dialog
@@ -427,7 +446,7 @@ export function AddStudentModal({
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Full Name</FormLabel>
+                                        <FormLabel>Full Name *</FormLabel>
                                         <FormControl>
                                             <Input placeholder="John Doe" {...field} />
                                         </FormControl>
@@ -441,7 +460,7 @@ export function AddStudentModal({
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Email</FormLabel>
+                                        <FormLabel>Email *</FormLabel>
                                         <FormControl>
                                             <Input placeholder="john.doe@example.com" {...field} />
                                         </FormControl>
@@ -456,7 +475,7 @@ export function AddStudentModal({
                                     name="password"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Password</FormLabel>
+                                            <FormLabel>Password *</FormLabel>
                                             <FormControl>
                                                 <Input
                                                     type="text"
@@ -475,7 +494,7 @@ export function AddStudentModal({
                                 name="phone"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Phone</FormLabel>
+                                        <FormLabel>Phone Number *</FormLabel>
                                         <FormControl>
                                             <Input placeholder="+1234567890" {...field} />
                                         </FormControl>
@@ -497,7 +516,7 @@ export function AddStudentModal({
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Select department" />
+                                                    <SelectValue placeholder="Select department (optional)" />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
@@ -523,7 +542,7 @@ export function AddStudentModal({
                                 name="levelId"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>School Level</FormLabel>
+                                        <FormLabel>Level</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
                                             defaultValue={field.value}
@@ -531,7 +550,7 @@ export function AddStudentModal({
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Select school level" />
+                                                    <SelectValue placeholder="Select level (optional)" />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
@@ -566,7 +585,7 @@ export function AddStudentModal({
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Select class" />
+                                                    <SelectValue placeholder="Select class (optional)" />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
@@ -604,7 +623,7 @@ export function AddStudentModal({
                                             >
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select academic session" />
+                                                        <SelectValue placeholder="Select session (optional)" />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
@@ -628,7 +647,7 @@ export function AddStudentModal({
                                     <FormItem>
                                         <FormLabel>Roll Number</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="S001" {...field} />
+                                            <Input placeholder="Enter roll number (optional)" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -640,7 +659,7 @@ export function AddStudentModal({
                                 name="gender"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Gender</FormLabel>
+                                        <FormLabel>Gender *</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
                                             defaultValue={field.value}
@@ -669,7 +688,7 @@ export function AddStudentModal({
                                 name="dateOfBirth"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
-                                        <FormLabel>Date of Birth</FormLabel>
+                                        <FormLabel>Date of Birth *</FormLabel>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <FormControl>
@@ -753,7 +772,7 @@ export function AddStudentModal({
                                 name="bloodGroup"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Blood Group</FormLabel>
+                                        <FormLabel>Blood Group *</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
                                             defaultValue={field.value}
@@ -782,9 +801,9 @@ export function AddStudentModal({
                                 name="religion"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Religion</FormLabel>
+                                        <FormLabel>Religion *</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Religion" {...field} />
+                                            <Input placeholder="Enter religion" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -801,9 +820,9 @@ export function AddStudentModal({
                                     name="address"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Address</FormLabel>
+                                            <FormLabel>Address *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="123 Main St" {...field} />
+                                                <Input placeholder="Enter address" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -815,9 +834,9 @@ export function AddStudentModal({
                                     name="city"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>City</FormLabel>
+                                            <FormLabel>City *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="New York" {...field} />
+                                                <Input placeholder="Enter city" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -829,9 +848,9 @@ export function AddStudentModal({
                                     name="state"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>State/Province</FormLabel>
+                                            <FormLabel>State *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="NY" {...field} />
+                                                <Input placeholder="Enter state" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -843,9 +862,9 @@ export function AddStudentModal({
                                     name="country"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Country</FormLabel>
+                                            <FormLabel>Country *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="United States" {...field} />
+                                                <Input placeholder="Enter country" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { eventTrack } from "@/lib/events";
+import { UserRole } from "@prisma/client";
 
 // GET /api/departments - fetch departments for current school
 export async function GET(req: NextRequest) {
@@ -57,7 +58,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!["super_admin", "school_admin"].includes(session.role)) {
+  if (
+    session.role !== UserRole.SUPER_ADMIN &&
+    session.role !== UserRole.SCHOOL_ADMIN
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -127,7 +131,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!["super_admin", "school_admin"].includes(session.role)) {
+  if (
+    session.role !== UserRole.SUPER_ADMIN &&
+    session.role !== UserRole.SCHOOL_ADMIN
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -224,7 +231,10 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!["super_admin", "school_admin"].includes(session.role)) {
+  if (
+    session.role !== UserRole.SUPER_ADMIN &&
+    session.role !== UserRole.SCHOOL_ADMIN
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

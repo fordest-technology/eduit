@@ -1,11 +1,61 @@
 import { getSession } from "@/lib/auth";
-import { UserRole } from "@prisma/client";
+import { UserRole, Department } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { writeFile } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { mkdir } from "fs/promises";
+
+interface TeacherData {
+  id: string;
+  name: string;
+  email: string;
+  profileImage: string | null;
+  phone: string | null;
+  employeeId: string | null;
+  qualifications: string | null;
+  specialization: string | null;
+  joiningDate: Date | null;
+  departmentId: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  dateOfBirth: Date | null;
+  gender: string | null;
+  emergencyContact: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    profileImage: string | null;
+  };
+  department?: Department;
+  stats: {
+    totalClasses: number;
+    totalStudents: number;
+    totalSubjects: number;
+  };
+  subjects: Array<{
+    id: string;
+    name: string;
+    code: string;
+    department: Department;
+  }>;
+  classes: Array<{
+    id: string;
+    name: string;
+    section: string;
+    level: {
+      id: string;
+      name: string;
+    };
+    studentCount: number;
+  }>;
+}
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -29,7 +79,12 @@ export async function GET(request: NextRequest) {
     }
 
     const schoolId = session.schoolId;
-    if (!schoolId && session.role !== "super_admin") {
+    // Allow both super_admin and school_admin to access
+    if (
+      !schoolId &&
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN
+    ) {
       return NextResponse.json(
         { message: "School not found" },
         { status: 404 }
@@ -41,7 +96,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Add school filter for non-super admin users
-    if (session.role !== "super_admin") {
+    if (session.role !== UserRole.SUPER_ADMIN) {
       userWhereClause.schoolId = schoolId;
     }
 
@@ -60,17 +115,30 @@ export async function GET(request: NextRequest) {
           where: teacherWhereClause,
           include: {
             department: true,
-            classes: true,
+            classes: {
+              include: {
+                level: true,
+                students: {
+                  where: {
+                    status: "ACTIVE",
+                  },
+                },
+              },
+            },
             subjects: {
               include: {
-                subject: true,
+                subject: {
+                  include: {
+                    department: true,
+                  },
+                },
               },
             },
           },
         },
       },
       orderBy: {
-        createdAt: "desc",
+        name: "asc",
       },
     });
 
@@ -80,33 +148,94 @@ export async function GET(request: NextRequest) {
     // Map to a simpler structure for client consumption
     const formattedTeachers = teachers
       .map((teacher) => {
-        // TypeScript requires checking for null even though we already filtered
-        if (!teacher.teacher) {
-          return null; // This shouldn't happen due to the filter above
-        }
+        if (!teacher.teacher) return null;
+
+        const activeClasses = teacher.teacher.classes.filter((cls) =>
+          cls.students.some((student) => student.status === "ACTIVE")
+        );
 
         return {
           id: teacher.teacher.id,
+          name: teacher.name,
+          email: teacher.email,
+          profileImage: teacher.profileImage,
+          phone: teacher.teacher.phone,
+          employeeId: teacher.teacher.employeeId,
+          qualifications: teacher.teacher.qualifications,
+          specialization: teacher.teacher.specialization,
+          joiningDate: teacher.teacher.joiningDate,
+          departmentId: teacher.teacher.departmentId,
+          address: teacher.teacher.address,
+          city: teacher.teacher.city,
+          state: teacher.teacher.state,
+          country: teacher.teacher.country,
+          dateOfBirth: teacher.teacher.dateOfBirth,
+          gender: teacher.teacher.gender,
+          emergencyContact: teacher.teacher.emergencyContact,
+          createdAt: teacher.teacher.createdAt,
+          updatedAt: teacher.teacher.updatedAt,
           user: {
             id: teacher.id,
             name: teacher.name,
             email: teacher.email,
             profileImage: teacher.profileImage,
           },
-          phone: teacher.teacher.phone,
-          employeeId: teacher.teacher.employeeId,
-          departmentId: teacher.teacher.departmentId,
           department: teacher.teacher.department,
-          gender: teacher.teacher.gender,
-          qualification: teacher.teacher.qualifications,
-          specialization: teacher.teacher.specialization,
-          subjects: teacher.teacher.subjects,
-          classes: teacher.teacher.classes,
+          subjects: teacher.teacher.subjects.map((s) => ({
+            id: s.subject.id,
+            name: s.subject.name,
+            code: s.subject.code,
+            department: s.subject.department,
+          })),
+          classes: activeClasses.map((c) => ({
+            id: c.id,
+            name: c.name,
+            section: c.section,
+            level: c.level,
+            studentCount: c.students.length,
+          })),
+          stats: {
+            totalSubjects: teacher.teacher.subjects.length,
+            totalClasses: activeClasses.length,
+            totalStudents: activeClasses.reduce(
+              (sum, cls) => sum + cls.students.length,
+              0
+            ),
+          },
         };
       })
-      .filter(Boolean); // Remove any null entries
+      .filter(Boolean) as TeacherData[];
 
-    return NextResponse.json(formattedTeachers);
+    // Calculate total stats
+    const uniqueSubjects = new Set(
+      formattedTeachers.flatMap((teacher) => teacher.subjects.map((s) => s.id))
+    );
+    const uniqueDepartments = new Set(
+      formattedTeachers.map((teacher) => teacher.departmentId).filter(Boolean)
+    );
+    const totalActiveClasses = formattedTeachers.reduce(
+      (sum, teacher) => sum + teacher.stats.totalClasses,
+      0
+    );
+    const totalActiveStudents = formattedTeachers.reduce(
+      (sum, teacher) => sum + teacher.stats.totalStudents,
+      0
+    );
+    const teachersWithClasses = formattedTeachers.filter(
+      (teacher) => teacher.stats.totalClasses > 0
+    ).length;
+
+    return NextResponse.json({
+      teachers: formattedTeachers,
+      stats: {
+        total: formattedTeachers.length,
+        subjects: uniqueSubjects.size,
+        departments: uniqueDepartments.size,
+        withClasses: teachersWithClasses,
+        activeStudents: totalActiveStudents,
+        activeClasses: totalActiveClasses,
+      },
+    });
   } catch (error) {
     console.error("Error fetching teachers:", error);
     return NextResponse.json(
@@ -128,7 +257,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Only admin can create teachers
-  if (!["super_admin", "school_admin"].includes(session.role)) {
+  if (
+    session.role !== UserRole.SUPER_ADMIN &&
+    session.role !== UserRole.SCHOOL_ADMIN
+  ) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 

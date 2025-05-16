@@ -20,14 +20,32 @@ export interface Student {
     name: string
     email: string
     profileImage: string | null
-    rollNumber: string
-    class: string
-    classId: string | null
-    level: string
-    levelId: string | null
-    gender: string
-    parentNames: string
+    rollNumber?: string
+    classes: Array<{
+        id: string
+        class: {
+            id: string
+            name: string
+            section?: string
+            level: {
+                id: string
+                name: string
+            }
+        }
+    }>
+    currentClass?: {
+        id: string
+        name: string
+        section?: string
+        level?: {
+            id: string
+            name: string
+        }
+        rollNumber?: string
+        status: 'ACTIVE' | 'INACTIVE' | 'PENDING'
+    }
     hasParents: boolean
+    parentNames?: string
 }
 
 export const columns: ColumnDef<Student>[] = [
@@ -63,14 +81,37 @@ export const columns: ColumnDef<Student>[] = [
                 </Button>
             )
         },
+        cell: ({ row }) => {
+            const student = row.original;
+            if (!student.currentClass) {
+                return <span className="text-muted-foreground">Not Assigned</span>;
+            }
+
+            const { name, section, level } = student.currentClass;
+            return (
+                <div>
+                    {name}
+                    {section && ` - ${section}`}
+                    {level?.name && ` (${level.name})`}
+                </div>
+            );
+        },
     },
     {
         accessorKey: "level",
         header: "Level",
+        cell: ({ row }) => {
+            const student = row.original
+            return student.currentClass?.level?.name || "Not Assigned"
+        }
     },
     {
         accessorKey: "rollNumber",
         header: "Roll Number",
+        cell: ({ row }) => {
+            const student = row.original
+            return student.currentClass?.rollNumber || "-"
+        }
     },
     {
         accessorKey: "parentNames",

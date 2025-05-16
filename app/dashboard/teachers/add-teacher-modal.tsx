@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Loader2, Camera, Upload, X, Mail, CheckCircle, AlertCircle } from "lucide-react"
+import { Loader2, Camera, Upload, X, Mail, CheckCircle, AlertCircle, XCircle } from "lucide-react"
 import { UserRole } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { generatePassword } from "@/lib/utils"
@@ -559,18 +559,55 @@ export function AddTeacherModal({
                         </div>
 
                         <DialogFooter className="mt-6">
-                            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+                            <Button
+                                variant="outline"
+                                type="button"
+                                onClick={() => onOpenChange(false)}
+                                disabled={isLoading}
+                            >
                                 Cancel
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                onClick={form.handleSubmit(onSubmit)}
+                                className="relative"
                             >
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isEditMode ? 'Save Changes' : 'Add Teacher'}
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {isEditMode ? 'Saving...' : 'Adding...'}
+                                    </>
+                                ) : (
+                                    <>
+                                        {isEditMode ? 'Save Changes' : 'Add Teacher'}
+                                    </>
+                                )}
                             </Button>
                         </DialogFooter>
+
+                        {/* Show email status if sending credentials */}
+                        {!isEditMode && emailStatus !== 'idle' && (
+                            <div className="mt-4 p-4 rounded-md border">
+                                {emailStatus === 'sending' && (
+                                    <div className="flex items-center text-blue-600">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Sending login credentials...
+                                    </div>
+                                )}
+                                {emailStatus === 'success' && (
+                                    <div className="flex items-center text-green-600">
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Login credentials sent successfully!
+                                    </div>
+                                )}
+                                {emailStatus === 'error' && (
+                                    <div className="flex items-center text-red-600">
+                                        <X className="mr-2 h-4 w-4" />
+                                        {emailError || "Failed to send login credentials"}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </form>
                 </Form>
             </DialogContent>

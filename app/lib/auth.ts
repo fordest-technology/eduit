@@ -1,21 +1,23 @@
 import { getServerSession } from "./session";
+import { UserRole } from "@prisma/client";
 
-export async function getAuthSession() {
+export async function getSession() {
   const session = await getServerSession();
   if (!session) return null;
 
   return {
-    user: {
-      id: session.userId,
-      schoolId: session.schoolId,
-      role: session.role,
-    },
+    id: session.id,
+    name: session.name,
+    email: session.email,
+    role: session.role as UserRole,
+    schoolId: session.schoolId,
+    profileImage: session.profileImage,
   };
 }
 
 export const authOptions = {
   authorize: async (request: Request) => {
     const session = await getServerSession();
-    return session?.user?.role === "SCHOOL_ADMIN";
+    return session?.role === UserRole.SCHOOL_ADMIN;
   },
 };

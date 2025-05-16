@@ -1,0 +1,276 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# API Development Rules for EduIT
+
+## 1. Authentication & Authorization
+
+### Session Management
+```typescript
+// Always use getSession() for authentication
+const session = await getSession();
+if (!session) {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
+```
+
+### Role-Based Access Control
+```typescript
+// Define allowed roles at the start of protected routes
+const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN];
+
+// Check role authorization
+if (!allowedRoles.includes(session.role)) {
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
+```
+
+## 2. Route Structure
+
+### Dynamic Routes
+- Use `[schoolId]` for school-scoped routes
+- Use `[id]` for resource-specific routes
+- Never mix `[id]` and `[schoolId]` at the same path level
+
+### Route Organization
+app/api/
+├── schools/
+│ ├── [schoolId]/
+│ │ └── results/
+│ │ ├── config/
+│ │ └── route.ts
+│ └── route.ts
+└── students/
+├── [id]/
+│ ├── class/
+│ ├── department/
+│ └── parents/
+└── route.ts
+
+## 3. Request Handling
+
+### Input Validation
+```typescript
+// Use Zod for request validation
+const createSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
+});
+
+// Validate in route handlers
+const validationResult = createSchema.safeParse(body);
+if (!validationResult.success) {
+  return NextResponse.json(
+    { errors: validationResult.error.errors },
+    { status: 400 }
+  );
+}
+```
+
+### Error Handling
+```typescript
+try {
+  // Route logic
+} catch (error) {
+  console.error("[ROUTE_NAME]", error);
+  return NextResponse.json(
+    { error: "Internal server error" },
+    { status: 500 }
+  );
+}
+```
+
+## 4. Database Operations
+
+### Prisma Usage
+```typescript
+// Always include schoolId in queries for multi-tenant data
+const data = await prisma.model.findMany({
+  where: {
+    schoolId: session.schoolId,
+    // other conditions
+  },
+  include: {
+    // related data
+  }
+});
+
+// Use transactions for related operations
+const result = await prisma.$transaction(async (tx) => {
+  // Related operations
+});
+```
+
+### Data Validation
+```typescript
+// Check existence and ownership
+const existing = await prisma.model.findFirst({
+  where: {
+    id: params.id,
+    schoolId: session.schoolId,
+  }
+});
+
+if (!existing) {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
+}
+```
+
+## 5. Response Format
+
+### Success Response
+```typescript
+return NextResponse.json({
+  data: result,
+  message: "Operation successful"
+});
+```
+
+### Error Response
+```typescript
+return NextResponse.json({
+  error: "Error message",
+  details: error instanceof Error ? error.message : undefined
+}, { status: 400 });
+```
+
+## 6. Security Best Practices
+
+### School Context
+```typescript
+// Always verify school context
+if (!session.schoolId) {
+  return NextResponse.json({ error: "School context required" }, { status: 400 });
+}
+```
+
+### Data Access Control
+```typescript
+// Verify resource ownership
+const resource = await prisma.model.findFirst({
+  where: {
+    id: params.id,
+    schoolId: session.schoolId
+  }
+});
+```
+
+## 7. Common Patterns
+
+### List Operations
+```typescript
+export async function GET(request: NextRequest) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+  
+  const { searchParams } = new URL(request.url);
+  const filters = {
+    schoolId: session.schoolId,
+    // Add other filters from searchParams
+  };
+
+  const data = await prisma.model.findMany({
+    where: filters,
+    include: {
+      // Include related data
+    }
+  });
+
+  return NextResponse.json(data);
+}
+```
+
+### Create Operations
+```typescript
+export async function POST(request: NextRequest) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+  
+  const body = await request.json();
+  const validationResult = createSchema.safeParse(body);
+  if (!validationResult.success) return validationError(validationResult.error);
+
+  const result = await prisma.model.create({
+    data: {
+      ...validationResult.data,
+      schoolId: session.schoolId
+    }
+  });
+
+  return NextResponse.json(result, { status: 201 });
+}
+```
+
+### Update Operations
+```typescript
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
+  const existing = await verifyOwnership(params.id, session.schoolId);
+  if (!existing) return notFound();
+
+  const body = await request.json();
+  const validationResult = updateSchema.safeParse(body);
+  if (!validationResult.success) return validationError(validationResult.error);
+
+  const result = await prisma.model.update({
+    where: { id: params.id },
+    data: validationResult.data
+  });
+
+  return NextResponse.json(result);
+}
+```
+
+### Delete Operations
+```typescript
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
+  const existing = await verifyOwnership(params.id, session.schoolId);
+  if (!existing) return notFound();
+
+  await prisma.model.delete({
+    where: { id: params.id }
+  });
+
+  return NextResponse.json({ message: "Deleted successfully" });
+}
+```
+
+## 8. Helper Functions
+
+```typescript
+// Common response helpers
+const unauthorized = () => 
+  NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+const forbidden = () => 
+  NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+const notFound = () => 
+  NextResponse.json({ error: "Not found" }, { status: 404 });
+
+const validationError = (error: z.ZodError) => 
+  NextResponse.json({ errors: error.errors }, { status: 400 });
+
+// Ownership verification
+const verifyOwnership = async (id: string, schoolId: string) => {
+  return prisma.model.findFirst({
+    where: { id, schoolId }
+  });
+};
+```
+
+This rule set ensures consistent, secure, and maintainable API development across the project. Follow these patterns to maintain code quality and security standards.
+

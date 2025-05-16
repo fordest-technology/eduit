@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     const auth = await requireAuth(req);
 
-    if (!auth.authenticated) {
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json(
         { error: "You must be logged in to access this resource" },
         { status: 401 }
@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
 // POST to create a new class
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAuth(req, ["super_admin", "school_admin"]);
+    const auth = await requireAuth(req, ["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     if (!auth.authenticated || !auth.authorized || !auth.user) {
       return NextResponse.json(

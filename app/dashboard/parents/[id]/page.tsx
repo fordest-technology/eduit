@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { UserRole } from "@prisma/client";
 import ParentDetails from "./parent-details";
 
 // Define interface for student data
@@ -11,22 +12,22 @@ interface StudentData {
 }
 
 export default async function ParentPage({
-    params,
+    params
 }: {
-    params: { id: string };
+    params: { id: string }
 }) {
     try {
         const session = await getSession();
 
         if (!session) {
-            redirect("/dashboard");
+            redirect("/login");
         }
 
-        // Fetch the parent with their children
+        // Fetch parent with their children
         const parent = await prisma.user.findUnique({
             where: {
                 id: params.id,
-                role: "PARENT",
+                role: UserRole.PARENT,
             },
             include: {
                 parent: {
@@ -39,7 +40,6 @@ export default async function ParentPage({
                                         classes: {
                                             include: {
                                                 class: true,
-                                                session: true,
                                             },
                                         },
                                     },
@@ -52,37 +52,48 @@ export default async function ParentPage({
         });
 
         if (!parent) {
-            redirect("/dashboard/parents");
+            return (
+                <div className="container mx-auto py-10">
+                    <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <h2 className="text-xl font-semibold text-yellow-600 mb-2">Parent Not Found</h2>
+                        <p className="text-yellow-600">
+                            The parent you are looking for does not exist or has been removed.
+                        </p>
+                    </div>
+                </div>
+            );
         }
 
-        // If school admin, ensure they only view parents from their school
-        if (session.role === "school_admin" && parent.schoolId !== session.schoolId) {
-            redirect("/dashboard/parents");
+        // Check if user has permission to view this parent
+        if (session.role === UserRole.SCHOOL_ADMIN && parent.schoolId !== session.schoolId) {
+            return (
+                <div className="container mx-auto py-10">
+                    <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+                        <h2 className="text-xl font-semibold text-red-600 mb-2">Access Denied</h2>
+                        <p className="text-red-600">
+                            You do not have permission to view this parent's information.
+                        </p>
+                    </div>
+                </div>
+            );
         }
 
-        // Get current session and handle optional schoolId
-        let currentSession = null;
+        // Get current academic session
+        const currentSession = await prisma.academicSession.findFirst({
+            where: {
+                isCurrent: true,
+                schoolId: parent.schoolId || undefined,
+            },
+        });
 
-        if (parent.schoolId) {
-            currentSession = await prisma.academicSession.findFirst({
-                where: {
-                    schoolId: parent.schoolId,
-                    isCurrent: true,
-                },
-            });
-        }
-
-        // Format children data for display
-        const children = parent.parent?.children?.map((relation) => {
-            const student = relation.student;
-
-            const currentClass = student.classes && student.classes.length > 0
-                ? student.classes[0].class.name
-                : "Not assigned";
+        // Format children data
+        const children = parent.parent?.children.map((relation) => {
+            const studentClasses = relation.student.classes || [];
+            const currentClass = studentClasses.length > 0 ? studentClasses[0].class.name : "Not assigned";
 
             return {
-                id: student.id,
-                name: student.user?.name || "Unknown",
+                id: relation.student.user.id,
+                name: relation.student.user.name,
                 class: currentClass,
                 relation: relation.relation || "Not specified",
                 linkId: relation.id,
@@ -92,10 +103,10 @@ export default async function ParentPage({
         // Fetch all available students for linking
         const availableStudents: StudentData[] = [];
 
-        if (["super_admin", "school_admin", "teacher"].includes(session.role) && parent.schoolId) {
+        if ([UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER].includes(session.role) && parent.schoolId) {
             const allStudents = await prisma.user.findMany({
                 where: {
-                    role: "STUDENT",
+                    role: UserRole.STUDENT,
                     schoolId: parent.schoolId,
                 },
                 include: {
@@ -135,13 +146,21 @@ export default async function ParentPage({
             }
         }
 
+        const parentData = {
+            id: parent.id,
+            name: parent.name,
+            email: parent.email,
+            profileImage: parent.profileImage,
+            schoolId: parent.schoolId,
+        };
+
         return (
             <div className="container mx-auto py-10">
                 <ParentDetails
-                    parent={parent}
+                    parent={parentData}
                     children={children}
                     availableStudents={availableStudents}
-                    canManage={["super_admin", "school_admin", "teacher"].includes(session.role)}
+                    canManage={[UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER].includes(session.role)}
                 />
             </div>
         );

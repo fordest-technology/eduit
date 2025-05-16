@@ -12,7 +12,7 @@ export default async function AdminPage() {
     const session = await getSession();
 
     if (!session) {
-        redirect("/auth/signin");
+        redirect("/login");
     }
 
     // Only super admins can access this page

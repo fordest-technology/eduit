@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Pencil, Trash2, Loader2, AlertCircle, Search, BookOpen, X, Users } from "lucide-react"
+import { Plus, Pencil, Trash2, Loader2, AlertCircle, Search, BookOpen, X, Users, GraduationCap } from "lucide-react"
 import { toast } from "sonner"
 import {
     Select,
@@ -28,6 +28,13 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
+import { SubjectsDialog } from "./subjects-dialog"
+import { DataTable } from "@/components/ui/data-table"
+import { ColumnDef, Row } from "@tanstack/react-table"
+import { TeacherAssignmentModal } from "./teacher-assignment-modal"
+import { ClassAssignmentModal } from "./class-assignment-modal"
+import { UserRole } from "@/lib/auth"
+import { useColors } from "@/contexts/color-context"
 
 interface Department {
     id: string
@@ -44,6 +51,7 @@ interface Teacher {
     id: string
     name: string
     profileImage?: string | null
+    userId: string
 }
 
 interface SubjectTeacher {
@@ -56,185 +64,65 @@ interface Subject {
     code: string | null
     description: string | null
     departmentId: string | null
-    department: Department | null
+    department: {
+        id: string
+        name: string
+    } | null
     levelId: string | null
-    level: SchoolLevel | null
-    teachers: SubjectTeacher[]
-    _count?: {
+    level: {
+        id: string
+        name: string
+    } | null
+    teachers: {
+        teacher: {
+            id: string
+            name: string
+            profileImage: string | null
+            userId: string
+        }
+    }[] | undefined
+    _count: {
         classes: number
+        teachers?: number
     }
+}
+
+interface Class {
+    id: string
+    name: string
+    section?: string | null
 }
 
 interface SubjectsTableProps {
-    initialSubjects?: Subject[]
-    teachers: {
-        id: string
-        name: string
-        profileImage: string | null
-    }[]
-    userRole: string
+    userRole: UserRole
     schoolId: string
+    teachers: Teacher[]
+    classes: Class[]
+    initialSubjects: Subject[]
+    departments: Department[]
+    levels: SchoolLevel[]
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
 }
 
-// Add TeacherAssignmentModal component
-interface TeacherAssignmentModalProps {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    subject: Subject | null
-    teachers: {
-        id: string
-        name: string
-        profileImage: string | null
-    }[]
-    onAssignTeachers: (subjectId: string, teacherIds: string[]) => Promise<void>
-}
-
-function TeacherAssignmentModal({ open, onOpenChange, subject, teachers, onAssignTeachers }: TeacherAssignmentModalProps) {
-    const [isLoading, setIsLoading] = useState(false)
-    const [selectedTeachers, setSelectedTeachers] = useState<string[]>([])
-    const [currentTeacherIds, setCurrentTeacherIds] = useState<string[]>([])
-    const [searchQuery, setSearchQuery] = useState("")
-
-    useEffect(() => {
-        if (subject && open) {
-            // Extract current teacher IDs from subject
-            const teacherIds = subject.teachers.map(t => t.teacher.id)
-            setSelectedTeachers(teacherIds)
-            setCurrentTeacherIds(teacherIds)
-        } else {
-            setSelectedTeachers([])
-            setCurrentTeacherIds([])
-        }
-    }, [subject, open])
-
-    const filteredTeachers = teachers.filter(teacher =>
-        teacher.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-
-    const handleToggleTeacher = (teacherId: string) => {
-        setSelectedTeachers(prev =>
-            prev.includes(teacherId)
-                ? prev.filter(id => id !== teacherId)
-                : [...prev, teacherId]
-        )
-    }
-
-    const handleSubmit = async () => {
-        if (!subject) return
-
-        setIsLoading(true)
-        try {
-            await onAssignTeachers(subject.id, selectedTeachers)
-            onOpenChange(false)
-            toast.success("Teachers assigned successfully")
-        } catch (error) {
-            console.error("Error assigning teachers:", error)
-            toast.error("Failed to assign teachers")
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Assign Teachers</DialogTitle>
-                    <DialogDescription>
-                        {subject ? `Assign teachers to ${subject.name}` : 'Select teachers to assign'}
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4 py-2">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                            type="search"
-                            placeholder="Search teachers..."
-                            className="pl-9"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="border rounded-md max-h-[300px] overflow-y-auto">
-                        {filteredTeachers.length === 0 ? (
-                            <div className="p-4 text-center text-muted-foreground">
-                                No teachers found
-                            </div>
-                        ) : (
-                            <div className="divide-y">
-                                {filteredTeachers.map(teacher => (
-                                    <div
-                                        key={teacher.id}
-                                        className="flex items-center p-3 hover:bg-secondary/10 cursor-pointer"
-                                        onClick={() => handleToggleTeacher(teacher.id)}
-                                    >
-                                        <div className="flex-1 flex items-center space-x-3">
-                                            <Avatar className="h-8 w-8">
-                                                {teacher.profileImage ? (
-                                                    <AvatarImage src={teacher.profileImage} alt={teacher.name} />
-                                                ) : (
-                                                    <AvatarFallback>{teacher.name.charAt(0)}</AvatarFallback>
-                                                )}
-                                            </Avatar>
-                                            <span>{teacher.name}</span>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedTeachers.includes(teacher.id)}
-                                            onChange={() => { }} // Handled by div click
-                                            className="h-4 w-4"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="text-sm text-muted-foreground">
-                        {selectedTeachers.length} teachers selected
-                    </div>
-                </div>
-
-                <DialogFooter>
-                    <Button
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                        disabled={isLoading}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={isLoading || JSON.stringify(currentTeacherIds.sort()) === JSON.stringify(selectedTeachers.sort())}
-                    >
-                        {isLoading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Assigning...
-                            </>
-                        ) : (
-                            "Assign Teachers"
-                        )}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
-export function SubjectsTable({ initialSubjects = [], teachers, userRole, schoolId }: SubjectsTableProps) {
-    const [subjects, setSubjects] = useState<Subject[]>(initialSubjects)
-    const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>(initialSubjects)
-    const [departments, setDepartments] = useState<Department[]>([])
-    const [levels, setLevels] = useState<SchoolLevel[]>([])
+export function SubjectsTable({
+    userRole,
+    schoolId,
+    teachers,
+    classes,
+    initialSubjects,
+    departments: initialDepartments = [],
+    levels: initialLevels = [],
+    open,
+    onOpenChange
+}: SubjectsTableProps) {
+    const [subjects, setSubjects] = useState<Subject[]>(initialSubjects || [])
+    const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>(initialSubjects || [])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
-    const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(true)
-    const [isLevelsLoading, setIsLevelsLoading] = useState(true)
+    const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(false)
+    const [isLevelsLoading, setIsLevelsLoading] = useState(false)
     const [departmentsError, setDepartmentsError] = useState<string | null>(null)
     const [levelsError, setLevelsError] = useState<string | null>(null)
     const [isSubjectsLoading, setIsSubjectsLoading] = useState(false)
@@ -249,23 +137,24 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
         departmentId: "none",
         levelId: "none"
     })
+    const [departments, setDepartments] = useState<Department[]>(initialDepartments)
+    const [levels, setLevels] = useState<SchoolLevel[]>(initialLevels)
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
-    // Add state for teacher assignment modal
     const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false)
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
+    const [isClassModalOpen, setIsClassModalOpen] = useState(false)
 
-    // Fetch subjects if not provided
+    const colors = useColors()
+
     useEffect(() => {
         if (initialSubjects.length === 0) {
             fetchSubjects()
         }
     }, [initialSubjects])
 
-    // Apply filters when subjects, search query, or filters change
     useEffect(() => {
         let result = [...subjects]
 
-        // Apply search filter
         if (searchQuery) {
             const query = searchQuery.toLowerCase()
             result = result.filter(
@@ -276,7 +165,6 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
             )
         }
 
-        // Apply level filter
         if (filterLevel !== "all") {
             if (filterLevel === "none") {
                 result = result.filter(subject => !subject.levelId)
@@ -285,7 +173,6 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
             }
         }
 
-        // Apply department filter
         if (filterDepartment !== "all") {
             if (filterDepartment === "none") {
                 result = result.filter(subject => !subject.departmentId)
@@ -317,7 +204,6 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
     }
 
     useEffect(() => {
-        // Fetch departments
         const fetchDepartments = async () => {
             setIsDepartmentsLoading(true)
             setDepartmentsError(null)
@@ -336,7 +222,6 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
             }
         }
 
-        // Fetch school levels
         const fetchLevels = async () => {
             setIsLevelsLoading(true)
             setLevelsError(null)
@@ -359,30 +244,32 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
         fetchLevels()
     }, [])
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const openAddDialog = () => {
+        setEditingSubject(null)
+        setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none" })
+        setIsDialogOpen(true)
+    }
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setIsLoading(true)
 
         try {
-            const url = editingSubject
-                ? `/api/subjects/${editingSubject.id}`
-                : "/api/subjects"
-            const method = editingSubject ? "PUT" : "POST"
-
-            // Convert "none" values to empty string
-            const submissionData = {
-                ...formData,
-                departmentId: formData.departmentId === "none" ? "" : formData.departmentId,
-                levelId: formData.levelId === "none" ? "" : formData.levelId,
+            const payload = {
+                name: formData.name,
+                code: formData.code || null,
+                description: formData.description || null,
+                departmentId: formData.departmentId === "none" ? null : formData.departmentId,
+                levelId: formData.levelId === "none" ? null : formData.levelId,
                 schoolId
             }
 
-            const response = await fetch(url, {
-                method,
+            const response = await fetch(editingSubject ? `/api/subjects/${editingSubject.id}` : "/api/subjects", {
+                method: editingSubject ? "PATCH" : "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(submissionData),
+                body: JSON.stringify(payload),
             })
 
             if (!response.ok) {
@@ -390,18 +277,19 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
                 throw new Error(errorData.error || "Failed to save subject")
             }
 
-            const data = await response.json()
+            const savedSubject = await response.json()
 
             if (editingSubject) {
-                setSubjects(subjects.map(s => s.id === editingSubject.id ? data : s))
+                setSubjects(subjects.map(s => s.id === editingSubject.id ? savedSubject : s))
+                toast.success("Subject updated successfully")
             } else {
-                setSubjects([...subjects, data])
+                setSubjects([...subjects, savedSubject])
+                toast.success("Subject created successfully")
             }
 
             setIsDialogOpen(false)
             setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none" })
             setEditingSubject(null)
-            toast.success(editingSubject ? "Subject updated" : "Subject created")
         } catch (error: any) {
             console.error("Error saving subject:", error)
             toast.error(error.message || "Failed to save subject")
@@ -455,13 +343,10 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
         setFilterDepartment("all")
     }
 
-    // Check if user can manage subjects
-    const canManageSubjects = userRole === "super_admin" || userRole === "school_admin"
+    const canManageSubjects = userRole === "SUPER_ADMIN" || userRole === "SCHOOL_ADMIN"
 
-    // Add teacher assignment function
     const handleAssignTeachers = async (subjectId: string, teacherIds: string[]) => {
         try {
-            // Call API to update teacher assignments
             const response = await fetch(`/api/subjects/${subjectId}/teachers`, {
                 method: 'PUT',
                 headers: {
@@ -475,28 +360,29 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
                 throw new Error(errorData.error || "Failed to assign teachers")
             }
 
-            // Update local state
-            setSubjects(subjects.map(subject => {
-                if (subject.id === subjectId) {
-                    // Create new teacher objects with the assigned teachers
-                    const newTeachers = teacherIds.map(id => {
-                        const teacherData = teachers.find(t => t.id === id)
-                        return {
-                            teacher: {
-                                id,
-                                name: teacherData?.name || '',
-                                profileImage: teacherData?.profileImage || null
+            setSubjects(prevSubjects =>
+                prevSubjects.map(subject => {
+                    if (subject.id === subjectId) {
+                        const newTeachers = teacherIds.map(id => {
+                            const teacherData = teachers.find(t => t.id === id)
+                            return {
+                                teacher: {
+                                    id,
+                                    name: teacherData?.name || '',
+                                    profileImage: teacherData?.profileImage || null,
+                                    userId: teacherData?.userId || ''
+                                }
                             }
-                        }
-                    })
+                        })
 
-                    return {
-                        ...subject,
-                        teachers: newTeachers
+                        return {
+                            ...subject,
+                            teachers: newTeachers
+                        }
                     }
-                }
-                return subject
-            }))
+                    return subject
+                })
+            )
 
             toast.success("Teachers assigned successfully")
         } catch (error: any) {
@@ -506,92 +392,420 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
         }
     }
 
-    // Add function to open teacher assignment modal
     const openTeacherModal = (subject: Subject) => {
         setSelectedSubject(subject)
         setIsTeacherModalOpen(true)
     }
 
-    return (
-        <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="relative flex-1 w-full sm:w-auto">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                    <Input
-                        type="search"
-                        placeholder="Search subjects..."
-                        className="pl-9 w-full"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    {searchQuery && (
+    const openClassModal = (subject: Subject) => {
+        setSelectedSubject(subject)
+        setIsClassModalOpen(true)
+    }
+
+    const handleAssignClasses = async (subjectId: string, classIds: string[]) => {
+        try {
+            console.log(`Sending class assignment request to /api/subjects/${subjectId}/classes with:`, classIds);
+
+            const response = await fetch(`/api/subjects/${subjectId}/classes`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ classIds }),
+            });
+
+            if (!response.ok) {
+                // Try to extract error message from response
+                let errorMessage = "Failed to assign classes";
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch {
+                    // If we can't parse the JSON, use the status text
+                    errorMessage = `${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            console.log("Class assignment response:", data);
+
+            // Immediately update the local state with the new class count
+            setSubjects(prevSubjects =>
+                prevSubjects.map(subject => {
+                    if (subject.id === subjectId) {
+                        return {
+                            ...subject,
+                            _count: {
+                                ...subject._count,
+                                classes: classIds.length
+                            }
+                        };
+                    }
+                    return subject;
+                })
+            );
+
+            toast.success("Classes assigned successfully");
+
+            // Fetch fresh data to ensure everything is in sync
+            fetchSubjects();
+
+        } catch (error: any) {
+            console.error("Error assigning classes:", error);
+            toast.error(error.message || "Failed to assign classes");
+            throw error;
+        }
+    }
+
+    const columns: ColumnDef<Subject, any>[] = [
+        {
+            id: "name",
+            accessorKey: "name",
+            header: "Name",
+        },
+        {
+            id: "code",
+            accessorKey: "code",
+            header: "Code",
+            cell: ({ row }) => {
+                const subject = row.original as Subject
+                return subject.code || "-"
+            }
+        },
+        {
+            id: "department",
+            accessorKey: "department.name",
+            header: "Department",
+            cell: ({ row }) => {
+                const subject = row.original as Subject
+                return subject.department ? (
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                        {subject.department.name}
+                    </Badge>
+                ) : (
+                    <span className="text-muted-foreground text-xs">General</span>
+                )
+            }
+        },
+        {
+            id: "level",
+            accessorKey: "level.name",
+            header: "Level",
+            cell: ({ row }) => {
+                const subject = row.original as Subject
+                return subject.level ? (
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                        {subject.level.name}
+                    </Badge>
+                ) : (
+                    <span className="text-muted-foreground text-xs">General</span>
+                )
+            }
+        },
+        {
+            id: "teachers",
+            accessorKey: "teachers",
+            header: "Teachers",
+            cell: ({ row }) => {
+                const subject = row.original as Subject
+                return (
+                    <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs font-medium text-secondary">
+                        {Array.isArray(subject.teachers) ? subject.teachers.length : subject._count?.teachers || 0}
+                    </span>
+                )
+            }
+        },
+        {
+            id: "classes",
+            accessorKey: "_count.classes",
+            header: "Classes",
+            cell: ({ row }) => {
+                const subject = row.original as Subject
+                return (
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-600">
+                        {subject._count.classes}
+                    </span>
+                )
+            }
+        },
+        {
+            id: "actions",
+            header: "Actions",
+            cell: ({ row }) => {
+                const subject = row.original as Subject
+                return canManageSubjects ? (
+                    <div className="flex items-center gap-2">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute right-1 top-1 h-7 w-7"
-                            onClick={() => setSearchQuery("")}
+                            onClick={() => openTeacherModal(subject)}
+                            title="Assign Teachers"
+                            disabled={isDeleting === subject.id}
                         >
-                            <X className="h-4 w-4" />
+                            <Users className="w-4 h-4 text-primary" />
                         </Button>
-                    )}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openClassModal(subject)}
+                            title="Assign Classes"
+                            disabled={isDeleting === subject.id}
+                        >
+                            <GraduationCap className="w-4 h-4 text-primary" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(subject)}
+                            disabled={isDeleting === subject.id}
+                        >
+                            <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(subject.id)}
+                            disabled={isDeleting === subject.id}
+                            className="text-destructive"
+                        >
+                            {isDeleting === subject.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Trash2 className="w-4 h-4" />
+                            )}
+                        </Button>
+                    </div>
+                ) : null
+            },
+        },
+    ]
+
+    const table = {
+        columns,
+        data: subjects,
+    }
+
+    return (
+        <>
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex-1 space-y-4 w-full">
+                        <div className="flex flex-col sm:flex-row gap-4 w-full">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="search"
+                                    placeholder="Search subjects..."
+                                    className="pl-9 w-full"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                {searchQuery && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-1 top-1 h-7 w-7 hover:bg-transparent"
+                                        onClick={() => setSearchQuery("")}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <Select value={filterLevel} onValueChange={setFilterLevel}>
+                                    <SelectTrigger className="w-full sm:w-[180px]">
+                                        <SelectValue placeholder="Filter by level" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Levels</SelectItem>
+                                        <SelectItem value="none">No Level</SelectItem>
+                                        {levels.map(level => (
+                                            <SelectItem key={level.id} value={level.id}>{level.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                                    <SelectTrigger className="w-full sm:w-[180px]">
+                                        <SelectValue placeholder="Filter by department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Departments</SelectItem>
+                                        <SelectItem value="none">No Department</SelectItem>
+                                        {departments.map(dept => (
+                                            <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {canManageSubjects && (
+                                    <Button
+                                        onClick={openAddDialog}
+                                        className="gap-1"
+                                        style={{
+                                            backgroundColor: colors.primaryColor,
+                                            color: 'white',
+                                        }}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        <span>Add Subject</span>
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <Select value={filterLevel} onValueChange={setFilterLevel}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Filter by level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Levels</SelectItem>
-                            <SelectItem value="none">No Level</SelectItem>
-                            {levels.map(level => (
-                                <SelectItem key={level.id} value={level.id}>{level.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                {subjectsError && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{subjectsError}</AlertDescription>
+                    </Alert>
+                )}
 
-                    <Select value={filterDepartment} onValueChange={setFilterDepartment}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Filter by department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Departments</SelectItem>
-                            <SelectItem value="none">No Department</SelectItem>
-                            {departments.map(dept => (
-                                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                {isSubjectsLoading ? (
+                    <div className="space-y-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                ) : (
+                    <Card className="border border-border/60 shadow-sm">
+                        <CardContent className="p-0">
+                            <div className="w-full overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Code</TableHead>
+                                            <TableHead>Department</TableHead>
+                                            <TableHead>Level</TableHead>
+                                            <TableHead>Teachers</TableHead>
+                                            <TableHead>Classes</TableHead>
+                                            {canManageSubjects && <TableHead className="text-right">Actions</TableHead>}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredSubjects.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                                                    No subjects found.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            filteredSubjects.map((subject) => (
+                                                <TableRow key={subject.id} className="hover:bg-primary/5">
+                                                    <TableCell className="font-medium">{subject.name}</TableCell>
+                                                    <TableCell>
+                                                        {subject.code ? (
+                                                            <span className="font-mono text-xs">{subject.code}</span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {subject.department ? (
+                                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                                                {subject.department.name}
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">General</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {subject.level ? (
+                                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                                                {subject.level.name}
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">General</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-600">
+                                                            {Array.isArray(subject.teachers) ? subject.teachers.length : subject._count?.teachers || 0}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-600">
+                                                            {subject._count.classes}
+                                                        </span>
+                                                    </TableCell>
+                                                    {canManageSubjects && (
+                                                        <TableCell className="text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => openTeacherModal(subject)}
+                                                                    title="Assign Teachers"
+                                                                    disabled={isDeleting === subject.id}
+                                                                    className="hover:text-primary"
+                                                                >
+                                                                    <Users className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => openClassModal(subject)}
+                                                                    title="Assign Classes"
+                                                                    disabled={isDeleting === subject.id}
+                                                                    className="hover:text-primary"
+                                                                >
+                                                                    <GraduationCap className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleEdit(subject)}
+                                                                    disabled={isDeleting === subject.id}
+                                                                    className="hover:text-primary"
+                                                                >
+                                                                    <Pencil className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleDelete(subject.id)}
+                                                                    disabled={isDeleting === subject.id}
+                                                                    className="hover:text-destructive"
+                                                                >
+                                                                    {isDeleting === subject.id ? (
+                                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    )}
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
 
-                    {(searchQuery || filterLevel !== "all" || filterDepartment !== "all") && (
-                        <Button variant="outline" onClick={resetFilters} size="sm" className="mt-1 sm:mt-0">
-                            Clear Filters
-                        </Button>
-                    )}
-                </div>
-
-                {canManageSubjects && (
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="whitespace-nowrap" onClick={() => {
-                                setEditingSubject(null)
-                                setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none" })
-                            }}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Subject
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{editingSubject ? "Edit Subject" : "Add New Subject"}</DialogTitle>
-                                <DialogDescription>
-                                    {editingSubject
-                                        ? "Update the subject details below."
-                                        : "Fill in the details to create a new subject."}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSubmit}>
-                                <div className="space-y-4 py-2">
+            {canManageSubjects && (
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                            <DialogTitle>{editingSubject ? "Edit Subject" : "Add New Subject"}</DialogTitle>
+                            <DialogDescription>
+                                {editingSubject
+                                    ? "Update the subject details below."
+                                    : "Fill in the details to create a new subject."}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="grid gap-6">
+                                <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Subject Name</Label>
                                         <Input
@@ -612,7 +826,9 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
                                             placeholder="E.g., MATH101"
                                         />
                                     </div>
+                                </div>
 
+                                <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="department">Department</Label>
                                         <Select
@@ -623,240 +839,77 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
                                                 <SelectValue placeholder="Select a department" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="none">None</SelectItem>
-                                                {isDepartmentsLoading ? (
-                                                    <SelectItem value="loading" disabled>
-                                                        Loading...
+                                                <SelectItem value="none">No Department</SelectItem>
+                                                {departments.map((dept) => (
+                                                    <SelectItem key={dept.id} value={dept.id}>
+                                                        {dept.name}
                                                     </SelectItem>
-                                                ) : departmentsError ? (
-                                                    <SelectItem value="error" disabled>
-                                                        Error loading departments
-                                                    </SelectItem>
-                                                ) : (
-                                                    departments.map((department) => (
-                                                        <SelectItem key={department.id} value={department.id}>
-                                                            {department.name}
-                                                        </SelectItem>
-                                                    ))
-                                                )}
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="level">School Level</Label>
+                                        <Label htmlFor="level">Level</Label>
                                         <Select
                                             value={formData.levelId}
                                             onValueChange={(value) => setFormData({ ...formData, levelId: value })}
                                         >
                                             <SelectTrigger id="level">
-                                                <SelectValue placeholder="Select a school level" />
+                                                <SelectValue placeholder="Select a level" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="none">None</SelectItem>
-                                                {isLevelsLoading ? (
-                                                    <SelectItem value="loading" disabled>
-                                                        Loading...
+                                                <SelectItem value="none">No Level</SelectItem>
+                                                {levels.map((level) => (
+                                                    <SelectItem key={level.id} value={level.id}>
+                                                        {level.name}
                                                     </SelectItem>
-                                                ) : levelsError ? (
-                                                    <SelectItem value="error" disabled>
-                                                        Error loading school levels
-                                                    </SelectItem>
-                                                ) : (
-                                                    levels.map((level) => (
-                                                        <SelectItem key={level.id} value={level.id}>
-                                                            {level.name}
-                                                        </SelectItem>
-                                                    ))
-                                                )}
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="description">Description</Label>
-                                        <Textarea
-                                            id="description"
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder="Enter subject description"
-                                            rows={3}
-                                        />
-                                    </div>
                                 </div>
-                                <DialogFooter>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setIsDialogOpen(false)}
-                                        disabled={isLoading}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={isLoading}
-                                    >
-                                        {isLoading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                {editingSubject ? "Updating..." : "Creating..."}
-                                            </>
-                                        ) : (
-                                            editingSubject ? "Update" : "Create"
-                                        )}
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                )}
-            </div>
 
-            {subjectsError && (
-                <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{subjectsError}</AlertDescription>
-                </Alert>
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">Description</Label>
+                                    <Textarea
+                                        id="description"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        placeholder="Enter subject description"
+                                        rows={3}
+                                    />
+                                </div>
+                            </div>
+
+                            <DialogFooter>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsDialogOpen(false)}
+                                    disabled={isLoading}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            {editingSubject ? "Updating..." : "Creating..."}
+                                        </>
+                                    ) : (
+                                        editingSubject ? "Update" : "Create"
+                                    )}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             )}
 
-            {isSubjectsLoading ? (
-                <div className="space-y-2">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-            ) : (
-                <Card className="border border-border/60 shadow-sm">
-                    <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Code</TableHead>
-                                    <TableHead>Department</TableHead>
-                                    <TableHead>Level</TableHead>
-                                    <TableHead>Teachers</TableHead>
-                                    <TableHead>Classes</TableHead>
-                                    {canManageSubjects && <TableHead className="w-[100px]">Actions</TableHead>}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredSubjects.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={canManageSubjects ? 7 : 6} className="text-center py-8 text-muted-foreground">
-                                            {searchQuery || filterLevel !== "all" || filterDepartment !== "all" ? (
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <BookOpen className="h-10 w-10 text-muted-foreground/50" />
-                                                    <p>No subjects match your search criteria</p>
-                                                    <Button variant="outline" size="sm" onClick={resetFilters}>
-                                                        Clear Filters
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <BookOpen className="h-10 w-10 text-muted-foreground/50" />
-                                                    <p>No subjects found. {canManageSubjects && "Create your first subject to get started."}</p>
-                                                    {canManageSubjects && (
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                setEditingSubject(null)
-                                                                setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none" })
-                                                                setIsDialogOpen(true)
-                                                            }}
-                                                        >
-                                                            <Plus className="h-4 w-4 mr-2" />
-                                                            Add Subject
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredSubjects.map((subject) => (
-                                        <TableRow key={subject.id} className="hover:bg-primary/5">
-                                            <TableCell className="font-medium">{subject.name}</TableCell>
-                                            <TableCell>{subject.code || "-"}</TableCell>
-                                            <TableCell>
-                                                {subject.department ? (
-                                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                                        {subject.department.name}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-xs">General</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {subject.level ? (
-                                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                                        {subject.level.name}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-xs">General</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <span
-                                                    className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs font-medium text-secondary cursor-pointer hover:bg-secondary/20"
-                                                    onClick={() => canManageSubjects && openTeacherModal(subject)}
-                                                    title={canManageSubjects ? "Click to manage teachers" : ""}
-                                                >
-                                                    {Array.isArray(subject.teachers) ? subject.teachers.length : 0}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-600">
-                                                    {subject._count?.classes || 0}
-                                                </span>
-                                            </TableCell>
-                                            {canManageSubjects && (
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => openTeacherModal(subject)}
-                                                            title="Assign Teachers"
-                                                            disabled={isDeleting === subject.id}
-                                                        >
-                                                            <Users className="w-4 h-4 text-primary" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(subject)}
-                                                            disabled={isDeleting === subject.id}
-                                                        >
-                                                            <Pencil className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDelete(subject.id)}
-                                                            disabled={isDeleting === subject.id}
-                                                            className="text-destructive"
-                                                        >
-                                                            {isDeleting === subject.id ? (
-                                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                            ) : (
-                                                                <Trash2 className="w-4 h-4" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            )}
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Add the teacher assignment modal */}
             <TeacherAssignmentModal
                 open={isTeacherModalOpen}
                 onOpenChange={setIsTeacherModalOpen}
@@ -864,6 +917,21 @@ export function SubjectsTable({ initialSubjects = [], teachers, userRole, school
                 teachers={teachers}
                 onAssignTeachers={handleAssignTeachers}
             />
-        </div>
+
+            <ClassAssignmentModal
+                open={isClassModalOpen}
+                onOpenChange={setIsClassModalOpen}
+                subject={selectedSubject}
+                classes={classes}
+                onAssignClasses={handleAssignClasses}
+            />
+
+            <SubjectsDialog
+                open={open || false}
+                onOpenChange={onOpenChange || (() => { })}
+                departments={departments}
+                levels={levels}
+            />
+        </>
     )
 } 

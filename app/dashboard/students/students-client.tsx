@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { columns, Student } from "./columns"
+import { columns } from "./columns"
 import { Button } from "@/components/ui/button"
 import { Plus, Users, GraduationCap, School, Search, X } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,6 +35,13 @@ import {
 } from "@/components/ui/select"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+
+interface StudentParams {
+    classId?: string;
+    departmentId?: string;
+    notInClassId?: string;
+}
 
 export interface StudentStats {
     total: number
@@ -49,61 +56,83 @@ export interface StudentsClientProps {
     error?: string
 }
 
-export function StudentsClient({ students, stats, error }: StudentsClientProps) {
+export interface Student {
+    id: string
+    name: string
+    email: string
+    profileImage: string | null
+    rollNumber?: string
+    classId?: string
+    classes: Array<{
+        id: string
+        class: {
+            id: string
+            name: string
+            section?: string
+            level: {
+                id: string
+                name: string
+            }
+        }
+    }>
+    currentClass?: {
+        name: string
+        id: string
+        level: {
+            id: string
+            name: string
+        }
+    }
+    hasParents: boolean
+    parentNames?: string
+    schoolId?: string
+}
+
+export function StudentsClient({ students: initialStudents, stats, error: initialError }: StudentsClientProps) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-    const [filteredStudents, setFilteredStudents] = useState<Student[]>(students)
+    const [filteredStudents, setFilteredStudents] = useState<Student[]>(initialStudents)
     const [searchQuery, setSearchQuery] = useState("")
     const [filterLevel, setFilterLevel] = useState("all")
     const [filterClass, setFilterClass] = useState("all")
     const [levels, setLevels] = useState<{ id: string, name: string }[]>([])
     const [classes, setClasses] = useState<{ id: string, name: string }[]>([])
     const router = useRouter()
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(initialError || null)
+    const [selectedClass, setSelectedClass] = useState<string>('')
+    const [selectedDepartment, setSelectedDepartment] = useState<string>('')
 
-    // Add fetchStudents function to refresh data from API
-    const fetchStudents = async () => {
-        try {
-            const response = await fetch('/api/students', {
-                method: 'GET',
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache',
-                },
-            })
+    useEffect(() => {
+        async function getStudents() {
+            try {
+                setIsLoading(true)
+                setError(null)
+                const response = await fetch(`/api/students?${new URLSearchParams({
+                    ...(selectedClass && { classId: selectedClass }),
+                    ...(selectedDepartment && { departmentId: selectedDepartment })
+                })}`)
 
-            if (!response.ok) {
-                throw new Error(`Error fetching students: ${response.status}`)
+                if (!response.ok) {
+                    throw new Error('Failed to fetch students')
+                }
+
+                const data = await response.json()
+                if (Array.isArray(data)) {
+                    setFilteredStudents(data)
+                } else {
+                    console.error('Invalid response format:', data)
+                    setError('Invalid response format from server')
+                }
+            } catch (err) {
+                setError('Failed to fetch students')
+                console.error('Error fetching students:', err)
+            } finally {
+                setIsLoading(false)
             }
-
-            const data = await response.json()
-
-            if (data && Array.isArray(data)) {
-                // Format data for component use
-                const formattedData = data.map((student: any) => ({
-                    id: student.id,
-                    name: student.user.name,
-                    email: student.user.email,
-                    profileImage: student.user.profileImage,
-                    rollNumber: student.rollNumber || "",
-                    class: student.className || "Not Assigned",
-                    classId: student.classId,
-                    level: student.level || "Not Assigned",
-                    levelId: student.levelId,
-                    gender: student.gender || "",
-                    parentNames: student.parentNames || "",
-                    hasParents: !!student.parentCount && student.parentCount > 0,
-                }))
-
-                console.log("Formatted student data:", formattedData.length, "students processed")
-                setFilteredStudents(formattedData)
-            } else {
-                console.error("Invalid data format received:", data)
-            }
-        } catch (error) {
-            console.error("Error fetching students:", error)
-            toast.error("Failed to fetch students. Please try again.")
         }
-    }
+        getStudents()
+    }, [selectedClass, selectedDepartment])
 
     useEffect(() => {
         // Fetch levels for filtering
@@ -113,8 +142,9 @@ export function StudentsClient({ students, stats, error }: StudentsClientProps) 
                 if (!response.ok) throw new Error('Failed to fetch school levels')
                 const data = await response.json()
                 setLevels(data)
-            } catch (error) {
-                console.error('Error fetching levels:', error)
+            } catch (err) {
+                console.error('Error fetching levels:', err)
+                setError('Failed to fetch levels')
             }
         }
 
@@ -125,8 +155,9 @@ export function StudentsClient({ students, stats, error }: StudentsClientProps) 
                 if (!response.ok) throw new Error('Failed to fetch classes')
                 const data = await response.json()
                 setClasses(data)
-            } catch (error) {
-                console.error('Error fetching classes:', error)
+            } catch (err) {
+                console.error('Error fetching classes:', err)
+                setError('Failed to fetch classes')
             }
         }
 
@@ -135,43 +166,74 @@ export function StudentsClient({ students, stats, error }: StudentsClientProps) 
     }, [])
 
     useEffect(() => {
-        let filtered = [...students]
+        let filtered = [...initialStudents]
 
         // Apply search filter
         if (searchQuery) {
             filtered = filtered.filter((student) =>
                 student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                student.class.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                student.level.toLowerCase().includes(searchQuery.toLowerCase())
+                (student.currentClass?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (student.currentClass?.level.name || "").toLowerCase().includes(searchQuery.toLowerCase())
             )
+        }
+
+        // Apply class filter using the classes array
+        if (filterClass !== "all" && filterClass !== "none") {
+            filtered = filtered.filter(student =>
+                student.classes.some(cls => cls.class.id === filterClass)
+            )
+        } else if (filterClass === "none") {
+            filtered = filtered.filter(student => !student.classes.length)
         }
 
         // Apply level filter
         if (filterLevel !== "all" && filterLevel !== "none") {
-            filtered = filtered.filter(student => student.levelId === filterLevel)
+            filtered = filtered.filter(student => student.currentClass?.level.id === filterLevel)
         } else if (filterLevel === "none") {
-            filtered = filtered.filter(student => !student.levelId)
-        }
-
-        // Apply class filter
-        if (filterClass !== "all" && filterClass !== "none") {
-            filtered = filtered.filter(student => student.classId === filterClass)
-        } else if (filterClass === "none") {
-            filtered = filtered.filter(student => !student.classId)
+            filtered = filtered.filter(student => !student.currentClass?.level)
         }
 
         setFilteredStudents(filtered)
-    }, [searchQuery, filterLevel, filterClass, students])
+    }, [searchQuery, filterLevel, filterClass, initialStudents])
 
-    const handleSuccess = () => {
-        // Fetch the latest student data
-        fetchStudents()
-        // Refresh the page to update server components
-        router.refresh()
-        // Close the modal
-        setIsAddModalOpen(false)
-        setSelectedStudent(null)
+    useEffect(() => {
+        initialStudents.forEach(student => {
+            if (student.schoolId) {
+                console.log('School ID for student', student.id, ':', student.schoolId);
+            }
+        });
+    }, [initialStudents]);
+
+    const handleSuccess = async () => {
+        try {
+            // Fetch the latest student data
+            const response = await fetch('/api/students', {
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch updated students');
+            }
+
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setFilteredStudents(data);
+            }
+
+            // Close the modal
+            setIsAddModalOpen(false);
+            setSelectedStudent(null);
+
+            // Show success message
+            toast.success("Student created successfully");
+        } catch (error) {
+            console.error('Error refreshing students:', error);
+            toast.error('Failed to refresh student list');
+        }
     }
 
     const resetFilters = () => {
@@ -351,31 +413,46 @@ export function StudentsClient({ students, stats, error }: StudentsClientProps) 
                                                         <Avatar className="h-8 w-8">
                                                             <AvatarImage
                                                                 src={student.profileImage || ""}
-                                                                alt={student.name}
+                                                                alt={student.name || "Student"}
                                                             />
                                                             <AvatarFallback>
-                                                                {student.name.charAt(0)}
+                                                                {(student.name || "S").charAt(0).toUpperCase()}
                                                             </AvatarFallback>
                                                         </Avatar>
                                                         <div>
-                                                            <p className="font-medium">{student.name}</p>
-                                                            <p className="text-sm text-muted-foreground">{student.email}</p>
+                                                            {student.name ? (
+                                                                <p className="font-medium">{student.name}</p>
+                                                            ) : (
+                                                                <Skeleton className="h-4 w-24" />
+                                                            )}
+                                                            {student.email ? (
+                                                                <p className="text-sm text-muted-foreground">{student.email}</p>
+                                                            ) : (
+                                                                <Skeleton className="h-3 w-32" />
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {student.class && student.class !== "Not Assigned" ? (
-                                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                                            {student.class}
-                                                        </Badge>
+                                                    {student.currentClass ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                                                {student.currentClass.name}
+                                                            </Badge>
+                                                            {student.classes.length > 1 && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    +{student.classes.length - 1} more classes
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     ) : (
                                                         <span className="text-muted-foreground text-xs">Not Assigned</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {student.level ? (
+                                                    {student.currentClass?.level ? (
                                                         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                                            {student.level}
+                                                            {student.currentClass.level.name}
                                                         </Badge>
                                                     ) : (
                                                         <span className="text-muted-foreground text-xs">Not Assigned</span>
@@ -469,4 +546,56 @@ export function StudentsClient({ students, stats, error }: StudentsClientProps) 
             />
         </div>
     )
+}
+
+export async function fetchStudents(params: StudentParams): Promise<Student[]> {
+    const searchParams = new URLSearchParams();
+    if (params.classId) searchParams.set('classId', params.classId);
+    if (params.departmentId) searchParams.set('departmentId', params.departmentId);
+    if (params.notInClassId) searchParams.set('notInClassId', params.notInClassId);
+
+    const response = await fetch(`/api/students?${searchParams.toString()}`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch students');
+    }
+
+    const data = await response.json();
+
+    return data.map((student: any) => {
+        // Properly handle student classes
+        const studentClasses = student.classes?.map((sc: any) => ({
+            id: sc.id,
+            class: {
+                id: sc.class.id,
+                name: sc.class.name,
+                section: sc.class.section,
+                level: {
+                    id: sc.class.level.id,
+                    name: sc.class.level.name
+                }
+            }
+        })) ?? [];
+
+        // Get the current/primary class if any
+        type StudentClass = Student['classes'][0];
+        const currentClass = studentClasses.find((sc: StudentClass) => sc.class.id === student.classId)?.class || studentClasses[0]?.class;
+
+        return {
+            id: student.id,
+            name: student.user?.name ?? '',
+            email: student.user?.email ?? '',
+            profileImage: student.user?.profileImage ?? '',
+            rollNumber: student.rollNumber ?? '',
+            classId: student.classId ?? undefined,
+            classes: studentClasses,
+            currentClass: currentClass ? {
+                id: currentClass.id,
+                name: `${currentClass.level.name}${currentClass.section ? ' ' + currentClass.section : ''}`,
+                level: currentClass.level
+            } : undefined,
+            hasParents: Boolean(student.parents?.length),
+            parentNames: student.parents?.map((p: any) => p.parent.user?.name).filter(Boolean).join(', ') || '',
+            schoolId: student.schoolId
+        };
+    });
 } 

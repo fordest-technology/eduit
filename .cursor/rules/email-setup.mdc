@@ -1,0 +1,296 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Email API Standards
+
+## API Structure
+
+1. **Base Email Endpoint Pattern**
+   ```typescript
+   // Standard email endpoint structure
+   export async function POST(request: Request) {
+     try {
+       const body = await request.json();
+       const { name, email, role, schoolName, password, schoolId, schoolUrl } = body;
+
+       // Input validation
+       if (!name || !email || !role || !schoolName) {
+         return NextResponse.json(
+           { error: "Missing required fields" },
+           { status: 400 }
+         );
+       }
+
+       // Generate debug ID
+       const debugId = generateEmailDebugId();
+
+       // Send email
+       const result = await sendEmail({
+         // Email parameters
+         debugId,
+       });
+
+       return NextResponse.json({
+         success: true,
+         message: "Email sent successfully",
+         debugId,
+         result,
+       });
+     } catch (error: any) {
+       console.error("Error sending email:", error);
+       return NextResponse.json(
+         { error: "Failed to send email", message: error.message },
+         { status: 500 }
+       );
+     }
+   }
+   ```
+
+2. **Debug Endpoint Pattern**
+   ```typescript
+   export async function GET() {
+     try {
+       const emailDebugDir = path.join(process.cwd(), ".email-debug");
+       const apiCalls: Array<any> = [];
+
+       // Create directory if it doesn't exist
+       if (!fs.existsSync(emailDebugDir)) {
+         fs.mkdirSync(emailDebugDir, { recursive: true });
+       }
+
+       // Get email configuration
+       const emailConfig = {
+         emailHost: process.env.EMAIL_HOST || "not configured",
+         emailPort: process.env.EMAIL_PORT || "not configured",
+         emailUser: process.env.EMAIL_USER ? "configured" : "not configured",
+         emailFrom: process.env.EMAIL_FROM || "not configured",
+       };
+
+       return NextResponse.json({
+         apiCalls,
+         emailDebugDir: ".email-debug",
+         emailConfig,
+       });
+     } catch (error: any) {
+       console.error("Error fetching email debug info:", error);
+       return NextResponse.json(
+         { error: "Failed to fetch email debug info", message: error.message },
+         { status: 500 }
+       );
+     }
+   }
+   ```
+
+## Email Types and Interfaces
+
+1. **Email Payload Interface**
+   ```typescript
+   interface EmailPayload {
+     name: string;
+     email: string;
+     role?: string;
+     schoolName?: string;
+     password?: string;
+     schoolId?: string;
+     schoolUrl?: string;
+     debugId: string;
+     // Additional email-specific fields
+   }
+   ```
+
+2. **API Call Tracking Interface**
+   ```typescript
+   interface ApiCallRecord {
+     requestId: string;
+     timestamp: string;
+     email: string;
+     role?: string;
+     success: boolean;
+     error?: string;
+     duration: number;
+     steps: {
+       time: number;
+       msg: string;
+       details?: any;
+       error?: string;
+     }[];
+   }
+   ```
+
+## Email Sending Functions
+
+1. **Base Email Sending Function**
+   ```typescript
+   async function sendEmail({
+     name,
+     email,
+     role,
+     schoolName,
+     schoolUrl = "https://eduit.app",
+     password,
+     schoolId,
+     debugId,
+   }: EmailPayload) {
+     // Implementation
+   }
+   ```
+
+2. **Role-Specific Email Functions**
+   ```typescript
+   async function sendTeacherEmail(payload: EmailPayload) {
+     // Teacher-specific implementation
+   }
+
+   async function sendStudentEmail(payload: EmailPayload) {
+     // Student-specific implementation
+   }
+
+   async function sendParentEmail(payload: EmailPayload) {
+     // Parent-specific implementation
+   }
+   ```
+
+## Debug and Logging
+
+1. **Debug ID Generation**
+   ```typescript
+   function generateEmailDebugId() {
+     return `email-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+   }
+   ```
+
+2. **Debug File Management**
+   ```typescript
+   const debugDir = path.join(process.cwd(), ".email-debug");
+   
+   // Create debug directory
+   if (!fs.existsSync(debugDir)) {
+     fs.mkdirSync(debugDir, { recursive: true });
+   }
+   ```
+
+## Error Handling
+
+1. **Standard Error Response**
+   ```typescript
+   return NextResponse.json(
+     { 
+       error: "Failed to send email", 
+       message: error.message,
+       debugId: debugId 
+     },
+     { status: 500 }
+   );
+   ```
+
+2. **Validation Error Response**
+   ```typescript
+   return NextResponse.json(
+     { error: "Missing required fields" },
+     { status: 400 }
+   );
+   ```
+
+## Security Considerations
+
+1. **Environment Variables**
+   ```typescript
+   const emailConfig = {
+     emailHost: process.env.EMAIL_HOST,
+     emailPort: process.env.EMAIL_PORT,
+     emailUser: process.env.EMAIL_USER,
+     emailFrom: process.env.EMAIL_FROM,
+   };
+   ```
+
+2. **Production Restrictions**
+   ```typescript
+   if (process.env.NODE_ENV === "production") {
+     return NextResponse.json(
+       { error: "This endpoint is not available in production" },
+       { status: 403 }
+     );
+   }
+   ```
+
+## Best Practices
+
+1. **Input Validation**
+   - Validate all required fields
+   - Sanitize email addresses
+   - Check for valid role values
+   - Validate school information
+
+2. **Error Handling**
+   - Use try-catch blocks
+   - Log errors with context
+   - Return meaningful error messages
+   - Include debug IDs in errors
+
+3. **Debug Information**
+   - Generate unique debug IDs
+   - Store email content for debugging
+   - Track API calls
+   - Log timing information
+
+4. **Performance**
+   - Use async/await properly
+   - Implement proper error boundaries
+   - Handle timeouts
+   - Implement retry logic
+
+5. **Security**
+   - Validate input data
+   - Sanitize email content
+   - Protect sensitive information
+   - Implement rate limiting
+
+6. **Maintenance**
+   - Keep debug information organized
+   - Implement proper logging
+   - Monitor email delivery
+   - Track error rates
+
+## Usage Examples
+
+1. **Sending Credentials Email**
+   ```typescript
+   const result = await sendWelcomeEmail({
+     name,
+     email,
+     role,
+     schoolName,
+     schoolUrl,
+     password,
+     schoolId,
+     debugId,
+   });
+   ```
+
+2. **Sending Notification Email**
+   ```typescript
+   const result = await sendNotificationEmail({
+     name,
+     email,
+     notificationType,
+     content,
+     debugId,
+   });
+   ```
+
+3. **Sending Alert Email**
+   ```typescript
+   const result = await sendAlertEmail({
+     name,
+     email,
+     alertType,
+     severity,
+     message,
+     debugId,
+   });
+   ```
+
+
+This rule ensures consistent implementation of email functionality across the application while maintaining security, reliability, and proper error handling. The rule is based on the existing implementation and includes all necessary components for a robust email sending system.

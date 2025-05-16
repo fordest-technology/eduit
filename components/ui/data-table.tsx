@@ -26,8 +26,10 @@ import { Button } from "@/components/ui/button"
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
-    searchKey: string
+    searchKey?: string
     searchPlaceholder?: string
+    filterColumn?: string
+    filterPlaceholder?: string
 }
 
 export function DataTable<TData, TValue>({
@@ -35,10 +37,15 @@ export function DataTable<TData, TValue>({
     data,
     searchKey,
     searchPlaceholder = "Search...",
+    filterColumn,
+    filterPlaceholder,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
     const [globalFilter, setGlobalFilter] = React.useState("")
+
+    const effectiveSearchKey = searchKey || filterColumn || ""
+    const effectivePlaceholder = searchPlaceholder || filterPlaceholder || "Search..."
 
     const table = useReactTable({
         data,
@@ -56,22 +63,26 @@ export function DataTable<TData, TValue>({
         },
     })
 
-    // Initialize the search column when the component mounts
     React.useEffect(() => {
-        const column = table.getColumn(searchKey)
-        if (!column) {
-            console.warn(`Search column "${searchKey}" not found in table columns`)
+        if (effectiveSearchKey) {
+            const column = table.getColumn(effectiveSearchKey)
+            if (!column) {
+                console.warn(`Search column "${effectiveSearchKey}" not found in table columns`)
+            }
         }
-    }, [table, searchKey])
+    }, [table, effectiveSearchKey])
 
     const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value
-        const column = table.getColumn(searchKey)
 
-        if (column) {
-            column.setFilterValue(value)
+        if (effectiveSearchKey) {
+            const column = table.getColumn(effectiveSearchKey)
+            if (column) {
+                column.setFilterValue(value)
+            } else {
+                setGlobalFilter(value)
+            }
         } else {
-            // Fallback to global filter if column doesn't exist
             setGlobalFilter(value)
         }
     }
@@ -80,8 +91,12 @@ export function DataTable<TData, TValue>({
         <div>
             <div className="flex items-center py-4">
                 <Input
-                    placeholder={searchPlaceholder}
-                    value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? globalFilter ?? ""}
+                    placeholder={effectivePlaceholder}
+                    value={
+                        effectiveSearchKey
+                            ? ((table.getColumn(effectiveSearchKey)?.getFilterValue() as string) ?? "")
+                            : globalFilter ?? ""
+                    }
                     onChange={handleSearch}
                     className="max-w-sm"
                 />

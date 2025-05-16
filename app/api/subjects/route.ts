@@ -1,44 +1,55 @@
-import { type NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import prisma from "@/lib/db";
+import * as z from "zod";
 
-export async function GET(request: NextRequest) {
-  const session = await getSession();
+const createSubjectSchema = z.object({
+  name: z.string().min(2),
+  code: z.string().min(2).nullable().optional(),
+  description: z.string().nullable().optional(),
+  departmentId: z.string().nullable().optional(),
+  levelId: z.string().nullable().optional(),
+  schoolId: z.string().optional(),
+});
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const schoolId =
-      session.role === "super_admin"
-        ? searchParams.get("schoolId") || undefined
-        : session.schoolId;
+    const session = await getSession();
 
-    // Get levelId from query params if it exists
-    const levelId = searchParams.get("levelId") || undefined;
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
 
-    // Create the where clause dynamically
-    const whereClause: any = {
-      schoolId: schoolId as string,
-    };
-
-    // Add levelId filter if provided
-    if (levelId) {
-      whereClause.levelId = levelId;
+    if (!session.schoolId) {
+      return new NextResponse("School not found", { status: 404 });
     }
 
     const subjects = await prisma.subject.findMany({
-      where: whereClause,
+      where: {
+        schoolId: session.schoolId,
+      },
       include: {
         department: true,
         level: true,
+        teachers: {
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    profileImage: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         _count: {
           select: {
-            teachers: true,
             classes: true,
-            students: true,
+            teachers: true,
           },
         },
       },
@@ -47,133 +58,97 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(subjects);
+    // Transform the data to match the frontend structure
+    const transformedSubjects = subjects.map((subject) => ({
+      ...subject,
+      teachers: subject.teachers.map((t) => ({
+        teacher: {
+          id: t.teacher.id,
+          name: t.teacher.user.name,
+          profileImage: t.teacher.user.profileImage,
+          userId: t.teacher.user.id,
+        },
+      })),
+    }));
+
+    return NextResponse.json(transformedSubjects);
   } catch (error) {
-    console.error("Error fetching subjects:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch subjects" },
-      { status: 500 }
-    );
+    console.error("[SUBJECTS_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
-  const session = await getSession();
-
-  if (
-    !session ||
-    (session.role !== "super_admin" && session.role !== "school_admin")
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { name, code, description, departmentId, levelId, schoolId } = body;
+    const session = await getSession();
 
-    // Validate required fields
-    if (!name) {
-      return NextResponse.json(
-        { error: "Subject name is required" },
-        { status: 400 }
-      );
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Determine school ID
-    const finalSchoolId =
-      session.role === "super_admin" && schoolId ? schoolId : session.schoolId;
-
-    if (!finalSchoolId) {
-      return NextResponse.json(
-        { error: "School ID is required" },
-        { status: 400 }
-      );
+    if (session.role !== "SUPER_ADMIN" && session.role !== "SCHOOL_ADMIN") {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // If code is provided, check if it already exists in the same school
-    if (code) {
-      const existingSubject = await prisma.subject.findFirst({
-        where: {
-          code,
-          schoolId: finalSchoolId,
+    const json = await req.json();
+    const body = createSubjectSchema.parse(json);
+
+    const subject = await prisma.subject.create({
+      data: {
+        name: body.name,
+        code: body.code || null,
+        description: body.description || null,
+        departmentId: body.departmentId || null,
+        levelId: body.levelId || null,
+        schoolId: session.schoolId!,
+      },
+      include: {
+        department: true,
+        level: true,
+        teachers: {
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    profileImage: true,
+                  },
+                },
+              },
+            },
+          },
         },
-      });
-
-      if (existingSubject) {
-        return NextResponse.json(
-          { error: "A subject with this code already exists in your school" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // If departmentId is provided, verify it belongs to the school
-    if (departmentId) {
-      const department = await prisma.department.findUnique({
-        where: { id: departmentId },
-        select: { schoolId: true },
-      });
-
-      if (!department || department.schoolId !== finalSchoolId) {
-        return NextResponse.json(
-          { error: "Invalid department" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // If levelId is provided, verify it belongs to the school
-    if (levelId) {
-      const level = await prisma.schoolLevel.findUnique({
-        where: { id: levelId },
-        select: { schoolId: true },
-      });
-
-      if (!level || level.schoolId !== finalSchoolId) {
-        return NextResponse.json(
-          { error: "Invalid school level" },
-          { status: 400 }
-        );
-      }
-    }
-
-    try {
-      // Create subject
-      const subject = await prisma.subject.create({
-        data: {
-          name,
-          code: code || null, // Make code null if not provided
-          description,
-          schoolId: finalSchoolId,
-          departmentId: departmentId || null,
-          levelId: levelId || null,
+        _count: {
+          select: {
+            classes: true,
+            teachers: true,
+          },
         },
-        include: {
-          department: true,
-          level: true,
-        },
-      });
+      },
+    });
 
-      return NextResponse.json(subject, { status: 201 });
-    } catch (error: any) {
-      // Handle any other potential database errors
-      console.error("Error creating subject:", error);
-      if (error?.code === "P2002") {
-        return NextResponse.json(
-          { error: "A subject with this code already exists" },
-          { status: 400 }
-        );
-      }
-      return NextResponse.json(
-        { error: "Failed to create subject" },
-        { status: 500 }
-      );
-    }
+    // Transform the data to match the frontend structure
+    const transformedSubject = {
+      ...subject,
+      teachers: subject.teachers.map((t) => ({
+        teacher: {
+          id: t.teacher.id,
+          name: t.teacher.user.name,
+          profileImage: t.teacher.user.profileImage,
+          userId: t.teacher.user.id,
+        },
+      })),
+    };
+
+    return NextResponse.json(transformedSubject);
   } catch (error) {
-    console.error("Error creating subject:", error);
-    return NextResponse.json(
-      { error: "Failed to create subject" },
-      { status: 500 }
-    );
+    if (error instanceof z.ZodError) {
+      return new NextResponse(JSON.stringify(error.issues), { status: 422 });
+    }
+
+    console.error("[SUBJECTS_POST]", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

@@ -8,6 +8,55 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/app/components/dashboard-header"
 
+interface Student {
+    id: string;
+    name: string;
+    email: string;
+    profileImage: string | null;
+    rollNumber: string;
+    classes: Array<{
+        id: string;
+        class: {
+            id: string;
+            name: string;
+            section?: string;
+            level: {
+                id: string;
+                name: string;
+            };
+        };
+        status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
+        rollNumber?: string;
+    }>;
+    currentClass?: {
+        id: string;
+        name: string;
+        section?: string;
+        level?: {
+            id: string;
+            name: string;
+        };
+        rollNumber?: string;
+        status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
+    };
+    hasParents: boolean;
+    parentNames: string;
+}
+
+async function fetchClassById(classId: string) {
+    console.log(`Fetching class with ID: ${classId}`);
+    const res = await fetch(`/api/classes/${classId}`);
+
+    if (!res.ok) {
+        console.error(`Failed to fetch class ${classId}. Status: ${res.status}`);
+        return null;
+    }
+
+    const data = await res.json();
+    console.log(`Class data received for ${classId}:`, data);
+    return data;
+}
+
 export default function StudentsPage() {
     const router = useRouter()
     const [session, setSession] = useState<any>(null)
@@ -16,7 +65,8 @@ export default function StudentsPage() {
         total: 0,
         classes: 0,
         withParents: 0,
-        levels: 0
+        levels: 0,
+        active: 0
     })
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -24,105 +74,101 @@ export default function StudentsPage() {
     useEffect(() => {
         async function fetchSessionAndData() {
             try {
-                // Get session
-                const sessionRes = await fetch('/api/auth/session')
+                setLoading(true);
+                setError(null);
+
+                // First fetch the session
+                const sessionRes = await fetch('/api/auth/session');
                 if (!sessionRes.ok) {
-                    throw new Error('Failed to fetch session')
+                    throw new Error('Failed to fetch session');
                 }
 
-                const sessionData = await sessionRes.json()
-                setSession(sessionData)
-
-                // If no session or not allowed, redirect
+                const sessionData = await sessionRes.json();
                 if (!sessionData) {
-                    router.push("/login")
-                    return
+                    router.push('/auth/signin');
+                    return;
                 }
 
-                // Fetch students data
+                // Check if user has required role
+                const allowedRoles = ['super_admin', 'school_admin', 'teacher'];
+                const userRole = sessionData.role?.toLowerCase();
+                if (!userRole || !allowedRoles.includes(userRole)) {
+                    throw new Error('You do not have permission to access this page');
+                }
+
+                setSession(sessionData);
+
+                // Fetch students data with proper error handling
                 const studentsRes = await fetch('/api/students', {
                     headers: {
                         'Cache-Control': 'no-cache',
                         'Pragma': 'no-cache',
                     },
-                })
+                });
 
                 if (!studentsRes.ok) {
-                    const errorData = await studentsRes.json()
-                    throw new Error(errorData.message || "Failed to fetch students")
+                    const errorData = await studentsRes.json();
+                    throw new Error(errorData.message || "Failed to fetch students");
                 }
 
-                const studentsData = await studentsRes.json()
+                const studentsData = await studentsRes.json() as Student[];
+                console.log('Raw students data from API:', studentsData);
 
-                // Format data for component use
-                const formattedStudents = studentsData.map((student: any) => {
-                    // Ensure student.user exists before accessing properties
-                    const user = student.user || {}
-
-                    return {
-                        id: student.id,
-                        name: user.name || "Unknown",
-                        email: user.email || "",
-                        profileImage: user.profileImage || null,
-                        rollNumber: student.rollNumber || "",
-                        class: student.className || "Not Assigned",
-                        classId: student.classId,
-                        level: student.level || "Not Assigned",
-                        levelId: student.levelId,
-                        gender: student.gender || "",
-                        parentNames: student.parentNames || "",
-                        hasParents: !!student.parentCount && student.parentCount > 0,
-                    }
-                })
-
-                setStudents(formattedStudents)
-
-                // Calculate stats
-                const uniqueClasses = new Set(studentsData.map((s: any) => s.classId).filter(Boolean))
-                const uniqueLevels = new Set(studentsData.map((s: any) => s.levelId).filter(Boolean))
-                const studentsWithParents = studentsData.filter((s: any) => s.parentCount && s.parentCount > 0)
-
-                setStats({
+                // Calculate stats from the transformed data
+                const stats = {
                     total: studentsData.length,
-                    classes: uniqueClasses.size,
-                    withParents: studentsWithParents.length,
-                    levels: uniqueLevels.size
-                })
+                    classes: studentsData.filter((s: Student) =>
+                        s.currentClass && s.currentClass.status === 'ACTIVE'
+                    ).length,
+                    withParents: studentsData.filter((s: Student) => s.hasParents).length,
+                    levels: new Set(studentsData
+                        .filter((s: Student) => s.currentClass?.level?.id && s.currentClass.status === 'ACTIVE')
+                        .map((s: Student) => s.currentClass!.level!.id)
+                    ).size,
+                    active: studentsData.filter((s: Student) =>
+                        s.currentClass?.status === 'ACTIVE'
+                    ).length,
+                };
+
+                console.log('Calculated stats:', stats);
+
+                setStudents(studentsData);
+                setStats(stats);
 
             } catch (error) {
-                console.error("Error:", error)
+                console.error("Error:", error);
                 if (error instanceof Error) {
-                    setError(error.message)
+                    setError(error.message);
                 } else {
-                    setError("An unexpected error occurred")
+                    setError("An unexpected error occurred");
                 }
-                toast.error("Error loading students data")
+                toast.error("Error loading students data");
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
         }
 
-        fetchSessionAndData()
-    }, [router])
+        fetchSessionAndData();
+    }, []);
 
-    // if (loading) {
-    //     return (
-    //         <div className="flex items-center justify-center min-h-screen">
-    //             <Loader2 className="h-8 w-8 animate-spin" />
-    //         </div>
-    //     )
-    // }
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        )
+    }
 
-    // if (error || !session) {
-    //     return (
-    //         <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-    //             <p className="text-red-500">{error || "Not authorized"}</p>
-    //             <Button onClick={() => router.push("/dashboard")}>
-    //                 Back to Dashboard
-    //             </Button>
-    //         </div>
-    //     )
-    // }
+    if (error || !session) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+                <p className="text-destructive">{error || "Not authorized"}</p>
+                <Button onClick={() => router.push("/dashboard")}>
+                    Back to Dashboard
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">

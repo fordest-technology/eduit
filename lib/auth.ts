@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole as PrismaUserRole } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 // In a real app, you would store this in an environment variable
 const JWT_SECRET = new TextEncoder().encode(

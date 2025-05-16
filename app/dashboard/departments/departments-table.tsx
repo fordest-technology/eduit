@@ -20,6 +20,7 @@ import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { UserRole } from "@prisma/client"
 
 interface Department {
     id: string
@@ -34,9 +35,10 @@ interface Department {
 
 interface DepartmentsTableProps {
     departments: Department[]
+    userRole: UserRole
 }
 
-export function DepartmentsTable({ departments: initialDepartments }: DepartmentsTableProps) {
+export function DepartmentsTable({ departments: initialDepartments, userRole }: DepartmentsTableProps) {
     const [departments, setDepartments] = useState(initialDepartments)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isEditMode, setIsEditMode] = useState(false)
@@ -47,6 +49,9 @@ export function DepartmentsTable({ departments: initialDepartments }: Department
         name: "",
         description: "",
     })
+
+    // Check if user has permission to manage departments
+    const canManageDepartments = userRole === UserRole.SUPER_ADMIN || userRole === UserRole.SCHOOL_ADMIN
 
     // Stats summary for the page
     const totalSubjects = departments.reduce((total, dept) => total + (dept._count.subjects || 0), 0);
@@ -141,55 +146,63 @@ export function DepartmentsTable({ departments: initialDepartments }: Department
     return (
         <div className="space-y-6">
             {/* Summary cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
-                    <CardContent className="pt-6 flex items-center">
-                        <div className="rounded-full p-3 bg-primary/10 mr-4">
-                            <BookOpen className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Total Departments</p>
-                            <h3 className="text-2xl font-bold">{departments.length}</h3>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-blue-100 rounded-full">
+                                <Users className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Total Students</p>
+                                <h3 className="text-2xl font-bold text-blue-600">{totalStudents}</h3>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="pt-6 flex items-center">
-                        <div className="rounded-full p-3 bg-primary/10 mr-4">
-                            <Users className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Total Students</p>
-                            <h3 className="text-2xl font-bold">{totalStudents}</h3>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-green-100 rounded-full">
+                                <GraduationCap className="h-6 w-6 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Total Teachers</p>
+                                <h3 className="text-2xl font-bold text-green-600">{totalTeachers}</h3>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="pt-6 flex items-center">
-                        <div className="rounded-full p-3 bg-primary/10 mr-4">
-                            <GraduationCap className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Total Teachers</p>
-                            <h3 className="text-2xl font-bold">{totalTeachers}</h3>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-amber-100 rounded-full">
+                                <BookOpen className="h-6 w-6 text-amber-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Total Subjects</p>
+                                <h3 className="text-2xl font-bold text-amber-600">{totalSubjects}</h3>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Departments List</h2>
-                <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Department
-                </Button>
+                <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
+                {canManageDepartments && (
+                    <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Department
+                    </Button>
+                )}
             </div>
 
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Department Name</TableHead>
+                            <TableHead>Name</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead>Stats</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -199,7 +212,7 @@ export function DepartmentsTable({ departments: initialDepartments }: Department
                         {departments.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
-                                    No departments found. Create your first department to get started.
+                                    No departments found.
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -208,16 +221,25 @@ export function DepartmentsTable({ departments: initialDepartments }: Department
                                     <TableCell className="font-medium">{department.name}</TableCell>
                                     <TableCell>{department.description || "-"}</TableCell>
                                     <TableCell>
-                                        <div className="flex gap-2">
-                                            <Badge variant="outline" className="bg-blue-50 text-blue-600">
-                                                {department._count.students || 0} Students
-                                            </Badge>
-                                            <Badge variant="outline" className="bg-green-50 text-green-600">
-                                                {department._count.teachers || 0} Teachers
-                                            </Badge>
-                                            <Badge variant="outline" className="bg-amber-50 text-amber-600">
-                                                {department._count.subjects} Subjects
-                                            </Badge>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-1.5">
+                                                <Users className="h-4 w-4 text-blue-600" />
+                                                <span className="text-sm font-medium text-blue-600">
+                                                    {department._count.students || 0}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <GraduationCap className="h-4 w-4 text-green-600" />
+                                                <span className="text-sm font-medium text-green-600">
+                                                    {department._count.teachers || 0}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <BookOpen className="h-4 w-4 text-amber-600" />
+                                                <span className="text-sm font-medium text-amber-600">
+                                                    {department._count.subjects}
+                                                </span>
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -227,33 +249,35 @@ export function DepartmentsTable({ departments: initialDepartments }: Department
                                                 size="sm"
                                                 asChild
                                                 className="flex items-center"
-                                                title="View Department Details"
                                             >
                                                 <Link href={`/dashboard/departments/${department.id}`}>
                                                     View Details <ArrowRight className="ml-1 h-4 w-4" />
                                                 </Link>
                                             </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleEdit(department)}
-                                                title="Edit Department"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleDelete(department.id)}
-                                                disabled={isDeleting === department.id}
-                                                title="Delete Department"
-                                            >
-                                                {isDeleting === department.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                                )}
-                                            </Button>
+                                            {canManageDepartments && (
+                                                <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleEdit(department)}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleDelete(department.id)}
+                                                        disabled={isDeleting === department.id}
+                                                        className="text-destructive"
+                                                    >
+                                                        {isDeleting === department.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -263,46 +287,57 @@ export function DepartmentsTable({ departments: initialDepartments }: Department
                 </Table>
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={(open) => !isLoading && setIsDialogOpen(open)}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{isEditMode ? "Edit Department" : "Add New Department"}</DialogTitle>
+                        <DialogTitle>{isEditMode ? 'Edit Department' : 'Create Department'}</DialogTitle>
                         <DialogDescription>
                             {isEditMode
-                                ? "Update department details below and save changes."
-                                : "Create a new academic department for your school."}
+                                ? "Update the department's information below."
+                                : "Add a new department by filling out the information below."}
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Department Name</Label>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-4">
+                            <div>
+                                <Label htmlFor="name">Name</Label>
                                 <Input
                                     id="name"
-                                    placeholder="e.g., Science, Mathematics, Arts"
                                     value={formData.name}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    placeholder="Enter department name"
                                     required
                                 />
                             </div>
-                            <div className="grid gap-2">
+                            <div>
                                 <Label htmlFor="description">Description</Label>
                                 <Textarea
                                     id="description"
-                                    placeholder="Briefly describe this department..."
-                                    rows={3}
                                     value={formData.description}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    placeholder="Enter department description"
+                                    rows={3}
                                 />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" type="button" onClick={resetForm} disabled={isLoading}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsDialogOpen(false)}
+                                disabled={isLoading}
+                            >
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={isLoading}>
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isEditMode ? "Save Changes" : "Create Department"}
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {isEditMode ? 'Updating...' : 'Creating...'}
+                                    </>
+                                ) : (
+                                    isEditMode ? 'Update Department' : 'Create Department'
+                                )}
                             </Button>
                         </DialogFooter>
                     </form>

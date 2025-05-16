@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getSession } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { DepartmentsTable } from "./departments-table"
+import { UserRole } from "@prisma/client"
 
 export default async function DepartmentsPage() {
     const session = await getSession()
@@ -11,8 +12,8 @@ export default async function DepartmentsPage() {
         redirect("/login")
     }
 
-    // Only super_admin and school_admin should have access
-    if (!["super_admin", "school_admin"].includes(session.role)) {
+    // Only SUPER_ADMIN and SCHOOL_ADMIN should have access
+    if (session.role !== UserRole.SUPER_ADMIN && session.role !== UserRole.SCHOOL_ADMIN) {
         redirect("/dashboard")
     }
 
@@ -72,7 +73,7 @@ export default async function DepartmentsPage() {
                 </div>
 
                 {/* Display the departments table */}
-                <DepartmentsTable departments={departments} />
+                <DepartmentsTable departments={departments} userRole={session.role} />
             </div>
         )
     } catch (error) {

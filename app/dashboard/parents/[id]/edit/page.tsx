@@ -2,7 +2,8 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import ParentForm from "../../parent-form";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { UserRole } from "@prisma/client";
+import { type ParentFormData } from "../../types";
 
 export default async function EditParentPage({
     params,
@@ -11,7 +12,16 @@ export default async function EditParentPage({
 }) {
     const session = await getSession();
 
-    if (!session || !["super_admin", "school_admin"].includes(session.role)) {
+    if (!session) {
+        redirect("/login");
+    }
+
+    if (!session.schoolId) {
+        redirect("/dashboard");
+    }
+
+    // Only SUPER_ADMIN and SCHOOL_ADMIN can access this page
+    if (![UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN].includes(session.role as UserRole)) {
         redirect("/dashboard");
     }
 
@@ -19,15 +29,20 @@ export default async function EditParentPage({
     const parent = await prisma.user.findUnique({
         where: {
             id: params.id,
-            role: Role.PARENT,
+            role: UserRole.PARENT,
+            schoolId: session.role === UserRole.SCHOOL_ADMIN ? session.schoolId : undefined,
         },
         select: {
             id: true,
             name: true,
             email: true,
-            phone: true,
             profileImage: true,
             schoolId: true,
+            parent: {
+                select: {
+                    phone: true,
+                }
+            }
         },
     });
 
@@ -35,14 +50,18 @@ export default async function EditParentPage({
         redirect("/dashboard/parents");
     }
 
-    // If school admin, ensure they only edit parents from their school
-    if (session.role === "school_admin" && parent.schoolId !== session.schoolId) {
-        redirect("/dashboard/parents");
-    }
+    const parentData: ParentFormData = {
+        id: parent.id,
+        name: parent.name,
+        email: parent.email,
+        phone: parent.parent?.phone || null,
+        profileImage: parent.profileImage,
+        schoolId: parent.schoolId,
+    };
 
     return (
-        <div className="container mx-auto py-10">
-            <ParentForm parent={parent} />
+        <div className="container py-10">
+            <ParentForm parent={parentData} />
         </div>
     );
 } 

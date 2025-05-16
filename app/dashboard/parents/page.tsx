@@ -9,6 +9,13 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { DashboardHeader } from "@/app/components/dashboard-header"
 import ParentsTable from "./parents-table"
+import { getSession } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
+import { UserRole } from "@prisma/client"
+import { ParentsClient } from "./parents-client"
+import { Suspense } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface UserSession {
     id: string
@@ -32,22 +39,109 @@ interface Parent {
     name: string
     email: string
     profileImage?: string
-    phone?: string
+    phone?: string | null
     childrenCount: number
-    children?: string
+}
+
+interface SchoolColors {
+    primaryColor: string
+    secondaryColor: string
+}
+
+const defaultColors: SchoolColors = {
+    primaryColor: "#3b82f6",
+    secondaryColor: "#1f2937"
+}
+
+async function getData(schoolId: string) {
+    try {
+        const [parents, school] = await Promise.all([
+            prisma.user.findMany({
+                where: {
+                    role: UserRole.PARENT,
+                    schoolId,
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    profileImage: true,
+                    parent: {
+                        select: {
+                            phone: true,
+                            _count: {
+                                select: {
+                                    children: true
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: {
+                    name: "asc"
+                }
+            }),
+            prisma.school.findUnique({
+                where: {
+                    id: schoolId,
+                },
+                select: {
+                    name: true,
+                    primaryColor: true,
+                    secondaryColor: true,
+                }
+            })
+        ])
+
+        return {
+            parents: parents.map(parent => ({
+                id: parent.id,
+                name: parent.name,
+                email: parent.email,
+                profileImage: parent.profileImage,
+                phone: parent.parent?.phone,
+                childrenCount: parent.parent?._count?.children || 0
+            })),
+            schoolColors: {
+                primaryColor: school?.primaryColor || "#3b82f6",
+                secondaryColor: school?.secondaryColor || "#1f2937",
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching data:", error)
+        throw new Error("Failed to load data")
+    }
+}
+
+function StatsSkeleton() {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {[1, 2].map((i) => (
+                <Card key={i}>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center">
+                            <Skeleton className="h-12 w-12 rounded-full mr-4" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-8 w-16" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    )
 }
 
 export default function ParentsPage() {
     const router = useRouter()
-    const [session, setSession] = useState<UserSession | null>(null)
-    const [parents, setParents] = useState<Parent[]>([])
-    const [totalStudents, setTotalStudents] = useState(0)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [schoolData, setSchoolData] = useState<School | null>(null)
+    const [parents, setParents] = useState<Parent[]>([])
+    const [schoolColors, setSchoolColors] = useState<SchoolColors>(defaultColors)
 
     useEffect(() => {
-        async function fetchSessionAndData() {
+        async function fetchData() {
             try {
                 // Get session
                 const sessionRes = await fetch('/api/auth/session')
@@ -55,114 +149,56 @@ export default function ParentsPage() {
                     throw new Error('Failed to fetch session')
                 }
 
-                const sessionData = await sessionRes.json() as UserSession
-                setSession(sessionData)
-
-                // If no session or not allowed, redirect
-                if (!sessionData) {
+                const session = await sessionRes.json()
+                if (!session) {
                     router.push("/login")
                     return
                 }
 
-                // Only admin and school admin can access this page
-                if (sessionData.role !== "SUPER_ADMIN" && sessionData.role !== "SCHOOL_ADMIN") {
-                    toast.error("You don't have permission to access this page")
+                // Only SUPER_ADMIN and SCHOOL_ADMIN can access this page
+                if (![UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN].includes(session.role)) {
                     router.push("/dashboard")
                     return
                 }
 
-                if (!sessionData.schoolId) {
-                    toast.error("No school associated with your account")
-                    router.push("/dashboard")
-                    return
+                // Fetch parents data
+                const parentsRes = await fetch('/api/parents')
+                if (!parentsRes.ok) {
+                    throw new Error('Failed to fetch parents')
                 }
 
-                // Fetch school data
-                const schoolRes = await fetch("/api/schools/current")
-                if (!schoolRes.ok) {
-                    throw new Error('Failed to fetch school data')
+                const data = await parentsRes.json()
+                setParents(data.parents || [])
+                if (data.schoolColors?.primaryColor && data.schoolColors?.secondaryColor) {
+                    setSchoolColors({
+                        primaryColor: data.schoolColors.primaryColor,
+                        secondaryColor: data.schoolColors.secondaryColor
+                    })
                 }
-                const schoolData = await schoolRes.json() as { school: School }
-                setSchoolData(schoolData.school)
-
-                // Fetch existing parents
-                await fetchParents()
-
             } catch (error) {
                 console.error("Error:", error)
-                if (error instanceof Error) {
-                    setError(error.message)
-                    toast.error(error.message)
-                } else {
-                    setError("An unexpected error occurred")
-                    toast.error("An unexpected error occurred")
-                }
+                setError(error instanceof Error ? error.message : "An unexpected error occurred")
+                toast.error("Error loading parents data")
             } finally {
                 setLoading(false)
             }
         }
 
-        fetchSessionAndData()
+        fetchData()
     }, [router])
-
-    const fetchParents = async () => {
-        try {
-            const parentsRes = await fetch("/api/parents")
-            if (!parentsRes.ok) {
-                throw new Error("Failed to fetch parents")
-            }
-
-            const parentsData = await parentsRes.json() as Parent[]
-
-            // Format parent data to include child count and related information
-            const formattedParents = parentsData.map((parent) => ({
-                id: parent.id,
-                name: parent.name,
-                email: parent.email,
-                profileImage: parent.profileImage,
-                phone: parent.phone,
-                childrenCount: parent.childrenCount,
-                children: parent.children
-            }))
-
-            setParents(formattedParents)
-
-            // Calculate total students
-            const totalStudents = formattedParents.reduce((acc, parent) => acc + (parent.childrenCount || 0), 0)
-            setTotalStudents(totalStudents)
-
-            return formattedParents
-        } catch (error) {
-            console.error("Error fetching parents:", error)
-            if (error instanceof Error) {
-                toast.error(error.message)
-            } else {
-                toast.error("Failed to load parents")
-            }
-            return []
-        }
-    }
-
-    const refreshData = async () => {
-        await fetchParents()
-    }
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-muted-foreground">Loading parents data...</p>
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         )
     }
 
-    if (error || !session) {
+    if (error) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
-                <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-bold text-destructive">Error</h2>
-                    <p className="text-muted-foreground">{error || "Not authorized"}</p>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+                <p className="text-red-500">{error}</p>
                 <Button onClick={() => router.push("/dashboard")}>
                     Back to Dashboard
                 </Button>
@@ -171,70 +207,57 @@ export default function ParentsPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <DashboardHeader
-                heading="Parents Management"
-                text="Create and manage parent accounts and link them to students"
-                showBanner={true}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <Users className="mr-2 h-5 w-5" />
-                            Total Parents
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{parents.length}</p>
-                        <p className="text-sm text-blue-600 mt-1">Registered parent accounts</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                            <UserPlus className="mr-2 h-5 w-5" />
-                            Connected Students
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-purple-800">{totalStudents}</p>
-                        <p className="text-sm text-purple-600 mt-1">Students linked to parents</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
-                            <Mail className="mr-2 h-5 w-5" />
-                            Communications
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-emerald-800">
-                            {parents.length > 0 ? "Active" : "None"}
-                        </p>
-                        <p className="text-sm text-emerald-600 mt-1">Parent portal access</p>
-                    </CardContent>
-                </Card>
+        <div className="container py-6">
+            {/* Hero section */}
+            <div
+                className="w-full p-8 mb-6 rounded-lg relative overflow-hidden"
+                style={{
+                    background: `linear-gradient(45deg, ${schoolColors.primaryColor}, ${schoolColors.secondaryColor})`
+                }}
+            >
+                <div className="absolute inset-0 bg-grid-white/15 [mask-image:linear-gradient(0deg,rgba(255,255,255,0.1),rgba(255,255,255,0.5))]"></div>
+                <div className="relative z-10">
+                    <h1 className="text-3xl font-bold text-white mb-2">Parent Management</h1>
+                    <p className="text-white text-opacity-90 max-w-2xl">
+                        Manage parent accounts and their connections with students
+                    </p>
+                </div>
             </div>
 
-            <Card className="border-primary/10 shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className="bg-primary/5 border-b border-primary/10">
-                    <CardTitle>Parents Directory</CardTitle>
-                    <CardDescription>Create, manage, and link parent accounts to students</CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                    <ParentsTable
-                        userRole={session.role}
-                        schoolId={session.schoolId}
-                        initialParents={parents}
-                        onDataChange={refreshData}
-                    />
-                </CardContent>
-            </Card>
+            {/* Stats Cards */}
+            <Suspense fallback={<StatsSkeleton />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <Card>
+                        <CardContent className="pt-6 flex items-center">
+                            <div className="rounded-full p-3 bg-blue-100 mr-4">
+                                <Users className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Total Parents</p>
+                                <h3 className="text-2xl font-bold">{parents.length}</h3>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-6 flex items-center">
+                            <div className="rounded-full p-3 bg-green-100 mr-4">
+                                <Users className="h-6 w-6 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Total Children</p>
+                                <h3 className="text-2xl font-bold">
+                                    {parents.reduce((acc, parent) => acc + parent.childrenCount, 0)}
+                                </h3>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </Suspense>
+
+            {/* Parents Table */}
+            <div className="border rounded-lg overflow-hidden p-6 bg-white">
+                <ParentsClient parents={parents} />
+            </div>
         </div>
     )
 } 

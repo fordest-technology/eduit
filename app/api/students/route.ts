@@ -1,10 +1,14 @@
 import { getSession } from "@/lib/auth";
-import { PrismaClient, UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { mkdir } from "fs/promises";
+import { cookies } from "next/headers";
+import db from "@/lib/db";
+import { uploadImage } from "@/lib/cloudinary";
+import { generatePassword } from "@/lib/utils";
 
 // Helper function to convert BigInt values to numbers for serialization
 function serializeBigInts(data: any): any {
@@ -40,9 +44,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const classId = searchParams.get("classId");
   const departmentId = searchParams.get("departmentId");
-  const notInClassId = searchParams.get("notInClass");
-
-  const prisma = new PrismaClient();
+  const notInClassId = searchParams.get("notInClassId");
 
   try {
     const schoolId = session.schoolId;
@@ -54,17 +56,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the current academic session
-    const currentSession = await prisma.academicSession.findFirst({
+    const currentSession = await db.academicSession.findFirst({
       where: {
         schoolId,
         isCurrent: true,
       },
-      select: {
-        id: true,
-      },
     });
 
-    const currentSessionId = currentSession?.id;
+    if (!currentSession) {
+      return NextResponse.json(
+        { message: "No current academic session found" },
+        { status: 404 }
+      );
+    }
 
     // Base query to find students by school
     let whereClause: any = {
@@ -88,21 +92,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter students NOT in the specified class if notInClassId is provided
-    if (notInClassId && currentSessionId) {
+    if (notInClassId && currentSession.id) {
       whereClause = {
         ...whereClause,
         NOT: {
           classes: {
             some: {
               classId: notInClassId,
-              sessionId: currentSessionId,
+              sessionId: currentSession.id,
             },
           },
         },
       };
     }
 
-    const students = await prisma.student.findMany({
+    const students = await db.student.findMany({
       where: whereClause,
       include: {
         user: {
@@ -114,26 +118,31 @@ export async function GET(request: NextRequest) {
           },
         },
         classes: {
+          where: {
+            sessionId: currentSession.id,
+            status: "ACTIVE",
+          },
           include: {
             class: {
-              include: {
-                level: true,
+              select: {
+                id: true,
+                name: true,
+                section: true,
+                level: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
             session: true,
           },
-          where: {
-            session: {
-              isCurrent: true,
-            },
-          },
-          take: 1,
         },
-        department: true,
         parents: {
-          include: {
+          select: {
             parent: {
-              include: {
+              select: {
                 user: {
                   select: {
                     name: true,
@@ -145,123 +154,198 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      orderBy: {
+        user: {
+          name: "asc",
+        },
+      },
     });
 
-    // Format the response based on query parameters
-    // If we're looking for students not in a class, return a simplified format
-    if (notInClassId) {
-      const simplifiedStudents = students.map((student) => ({
-        id: student.id,
-        name: student.user?.name || "",
-        email: student.user?.email || "",
-        profileImage: student.user?.profileImage || null,
-        department: student.department
-          ? {
-              id: student.department.id,
-              name: student.department.name,
-            }
-          : null,
-      }));
-      return NextResponse.json(simplifiedStudents);
+    if (!students) {
+      return NextResponse.json(
+        { message: "No students found" },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(serializeBigInts(students));
+    // Transform the data to include current class information
+    const transformedStudents = students.map((student) => {
+      // Get current class from the classes array (should only have current active class)
+      const currentClass = student.classes.find((c) => c.status === "ACTIVE");
+
+      return {
+        id: student.id,
+        name: student.user.name,
+        email: student.user.email,
+        profileImage: student.user.profileImage,
+        rollNumber: currentClass?.rollNumber || "",
+        classes: student.classes.map((sc) => ({
+          id: sc.id,
+          class: sc.class,
+          status: sc.status,
+          rollNumber: sc.rollNumber,
+          session: sc.session,
+        })),
+        currentClass: currentClass
+          ? {
+              id: currentClass.class.id,
+              name: currentClass.class.name,
+              section: currentClass.class.section,
+              level: currentClass.class.level,
+              rollNumber: currentClass.rollNumber,
+              status: currentClass.status,
+            }
+          : undefined,
+        hasParents: student.parents.length > 0,
+        parentNames: student.parents.map((p) => p.parent.user.name).join(", "),
+      };
+    });
+
+    return NextResponse.json(transformedStudents);
   } catch (error) {
     console.error("Error fetching students:", error);
     return NextResponse.json(
       { message: "Failed to fetch students" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
-export async function POST(request: NextRequest) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  const schoolId = session.schoolId;
-  if (!schoolId) {
-    return NextResponse.json({ message: "School not found" }, { status: 404 });
-  }
-
-  // Only super admins and school admins can create students
-  if (!["super_admin", "school_admin"].includes(session.role)) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  }
-
-  const prisma = new PrismaClient();
-
+export async function POST(req: Request) {
   try {
-    const formData = await request.formData();
+    // 1. Validate session and get school context
+    const session = await getSession();
+    if (!session?.schoolId) {
+      return NextResponse.json(
+        { message: "Unauthorized - Valid school session required" },
+        { status: 401 }
+      );
+    }
 
-    // Extract user fields
+    // 2. Parse and validate request body
+    const formData = await req.formData();
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-
-    // Extract student-specific fields
-    const admissionDate = formData.get("admissionDate") as string;
     const phone = formData.get("phone") as string;
-    const address = formData.get("address") as string;
-    const dateOfBirth = formData.get("dateOfBirth") as string;
-    const gender = formData.get("gender") as string;
-    const religion = formData.get("religion") as string;
-    const bloodGroup = formData.get("bloodGroup") as string;
-    const state = formData.get("state") as string;
-    const city = formData.get("city") as string;
-    const country = formData.get("country") as string;
-
-    // Extract relationship fields
     const departmentId = formData.get("departmentId") as string;
     const classId = formData.get("classId") as string;
+    const levelId = formData.get("levelId") as string;
     const sessionId = formData.get("sessionId") as string;
     const rollNumber = formData.get("rollNumber") as string;
+    const profileImage = formData.get("profileImage") as File;
+    const dateOfBirth = formData.get("dateOfBirth") as string;
+    const gender = formData.get("gender") as string;
+    const bloodGroup = formData.get("bloodGroup") as string;
+    const religion = formData.get("religion") as string;
+    const address = formData.get("address") as string;
+    const city = formData.get("city") as string;
+    const state = formData.get("state") as string;
+    const country = formData.get("country") as string;
 
-    // Check if email already exists
-    const existingUser = await prisma.user.findFirst({
+    // Validate required fields
+    const validationErrors: Record<string, string> = {};
+
+    if (!name?.trim()) {
+      validationErrors.name = "Name is required";
+    }
+    if (!email?.trim()) {
+      validationErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      validationErrors.email = "Please enter a valid email address";
+    }
+    if (!dateOfBirth) {
+      validationErrors.dateOfBirth = "Date of birth is required";
+    }
+    if (!gender) {
+      validationErrors.gender = "Gender is required";
+    }
+    if (!bloodGroup) {
+      validationErrors.bloodGroup = "Blood group is required";
+    }
+    if (!classId) {
+      validationErrors.classId = "Class is required";
+    }
+    if (!sessionId) {
+      validationErrors.sessionId = "Academic session is required";
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      return NextResponse.json(
+        {
+          message: "Validation failed",
+          errors: validationErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Check for existing user in the same school
+    const existingUser = await db.user.findFirst({
       where: {
-        email,
+        email: { equals: email.toLowerCase(), mode: "insensitive" },
+        schoolId: session.schoolId,
       },
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { message: "Email already in use" },
+        { message: "This email is already registered in your school" },
         { status: 400 }
       );
     }
 
-    // Handle profile image upload if exists
-    let profileImagePath = null;
-    const profileImage = formData.get("profileImage") as File;
+    // 4. Get current academic session if not provided
+    let targetSessionId = sessionId;
+    if (!targetSessionId) {
+      const currentSession = await db.academicSession.findFirst({
+        where: {
+          schoolId: session.schoolId,
+          isCurrent: true,
+        },
+      });
 
-    if (profileImage && profileImage.size > 0) {
+      if (!currentSession) {
+        return NextResponse.json(
+          {
+            message:
+              "No active academic session found. Please set up an academic session first.",
+          },
+          { status: 400 }
+        );
+      }
+      targetSessionId = currentSession.id;
+    }
+
+    // 5. Validate class if provided
+    if (classId) {
+      const classExists = await db.class.findFirst({
+        where: {
+          id: classId,
+          schoolId: session.schoolId,
+        },
+      });
+
+      if (!classExists) {
+        return NextResponse.json(
+          { message: "Selected class not found in your school" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 6. Handle profile image upload if provided
+    let profileImageUrl = null;
+    if (profileImage) {
       try {
-        const bytes = await profileImage.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        // Convert File to base64
+        const buffer = await profileImage.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        const dataUrl = `data:${profileImage.type};base64,${base64}`;
 
-        // Create directory if it doesn't exist
-        const uploadDir = join(process.cwd(), "public", "uploads", "students");
-        await mkdir(uploadDir, { recursive: true });
-
-        // Generate unique filename
-        const filename = `${randomUUID()}-${profileImage.name.replace(
-          /\s/g,
-          "_"
-        )}`;
-        const imagePath = join(uploadDir, filename);
-
-        // Write file
-        await writeFile(imagePath, buffer);
-
-        // Store relative path in database
-        profileImagePath = `/uploads/students/${filename}`;
+        profileImageUrl = await uploadImage(dataUrl);
       } catch (error) {
-        console.error("Error uploading image:", error);
+        console.error("Failed to upload profile image:", error);
         return NextResponse.json(
           { message: "Failed to upload profile image" },
           { status: 500 }
@@ -269,74 +353,92 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Basic validation
-    if (!name || !email) {
-      return NextResponse.json(
-        { message: "Name and email are required" },
-        { status: 400 }
-      );
-    }
-
-    // Set a default password if not provided
-    const hashedPassword = password
-      ? "$2a$10$7ORW.G6oMD2ZmKHIBzp8IOq5hLO8/X1BehBGWQYCuGvjwEJdDmRYu" // Simple example (in production use proper hashing)
-      : "$2a$10$7ORW.G6oMD2ZmKHIBzp8IOq5hLO8/X1BehBGWQYCuGvjwEJdDmRYu"; // "password123" hashed
-
-    // Create student with transaction to ensure everything is created together
-    const student = await prisma.$transaction(async (tx) => {
-      // First create the user record with nested student creation
-      const newUser = await tx.user.create({
+    // 7. Create user and student in a transaction
+    const result = await db.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
         data: {
-          name,
-          email,
-          password: hashedPassword,
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          password: password || generatePassword(),
           role: UserRole.STUDENT,
-          schoolId,
-          profileImage: profileImagePath,
-          student: {
-            create: {
-              admissionDate: admissionDate ? new Date(admissionDate) : null,
-              phone: phone || null,
-              address: address || null,
-              dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-              gender: gender || null,
-              religion: religion || null,
-              bloodGroup: bloodGroup || null,
-              state: state || null,
-              city: city || null,
-              country: country || null,
-              departmentId: departmentId || null,
-            },
-          },
-        },
-        include: {
-          student: true,
+          schoolId: session.schoolId,
+          profileImage: profileImageUrl,
         },
       });
 
-      // If class and session are provided, create class assignment
-      if (classId && sessionId && newUser.student) {
+      // Create student
+      const student = await tx.student.create({
+        data: {
+          userId: user.id,
+          departmentId: departmentId || null,
+          dateOfBirth: new Date(dateOfBirth),
+          gender,
+          bloodGroup,
+          religion: religion?.trim() || null,
+          address: address?.trim() || null,
+          city: city?.trim() || null,
+          state: state?.trim() || null,
+          country: country?.trim() || null,
+        },
+      });
+
+      // Create class assignment if class is specified
+      if (classId) {
         await tx.studentClass.create({
           data: {
-            studentId: newUser.student.id,
-            classId,
-            sessionId,
-            rollNumber: rollNumber || null,
+            studentId: student.id,
+            classId: classId,
+            sessionId: targetSessionId,
+            rollNumber: rollNumber?.trim() || null,
           },
         });
       }
 
-      return newUser;
+      // Return complete student data
+      return await tx.student.findUnique({
+        where: { id: student.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              profileImage: true,
+            },
+          },
+          classes: {
+            where: { sessionId: targetSessionId },
+            include: {
+              class: {
+                include: {
+                  level: true,
+                },
+              },
+            },
+          },
+          department: true,
+        },
+      });
     });
 
-    return NextResponse.json(student, { status: 201 });
-  } catch (error) {
-    console.error("Error creating student:", error);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("[STUDENTS_POST]", err);
+
+    // Handle specific Prisma errors
+    if (err && typeof err === "object" && "code" in err) {
+      if (err.code === "P2002") {
+        return NextResponse.json(
+          { message: "A student with this email already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
     return NextResponse.json(
-      { message: "Failed to create student" },
+      { message: "Failed to create student. Please try again." },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

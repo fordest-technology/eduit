@@ -24,7 +24,18 @@ const nextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
-        // Handle subdomains in development
+        // Handle API routes with subdomains
+        {
+          source: "/api/:path*",
+          has: [
+            {
+              type: "host",
+              value: "(?<subdomain>[^.]+)\\.localhost:3000",
+            },
+          ],
+          destination: "/api/:path*",
+        },
+        // Handle other routes with subdomains
         {
           source: "/:path*",
           has: [

@@ -72,7 +72,7 @@ export default function SessionsPage() {
                 // Normalize role for consistent usage
                 const normalizedRole = sessionData.role === "SCHOOL_ADMIN" ? "school_admin" : sessionData.role;
                 setNormalizedRole(normalizedRole)
-                
+
                 // Only admin can access this page
                 if (normalizedRole !== "super_admin" && normalizedRole !== "school_admin") {
                     router.push("/dashboard")
@@ -81,33 +81,70 @@ export default function SessionsPage() {
 
                 // Fetch academic sessions - ensure proper filtering by schoolId for school_admin
                 let url = '/api/sessions';
-                
+
                 // Add schoolId for filtering if school_admin
                 if (normalizedRole === "school_admin" && sessionData.schoolId) {
                     url += `?schoolId=${sessionData.schoolId}`;
                 }
-                
+
                 const sessionsRes = await fetch(url, {
                     headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'Cache-Control': 'no-cache',
                         'Pragma': 'no-cache',
                     },
+                    credentials: 'include',
+                    cache: 'no-store'
                 })
 
                 if (!sessionsRes.ok) {
                     const errorData = await sessionsRes.json()
+                    console.error("Sessions fetch error:", errorData)
+
+                    // Handle specific error cases
+                    if (sessionsRes.status === 403) {
+                        throw new Error("You don't have permission to view sessions. Please contact your administrator.")
+                    } else if (sessionsRes.status === 401) {
+                        router.push("/login")
+                        return
+                    }
+
                     throw new Error(errorData.message || "Failed to fetch academic sessions")
                 }
 
                 const sessionsData = await sessionsRes.json()
-                setSessions(sessionsData)
+
+                // Ensure consistent isActive state and proper data structure
+                const normalizedSessions = sessionsData.map((session: Session) => ({
+                    ...session,
+                    isActive: session.isCurrent,
+                    startDate: session.startDate,
+                    endDate: session.endDate,
+                    schoolId: session.schoolId || sessionData.schoolId // Ensure schoolId is always set
+                }))
+
+                setSessions(normalizedSessions)
 
                 // If super admin, fetch all schools for the dropdown
                 if (normalizedRole === "super_admin") {
-                    const schoolsRes = await fetch('/api/schools')
-                    if (schoolsRes.ok) {
-                        const schoolsData = await schoolsRes.json()
-                        setSchools(schoolsData)
+                    try {
+                        const schoolsRes = await fetch('/api/schools', {
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
+                        })
+
+                        if (schoolsRes.ok) {
+                            const schoolsData = await schoolsRes.json()
+                            setSchools(schoolsData)
+                        } else {
+                            console.error("Failed to fetch schools")
+                        }
+                    } catch (error) {
+                        console.error("Error fetching schools:", error)
                     }
                 }
 

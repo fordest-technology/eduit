@@ -16,52 +16,75 @@ import { useSearchParams } from "next/navigation"
 import { formatDateToLocal } from "@/lib/utils"
 
 interface TeacherData {
-    id: string
-    name: string
-    email: string
-    profileImage: string | null
-    createdAt: Date
-    updatedAt: Date
-    role: UserRole
-    // Teacher profile specific data
-    phone: string | null
-    employeeId: string | null
-    qualifications: string | null
-    specialization: string | null
-    teacherClasses: Class[]
-    teacherSubjects: {
-        subject: Subject
-    }[]
-    department: Department | null
-    departmentId: string | null
-    address: string
-    city: string
-    state: string
-    country: string
-    dateOfBirth?: Date | null
-    gender: string
-    joiningDate?: Date | null
+    id: string;
+    name: string;
+    email: string;
+    profileImage: string | null;
+    phone: string | null;
+    employeeId: string | null;
+    qualifications: string | null;
+    specialization: string | null;
+    joiningDate: Date | null;
+    departmentId: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    dateOfBirth: Date | null;
+    gender: string | null;
+    emergencyContact: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        profileImage: string | null;
+    };
+    department?: Department;
+    stats: {
+        totalClasses: number;
+        totalStudents: number;
+        totalSubjects: number;
+    };
+    subjects: Array<{
+        id: string;
+        name: string;
+        code: string;
+        department: Department;
+    }>;
+    classes: Array<{
+        id: string;
+        name: string;
+        section: string;
+        level: {
+            id: string;
+            name: string;
+        };
+        studentCount: number;
+    }>;
 }
 
 interface TeacherDetailsProps {
-    teacher: TeacherData
+    teacher: TeacherData;
     availableClasses: {
-        id: string
-        name: string
-        section?: string
-    }[]
+        id: string;
+        name: string;
+        section?: string;
+    }[];
     availableSubjects: {
-        id: string
-        name: string
-    }[]
+        id: string;
+        name: string;
+    }[];
     currentSubjects: {
-        id: string
-        name: string
-    }[]
+        id: string;
+        name: string;
+    }[];
     departments: {
-        id: string
-        name: string
-    }[]
+        id: string;
+        name: string;
+    }[];
+    onUpdate: () => Promise<void>;
 }
 
 export default function TeacherDetails({
@@ -69,7 +92,8 @@ export default function TeacherDetails({
     availableClasses,
     availableSubjects,
     currentSubjects,
-    departments
+    departments,
+    onUpdate
 }: TeacherDetailsProps) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -219,9 +243,9 @@ export default function TeacherDetails({
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            {teacher.teacherClasses && teacher.teacherClasses.length > 0 ? (
+                            {teacher.classes && teacher.classes.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {teacher.teacherClasses.map((cls) => (
+                                    {teacher.classes.map((cls) => (
                                         <Card key={cls.id} className="border">
                                             <CardHeader className="pb-2">
                                                 <CardTitle className="text-lg">{cls.name}</CardTitle>
@@ -247,12 +271,12 @@ export default function TeacherDetails({
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            {teacher.teacherSubjects && teacher.teacherSubjects.length > 0 ? (
+                            {teacher.subjects && teacher.subjects.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {teacher.teacherSubjects.map((subjectTeacher) => (
-                                        <Card key={subjectTeacher.subject.id} className="border">
+                                    {teacher.subjects.map((subjectTeacher) => (
+                                        <Card key={subjectTeacher.id} className="border">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-lg">{subjectTeacher.subject.name}</CardTitle>
+                                                <CardTitle className="text-lg">{subjectTeacher.name}</CardTitle>
                                             </CardHeader>
                                         </Card>
                                     ))}
@@ -281,8 +305,9 @@ export default function TeacherDetails({
                 open={isManageClassesModalOpen}
                 onOpenChange={setIsManageClassesModalOpen}
                 teacherId={teacher.id}
-                availableClasses={availableClasses}
-                teacherClasses={teacher.teacherClasses}
+                availableClasses={availableClasses || []}
+                teacherClasses={teacher.classes || []}
+                onSuccess={onUpdate}
             />
             <ManageSubjectsModal
                 open={isManageSubjectsModalOpen}
@@ -290,6 +315,7 @@ export default function TeacherDetails({
                 teacherId={teacher.id}
                 availableSubjects={availableSubjects}
                 currentSubjectIds={(currentSubjects || []).map(s => s.id)}
+                onSuccess={onUpdate}
             />
         </div>
     )

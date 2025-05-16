@@ -167,7 +167,7 @@ export function AssignBillDialog({
                                         )}
                                     >
                                         {selectedStudent
-                                            ? students.find((s) => s.id === selectedStudent)?.user.name
+                                            ? students.find((s) => s.id === selectedStudent)?.user?.name ?? "Unnamed Student"
                                             : "Select student"}
                                     </Button>
                                 </PopoverTrigger>
@@ -182,7 +182,7 @@ export function AssignBillDialog({
                                                     value={student.id}
                                                     onSelect={() => setSelectedStudent(student.id)}
                                                 >
-                                                    {student.user.name}
+                                                    {student.user?.name ?? "Unnamed Student"}
                                                 </CommandItem>
                                             ))}
                                         </CommandGroup>

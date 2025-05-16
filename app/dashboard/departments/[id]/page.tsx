@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserRole } from "@prisma/client";
 
 interface Student {
     id: string;
@@ -60,13 +61,29 @@ export default function DepartmentDetailPage() {
         setLoading(true);
         try {
             const sessionRes = await fetch("/api/auth/session");
+            if (!sessionRes.ok) {
+                throw new Error("Failed to fetch session");
+            }
             const session = await sessionRes.json();
 
-            if (!session || session.role !== "super_admin") {
-                return redirect("/dashboard");
+            if (!session) {
+                router.push("/login");
+                return;
             }
 
-            // Fetch school colors
+            // Check if user has access to this department
+            const departmentRes = await fetch(`/api/departments/${params.id}`);
+            if (!departmentRes.ok) {
+                if (departmentRes.status === 403) {
+                    router.push("/dashboard");
+                    return;
+                }
+                throw new Error(`Failed to fetch department: ${departmentRes.statusText}`);
+            }
+            const departmentData = await departmentRes.json();
+            setDepartment(departmentData);
+
+            // Fetch school colors if available
             if (session.schoolId) {
                 const colorRes = await fetch(`/api/schools/${session.schoolId}`);
                 if (colorRes.ok) {
@@ -80,28 +97,19 @@ export default function DepartmentDetailPage() {
                 }
             }
 
-            // Fetch department details
-            const departmentRes = await fetch(`/api/departments/${params.id}`);
-            if (!departmentRes.ok) {
-                throw new Error(`Failed to fetch department: ${departmentRes.statusText}`);
-            }
-            const departmentData = await departmentRes.json();
-            setDepartment(departmentData);
-
             // Fetch students in this department
             const studentsRes = await fetch(`/api/departments/${params.id}/students`);
-            if (!studentsRes.ok) {
-                throw new Error(`Failed to fetch students: ${studentsRes.statusText}`);
+            if (studentsRes.ok) {
+                const studentsData = await studentsRes.json();
+                setStudents(studentsData);
             }
-            const studentsData = await studentsRes.json();
-            setStudents(studentsData);
         } catch (err: any) {
             console.error("Error fetching department data:", err);
             setError(err.message || "Failed to load department data");
         } finally {
             setLoading(false);
         }
-    }, [params.id]);
+    }, [params.id, router]);
 
     useEffect(() => {
         fetchDepartment();

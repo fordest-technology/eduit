@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
+import { serializeBigInts } from "@/lib/utils";
 
 // Helper function to convert BigInt values to numbers for serialization
 function serializeBigInts(data: any): any {
@@ -116,7 +118,8 @@ export async function PUT(
     await prisma.$queryRaw`SELECT 1`;
 
     // Only super_admin and school_admin can update sessions
-    if (!["super_admin", "school_admin"].includes(session.role)) {
+    const allowedRoles: UserRole[] = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+    if (!allowedRoles.includes(session.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -126,6 +129,14 @@ export async function PUT(
     // Find the session first to check permissions
     const existingSession = await prisma.academicSession.findUnique({
       where: { id: sessionId },
+      include: {
+        school: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (!existingSession) {
@@ -137,10 +148,22 @@ export async function PUT(
 
     // Check if user has permission to modify this session
     if (
-      session.role !== "super_admin" &&
+      session.role !== "SUPER_ADMIN" &&
       existingSession.schoolId !== session.schoolId
     ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      console.log("Permission denied:", {
+        userRole: session.role,
+        userSchoolId: session.schoolId,
+        sessionSchoolId: existingSession.schoolId,
+      });
+      return NextResponse.json(
+        {
+          error: "Forbidden",
+          details:
+            "You do not have permission to modify sessions from other schools",
+        },
+        { status: 403 }
+      );
     }
 
     // If setting as current and it's not already current, unset any other current sessions
@@ -165,6 +188,10 @@ export async function PUT(
         startDate: body.startDate ? new Date(body.startDate) : undefined,
         endDate: body.endDate ? new Date(body.endDate) : undefined,
         isCurrent: body.isCurrent,
+        // Ensure schoolId remains unchanged for school_admin
+        ...(session.role === "SUPER_ADMIN" && body.schoolId
+          ? { schoolId: body.schoolId }
+          : {}),
       },
       include: {
         school: {
@@ -183,7 +210,13 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(serializeBigInts(updatedSession));
+    // Add isActive field for backward compatibility
+    const formattedSession = {
+      ...updatedSession,
+      isActive: updatedSession.isCurrent,
+    };
+
+    return NextResponse.json(formattedSession);
   } catch (error) {
     console.error("Error updating academic session:", error);
 

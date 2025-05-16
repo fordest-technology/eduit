@@ -1,27 +1,25 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Pencil, Eye, Trash } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { MoreHorizontal, Pencil, Trash2, Eye, UserPlus } from "lucide-react"
 import Link from "next/link"
 
-export type ParentColumn = {
+export interface ParentColumn {
     id: string
     name: string
     email: string
-    phone: string
-    children: string
-    profileImage?: string
+    profileImage?: string | null
+    phone?: string | null
+    childrenCount: number
 }
 
 export const columns: ColumnDef<ParentColumn>[] = [
@@ -30,45 +28,37 @@ export const columns: ColumnDef<ParentColumn>[] = [
         header: "Name",
         cell: ({ row }) => {
             const parent = row.original
-            const initials = parent.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-
             return (
                 <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src={parent.profileImage} alt={parent.name} />
-                        <AvatarFallback>{initials}</AvatarFallback>
+                        <AvatarImage src={parent.profileImage || undefined} alt={parent.name} />
+                        <AvatarFallback>
+                            {parent.name.split(" ").map((n) => n[0]).join("")}
+                        </AvatarFallback>
                     </Avatar>
-                    <span>{parent.name}</span>
+                    <div>
+                        <div className="font-medium">{parent.name}</div>
+                        <div className="text-sm text-muted-foreground">{parent.email}</div>
+                    </div>
                 </div>
             )
-        },
-    },
-    {
-        accessorKey: "email",
-        header: "Email",
+        }
     },
     {
         accessorKey: "phone",
         header: "Phone",
+        cell: ({ row }) => row.original.phone || "Not provided"
     },
     {
-        accessorKey: "children",
+        accessorKey: "childrenCount",
         header: "Children",
         cell: ({ row }) => {
-            const children = row.getValue("children") as string
-
-            if (!children || children === "No children linked") {
-                return <span className="text-muted-foreground">No children linked</span>
-            }
-
-            // If the string is too long, truncate it
-            return children.length > 50
-                ? <span title={children}>{children.substring(0, 50)}...</span>
-                : <span>{children}</span>
+            const count = row.original.childrenCount
+            return (
+                <div className="font-medium">
+                    {count} {count === 1 ? "child" : "children"}
+                </div>
+            )
         }
     },
     {
@@ -85,21 +75,27 @@ export const columns: ColumnDef<ParentColumn>[] = [
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/parents/${parent.id}`} className="flex items-center cursor-pointer">
-                                <Eye className="mr-2 h-4 w-4" /> View Details
+                            <Link href={`/dashboard/parents/${parent.id}`} className="flex items-center">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/parents/${parent.id}/edit`} className="flex items-center cursor-pointer">
-                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                            <Link href={`/dashboard/parents/${parent.id}/edit`} className="flex items-center">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Parent
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/parents/${parent.id}`} className="flex items-center">
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Manage Children
                             </Link>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             )
-        },
-    },
+        }
+    }
 ] 

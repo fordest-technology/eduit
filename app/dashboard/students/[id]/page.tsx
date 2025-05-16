@@ -9,7 +9,7 @@ import { StudentDetails } from "./student-details"
 import { Pencil } from "lucide-react"
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { User, Class, AcademicSession, AttendanceStatus, ExamType } from "@prisma/client"
+import { User, AcademicSession, AttendanceStatus, ExamType } from "@prisma/client"
 import { DashboardHeader } from "@/app/components/dashboard-header"
 import { Card, CardContent } from "@/components/ui/card"
 import StudentModal from "../student-modal"
@@ -54,9 +54,39 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 
+interface ExtendedUser extends User {
+    phone?: string | null;
+    address?: string | null;
+    dateOfBirth?: Date | null;
+    gender?: string | null;
+    religion?: string | null;
+    state?: string | null;
+    city?: string | null;
+    country?: string | null;
+}
+
+interface StudentClass {
+    id: string
+    name: string
+    section: string | null
+    schoolId: string
+    teacherId: string | null
+    levelId: string | null
+    level: {
+        id: string
+        name: string
+        description?: string | null
+        order: number
+    } | null
+    session: AcademicSession | null
+    rollNumber: string | null
+    createdAt: Date
+    updatedAt: Date
+}
+
 interface StudentClassRecord {
     id: string;
-    class: Class & {
+    class: StudentClass & {
         level?: {
             id: string;
             name: string;
@@ -123,7 +153,7 @@ interface Department {
     updatedAt: Date;
 }
 
-type ComplexStudent = User & {
+type ComplexStudent = ExtendedUser & {
     department: Department | null;
     studentClass: StudentClassRecord[];
     parents: StudentParentRecord[];
@@ -196,7 +226,7 @@ export default function StudentDetailsPage() {
     const params = useParams()
     const router = useRouter()
     const [student, setStudent] = useState<ComplexStudent | null>(null)
-    const [currentClass, setCurrentClass] = useState<Class | undefined>(undefined)
+    const [currentClass, setCurrentClass] = useState<StudentClass | undefined>(undefined)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [showEditModal, setShowEditModal] = useState(false)
@@ -254,7 +284,7 @@ export default function StudentDetailsPage() {
                 let currentClassObj = studentData.currentClass;
                 setCurrentClass(currentClassObj);
                 setCurrentSession(activeSession);
-                
+
                 // Set student data with all classes included
                 const formattedStudent = {
                     ...studentData,
@@ -339,11 +369,11 @@ export default function StudentDetailsPage() {
             .then(data => {
                 const studentData = data.student;
                 const activeSession = data.currentSession;
-                
+
                 if (studentData) {
                     // Set current class and session directly from API response
                     let currentClassObj = studentData.currentClass;
-                    
+
                     // Map the nested student data to match the expected format
                     const formattedStudent = {
                         ...studentData,
@@ -400,9 +430,9 @@ export default function StudentDetailsPage() {
             .then(data => {
                 const classesData = data.availableClasses || [];
                 const sessionsData = data.availableSessions || [];
-                
+
                 setClasses(classesData);
-                
+
                 // If sessions not directly available, fetch them
                 if (!sessionsData || sessionsData.length === 0) {
                     return fetch("/api/academic-sessions?active=true")
@@ -410,7 +440,7 @@ export default function StudentDetailsPage() {
                         .then(sessions => {
                             setSessions(sessions);
                             // Set default session to current if available
-                            const currentSession = sessions.find(s => s.isCurrent);
+                            const currentSession = sessions.find((s: { isCurrent: boolean }) => s.isCurrent);
                             if (currentSession) {
                                 form.setValue("sessionId", currentSession.id);
                             }
@@ -418,7 +448,7 @@ export default function StudentDetailsPage() {
                 } else {
                     setSessions(sessionsData);
                     // Set default session to current if available
-                    const currentSession = sessionsData.find(s => s.isCurrent);
+                    const currentSession = sessionsData.find((s: { isCurrent: boolean }) => s.isCurrent);
                     if (currentSession) {
                         form.setValue("sessionId", currentSession.id);
                     }
@@ -569,9 +599,9 @@ export default function StudentDetailsPage() {
                                         <div>
                                             <p className="text-sm text-slate-500">Current Class</p>
                                             <p className="font-medium text-slate-900">
-                                                {currentClass ? 
-                                                  `${currentClass.name}${currentClass.section ? ` - ${currentClass.section}` : ''}` 
-                                                  : "Not Assigned"}
+                                                {currentClass ?
+                                                    `${currentClass.name}${currentClass.section ? ` - ${currentClass.section}` : ''}`
+                                                    : "Not Assigned"}
                                             </p>
                                         </div>
                                         {currentClass && currentClass.level && (
@@ -654,8 +684,8 @@ export default function StudentDetailsPage() {
                     <div className="mt-8">
                         <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
                                 onClick={() => {
                                     setShowEditModal(true)
@@ -665,8 +695,8 @@ export default function StudentDetailsPage() {
                                 <Pencil className="h-5 w-5 text-slate-600" />
                                 <span className="text-sm font-medium">Edit Details</span>
                             </Button>
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
                                 onClick={handleAddToClass}
                             >
@@ -774,7 +804,7 @@ export default function StudentDetailsPage() {
                                             <SelectContent>
                                                 {classes.map((cls) => (
                                                     <SelectItem key={cls.id} value={cls.id}>
-                                                        {cls.name}{cls.section ? ` - ${cls.section}` : ""} 
+                                                        {cls.name}{cls.section ? ` - ${cls.section}` : ""}
                                                         {cls.level ? ` (${cls.level.name})` : ""}
                                                     </SelectItem>
                                                 ))}

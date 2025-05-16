@@ -1,0 +1,143 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Email Credentials Sending Rule
+
+## API Structure
+- Use `/api/send-credentials` endpoint
+- Implement both POST and GET methods
+- Include debug tracking for development
+
+## Required Parameters
+```typescript
+interface CredentialsPayload {
+  name: string;        // User's full name
+  email: string;       // User's email address
+  role: string;        // User's role (e.g., "teacher", "student", "parent")
+  schoolName: string;  // Name of the school
+  password?: string;   // Optional: User's password (will generate if not provided)
+  schoolId: string;    // School's unique identifier
+  schoolUrl?: string;  // Optional: School URL (defaults to "https://eduit.app")
+}
+```
+
+## Implementation Guidelines
+
+1. **Email Sending Process**
+   - Use `sendWelcomeEmail` from `@/lib/email`
+   - Generate debug ID using `generateEmailDebugId()`
+   - Include proper error handling and validation
+
+2. **Response Format**
+```typescript
+interface CredentialsResponse {
+  success: boolean;
+  message: string;
+  debugId?: string;    // For development tracking
+  result?: any;        // Additional response data
+}
+```
+
+3. **Error Handling**
+   - Validate required fields (name, email, role, schoolName)
+   - Return 400 for missing fields
+   - Return 500 for server errors
+   - Include error message in response
+
+4. **Debug Information**
+   - Track API calls in development
+   - Store debug information in `.email-debug` directory
+   - Include timestamp and request details
+   - Implement proper logging
+
+5. **Security Considerations**
+   - Never expose sensitive information in responses
+   - Use environment variables for configuration
+   - Handle API keys securely
+   - Validate input data
+
+6. **Example Implementation**
+```typescript
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { name, email, role, schoolName, password, schoolId, schoolUrl } = body;
+
+    // Input validation
+    if (!name || !email || !role || !schoolName) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Use provided password or generate fallback
+    const userPassword = password || "TestPassword123";
+
+    // Generate debug ID
+    const debugId = generateEmailDebugId();
+
+    // Send welcome email
+    const result = await sendWelcomeEmail({
+      name,
+      email,
+      role,
+      schoolName,
+      schoolUrl: schoolUrl || "https://eduit.app",
+      password: userPassword,
+      schoolId,
+      debugId,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Credentials sent successfully",
+      debugId,
+      result,
+    });
+  } catch (error: any) {
+    console.error("Error sending credentials:", error);
+    return NextResponse.json(
+      { error: "Failed to send credentials", message: error.message },
+      { status: 500 }
+    );
+  }
+}
+```
+
+7. **Best Practices**
+   - Always validate input data
+   - Implement proper error handling
+   - Use TypeScript for type safety
+   - Follow REST API conventions
+   - Include proper documentation
+   - Implement proper logging
+   - Handle edge cases
+   - Use environment variables
+   - Implement proper security measures
+
+8. **Testing**
+   - Test all required fields
+   - Test error cases
+   - Test email sending
+   - Test debug information
+   - Test security measures
+   - Test edge cases
+
+9. **Documentation**
+   - Document all parameters
+   - Document response format
+   - Document error cases
+   - Document security measures
+   - Document testing procedures
+
+10. **Maintenance**
+    - Keep code up to date
+    - Monitor error rates
+    - Update security measures
+    - Update documentation
+    - Monitor performance
+
+    - Update dependencies

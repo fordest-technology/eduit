@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { useRouter } from "next/navigation"
 
 interface Subject {
     id: string
@@ -31,6 +32,7 @@ interface ManageSubjectsModalProps {
     teacherId: string
     availableSubjects: Subject[]
     currentSubjectIds: string[]
+    onSuccess?: () => Promise<void>
 }
 
 export function ManageSubjectsModal({
@@ -39,10 +41,12 @@ export function ManageSubjectsModal({
     teacherId,
     availableSubjects,
     currentSubjectIds,
+    onSuccess
 }: ManageSubjectsModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>(currentSubjectIds)
     const [newSubjectId, setNewSubjectId] = useState<string>("")
+    const router = useRouter()
 
     // Filter out already selected subjects from available options
     const availableOptions = availableSubjects.filter(
@@ -80,9 +84,11 @@ export function ManageSubjectsModal({
             }
 
             toast.success("Subjects updated successfully")
+            router.refresh()
+            if (onSuccess) {
+                await onSuccess()
+            }
             onOpenChange(false)
-            // Force a refresh to show the updated subjects
-            window.location.reload()
         } catch (error) {
             console.error("Failed to update subjects:", error)
             if (error instanceof Error) {

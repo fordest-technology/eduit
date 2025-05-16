@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { UserRole } from "@prisma/client";
 
 // Helper function to serialize BigInt values
 function serializeBigInts(data: any): any {
@@ -32,16 +33,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    // Only super_admin and school_admin should have access
-    if (!["super_admin", "school_admin"].includes(session.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const departmentId = params.id;
@@ -77,6 +73,15 @@ export async function GET(
       );
     }
 
+    // Check if user has access to this department
+    if (
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN &&
+      department.schoolId !== session.schoolId
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Serialize BigInt values before returning
     return NextResponse.json(serializeBigInts(department));
   } catch (error) {
@@ -96,18 +101,26 @@ export async function PUT(
     const session = await getSession();
 
     if (!session) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { name } = await request.json();
 
     if (!name) {
-      return new NextResponse("Missing required fields", { status: 400 });
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     const department = await prisma.department.update({
       where: {
         id: params.id,
+        schoolId: session.schoolId,
       },
       data: {
         name,
@@ -126,7 +139,10 @@ export async function PUT(
     return NextResponse.json(serializeBigInts(department));
   } catch (error) {
     console.error("[DEPARTMENT_PUT]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update department" },
+      { status: 500 }
+    );
   }
 }
 
@@ -134,16 +150,20 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
-
-  if (
-    !session ||
-    (session.role !== "super_admin" && session.role !== "school_admin")
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const departmentId = params.id;
 
     // Check if the department exists and belongs to the school
@@ -189,6 +209,7 @@ export async function DELETE(
     await prisma.department.delete({
       where: {
         id: departmentId,
+        schoolId: session.schoolId,
       },
     });
 

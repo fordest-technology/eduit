@@ -36,6 +36,10 @@ import { useRouter } from "next/navigation"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ColumnFiltersState } from "@tanstack/react-table"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as DateCalendar } from "@/components/ui/calendar"
 
 // Define types for our data
 interface School {
@@ -73,16 +77,21 @@ const formSchema = z.object({
     schoolId: z.string().min(1, { message: "School is required" }),
     startDate: z.date({ required_error: "Start date is required" }),
     endDate: z.date({ required_error: "End date is required" })
-        .refine((date) => date > new Date(), {
-            message: "End date must be in the future"
-        })
-})
+}).refine(
+    (data) => {
+        return data.endDate > data.startDate;
+    },
+    {
+        message: "End date must be after start date",
+        path: ["endDate"], // This tells Zod to attach the error to the endDate field
+    }
+);
 
 // Add this utility function after the formSchema definition
 // Safely parse and format a date, handling various formats
 function formatDate(dateValue: string | Date | null | undefined): string {
     if (!dateValue) return "N/A";
-    
+
     let date: Date;
     if (typeof dateValue === 'string') {
         // Try to parse the date string
@@ -90,7 +99,7 @@ function formatDate(dateValue: string | Date | null | undefined): string {
     } else {
         date = dateValue;
     }
-    
+
     // Check if the date is valid
     return isValid(date) ? format(date, "MMM d, yyyy") : "N/A";
 }
@@ -106,7 +115,7 @@ const getColumns = (toggleActive: (id: string) => Promise<void>, userRole: strin
             )
         },
     ];
-    
+
     // Only show the school column for super_admin
     if (userRole === "super_admin") {
         baseColumns.push({
@@ -117,7 +126,7 @@ const getColumns = (toggleActive: (id: string) => Promise<void>, userRole: strin
             )
         });
     }
-    
+
     // Add remaining columns
     return [
         ...baseColumns,
@@ -152,7 +161,10 @@ const getColumns = (toggleActive: (id: string) => Promise<void>, userRole: strin
             header: "Status",
             cell: ({ row }: { row: any }) => (
                 <div className="flex items-center">
-                    <Badge variant={row.getValue("isActive") ? "default" : "secondary"}>
+                    <Badge variant={row.getValue("isActive") ? "outline" : "destructive"} className={`${row.getValue("isActive")
+                        ? "bg-green-100 text-green-800 hover:bg-green-200"
+                        : "bg-red-100 text-red-800 hover:bg-red-200"
+                        }`}>
                         {row.getValue("isActive") ? "Active" : "Inactive"}
                     </Badge>
                 </div>
@@ -223,7 +235,10 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
             // For school_admin, always use their schoolId regardless of what was selected
             const submissionValues = {
                 ...values,
-                schoolId: userRole === "school_admin" ? userSchoolId : values.schoolId
+                schoolId: userRole === "school_admin" ? userSchoolId : values.schoolId,
+                // Convert dates to ISO strings for API
+                startDate: values.startDate.toISOString(),
+                endDate: values.endDate.toISOString()
             }
 
             const response = await fetch("/api/sessions", {
@@ -231,12 +246,13 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(submissionValues)
+                body: JSON.stringify(submissionValues),
+                credentials: 'include' // Add this to include cookies in the request
             })
 
             if (!response.ok) {
                 const error = await response.json()
-                throw new Error(error.message || "Failed to create session")
+                throw new Error(error.error || error.message || "Failed to create session")
             }
 
             const newSession = await response.json()
@@ -248,7 +264,7 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
             setIsDialogOpen(false)
             router.refresh()
         } catch (err: any) {
-            console.error(err)
+            console.error("Error creating session:", err)
             setError(err.message || "An error occurred while creating the session")
             toast.error("Failed to create session")
         } finally {
@@ -261,62 +277,70 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
 
         try {
             const session = sessions.find(s => s.id === id)
-            if (!session) return
-            
+            if (!session) {
+                throw new Error("Session not found")
+            }
+
             // Prevent school_admin from modifying sessions from other schools
-            if (userRole === "school_admin" && session.schoolId !== userSchoolId) {
+            if (userRole === "SCHOOL_ADMIN" && session.schoolId !== userSchoolId) {
                 throw new Error("You do not have permission to modify sessions from other schools")
             }
 
-            // Make a simpler update request - just update isActive status
-            // Note: In the API, isCurrent is what controls the active state
+            // Make API request to update session status
             const response = await fetch(`/api/sessions/${id}`, {
                 method: "PUT",
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
                 },
+                credentials: "include",
                 body: JSON.stringify({
-                    // Only send the isCurrent property to avoid validation errors with other fields
-                    isCurrent: !session.isActive
+                    name: session.name,
+                    startDate: session.startDate,
+                    endDate: session.endDate,
+                    isCurrent: !session.isActive,
+                    schoolId: session.schoolId
                 })
             })
 
-            // Debug response for troubleshooting
-            console.log(`Status: ${response.status}, Status Text: ${response.statusText}`);
-            
+            // Handle non-OK responses
             if (!response.ok) {
-                let errorMessage = `Failed to update session (Status: ${response.status})`;
-                try {
-                    const errorData = await response.json();
-                    console.error("Error response data:", errorData);
-                    errorMessage = errorData.error || errorData.message || errorMessage;
-                } catch (e) {
-                    console.error("Failed to parse error response:", e);
+                const errorData = await response.json()
+                console.error("Server response:", errorData)
+
+                // Handle specific error cases
+                if (response.status === 403) {
+                    throw new Error(errorData.details || "You don't have permission to modify this session. Please contact your administrator.")
+                } else if (response.status === 401) {
+                    throw new Error("Your session has expired. Please log in again.")
+                } else {
+                    throw new Error(errorData.error || `Failed to update session (Status: ${response.status})`)
                 }
-                throw new Error(errorMessage);
             }
 
             // Get updated session from response
-            const updatedSession = await response.json();
-            console.log("Updated session:", updatedSession);
-            
-            // The server may return isActive or isCurrent - use updatedSession if available
-            // Otherwise fall back to inverting the current state
-            const isNowActive = 
-                typeof updatedSession.isActive !== 'undefined' ? updatedSession.isActive : 
-                typeof updatedSession.isCurrent !== 'undefined' ? updatedSession.isCurrent : 
-                !session.isActive;
+            const updatedSession = await response.json()
 
             // Update local state with the response
-            setSessions(sessions.map(s =>
-                s.id === id ? { ...s, isActive: isNowActive } : s
-            ))
+            setSessions(prevSessions =>
+                prevSessions.map(s =>
+                    s.id === id
+                        ? {
+                            ...s,
+                            isActive: updatedSession.isActive,
+                            startDate: updatedSession.startDate,
+                            endDate: updatedSession.endDate,
+                            name: updatedSession.name
+                        }
+                        : s
+                )
+            )
 
-            toast.success(`Session ${isNowActive ? "activated" : "deactivated"} successfully`)
+            toast.success(`Session ${!session.isActive ? "activated" : "deactivated"} successfully`)
             router.refresh()
         } catch (err: any) {
-            console.error("Toggle active error:", err);
-            toast.error(`Failed to update session status: ${err.message}`);
+            console.error("Toggle active error:", err)
+            toast.error(err.message || "Failed to update session status")
         } finally {
             setIsLoading(false)
         }
@@ -408,13 +432,34 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Start Date</FormLabel>
-                                                <FormControl>
-                                                    <DatePicker
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        placeholder="Select start date"
-                                                    />
-                                                </FormControl>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button
+                                                                variant={"outline"}
+                                                                className={cn(
+                                                                    "w-full pl-3 text-left font-normal",
+                                                                    !field.value && "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {field.value ? (
+                                                                    format(field.value, "PPP")
+                                                                ) : (
+                                                                    <span>Pick a start date</span>
+                                                                )}
+                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                        <DateCalendar
+                                                            mode="single"
+                                                            selected={field.value}
+                                                            onSelect={field.onChange}
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -426,14 +471,37 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>End Date</FormLabel>
-                                                <FormControl>
-                                                    <DatePicker
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        placeholder="Select end date"
-                                                        minDate={form.getValues().startDate || new Date()}
-                                                    />
-                                                </FormControl>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button
+                                                                variant={"outline"}
+                                                                className={cn(
+                                                                    "w-full pl-3 text-left font-normal",
+                                                                    !field.value && "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {field.value ? (
+                                                                    format(field.value, "PPP")
+                                                                ) : (
+                                                                    <span>Pick an end date</span>
+                                                                )}
+                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                        <DateCalendar
+                                                            mode="single"
+                                                            selected={field.value}
+                                                            onSelect={field.onChange}
+                                                            disabled={(date: Date) =>
+                                                                date <= form.getValues().startDate
+                                                            }
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
                                                 <FormMessage />
                                             </FormItem>
                                         )}

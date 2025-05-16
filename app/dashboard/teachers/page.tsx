@@ -1,22 +1,85 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { TeachersClient } from "./teachers-client"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { DashboardHeader } from "@/app/components/dashboard-header"
+import { TeachersClient } from "./teachers-client"
+import { Button } from "@/components/ui/button"
+import { Teacher, User, Department, UserRole } from "@prisma/client"
+
+interface TeacherData {
+    id: string;
+    name: string;
+    email: string;
+    profileImage: string | null;
+    phone: string | null;
+    employeeId: string | null;
+    qualifications: string | null;
+    specialization: string | null;
+    joiningDate: Date | null;
+    departmentId: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    dateOfBirth: Date | null;
+    gender: string | null;
+    emergencyContact: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
+    department?: Department;
+    stats: {
+        totalClasses: number;
+        totalStudents: number;
+        totalSubjects: number;
+    };
+    subjects: Array<{
+        id: string;
+        name: string;
+    }>;
+    classes: Array<{
+        id: string;
+        name: string;
+        studentCount: number;
+    }>;
+}
+
+interface TeacherStats {
+    total: number;
+    subjects: number;
+    departments: number;
+    withClasses: number;
+    activeStudents: number;
+    activeClasses: number;
+}
+
+interface SessionData {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    schoolId: string | null;
+    profileImage: string | null;
+}
+
+interface TeachersResponse {
+    teachers: TeacherData[];
+    stats: TeacherStats;
+}
 
 export default function TeachersPage() {
     const router = useRouter()
-    const [session, setSession] = useState<any>(null)
-    const [teachers, setTeachers] = useState<any[]>([])
-    const [stats, setStats] = useState({
+    const [session, setSession] = useState<SessionData | null>(null)
+    const [teachers, setTeachers] = useState<TeacherData[]>([])
+    const [stats, setStats] = useState<TeacherStats>({
         total: 0,
         subjects: 0,
         departments: 0,
-        withClasses: 0
+        withClasses: 0,
+        activeStudents: 0,
+        activeClasses: 0
     })
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -24,102 +87,50 @@ export default function TeachersPage() {
     useEffect(() => {
         async function fetchSessionAndData() {
             try {
+                setLoading(true)
                 // Get session
                 const sessionRes = await fetch('/api/auth/session')
                 if (!sessionRes.ok) {
                     throw new Error('Failed to fetch session')
                 }
 
-                const sessionData = await sessionRes.json()
+                const sessionData: SessionData = await sessionRes.json()
                 setSession(sessionData)
 
-                // If no session or not allowed, redirect
-                if (!sessionData) {
+                // If no session or not allowed role, redirect
+                if (!sessionData ||
+                    (sessionData.role !== UserRole.SUPER_ADMIN &&
+                        sessionData.role !== UserRole.SCHOOL_ADMIN)) {
                     router.push("/login")
                     return
                 }
 
                 // Fetch teachers data
-                const teachersRes = await fetch('/api/teachers', {
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache',
-                    },
-                })
-
+                const teachersRes = await fetch('/api/teachers')
                 if (!teachersRes.ok) {
-                    const errorData = await teachersRes.json()
-                    throw new Error(errorData.message || "Failed to fetch teachers")
+                    throw new Error("Failed to fetch teachers")
                 }
 
-                const teachersData = await teachersRes.json()
+                const data: TeachersResponse = await teachersRes.json()
 
-                // Format data for component use
-                const formattedTeachers = teachersData.map((teacher: any) => {
-                    // Ensure teacher.user exists before accessing properties
-                    const user = teacher.user || teacher.teacher?.user || {}
-                    // Ensure teacher.department exists before accessing properties
-                    const department = teacher.department || teacher.teacher?.department || {}
-                    // Ensure teacher.subjects exists
-                    const subjects = teacher.subjects || teacher.teacher?.subjects || []
+                // Ensure we have both teachers and stats
+                if (!data.teachers || !Array.isArray(data.teachers)) {
+                    throw new Error("Invalid teachers data received")
+                }
 
-                    return {
-                        id: teacher.id || teacher.teacher?.id,
-                        name: user.name || "Unknown",
-                        email: user.email || "",
-                        profileImage: user.profileImage || null,
-                        phone: teacher.phone || teacher.teacher?.phone || "",
-                        department: department.name || "Not Assigned",
-                        departmentId: teacher.departmentId || teacher.teacher?.departmentId,
-                        subjects: Array.isArray(subjects)
-                            ? subjects.map((s: any) => (s.subject?.name || "Unknown Subject")).join(", ")
-                            : "None",
-                        subjectCount: Array.isArray(subjects) ? subjects.length : 0,
-                        gender: teacher.gender || teacher.teacher?.gender || "",
-                        qualification: teacher.qualification || teacher.teacher?.qualification || "",
-                        employmentStatus: teacher.employmentStatus || teacher.teacher?.employmentStatus || "Full-time",
-                    }
-                })
-
-                setTeachers(formattedTeachers)
-
-                // Calculate stats
-                const uniqueSubjects = new Set()
-                const uniqueDepartments = new Set()
-                const teachersWithClasses = teachersData.filter((t: any) => {
-                    const classes = t.classes || t.teacher?.classes || []
-                    return Array.isArray(classes) && classes.length > 0
-                }).length
-
-                teachersData.forEach((teacher: any) => {
-                    // Handle both direct and nested structures
-                    const departmentId = teacher.departmentId || teacher.teacher?.departmentId
-                    const subjects = teacher.subjects || teacher.teacher?.subjects || []
-
-                    if (departmentId) uniqueDepartments.add(departmentId)
-
-                    if (Array.isArray(subjects)) {
-                        subjects.forEach((s: any) => {
-                            const subjectId = s.subjectId || s.subject?.id
-                            if (subjectId) uniqueSubjects.add(subjectId)
-                        })
-                    }
-                })
-
-                setStats({
-                    total: teachersData.length,
-                    subjects: uniqueSubjects.size,
-                    departments: uniqueDepartments.size,
-                    withClasses: teachersWithClasses
+                setTeachers(data.teachers)
+                setStats(data.stats || {
+                    total: 0,
+                    subjects: 0,
+                    departments: 0,
+                    withClasses: 0,
+                    activeStudents: 0,
+                    activeClasses: 0
                 })
 
             } catch (error) {
                 console.error("Error:", error)
-                if (error instanceof Error) {
-                    setError(error.message)
-                } else {
-                    setError("An unexpected error occurred")
-                }
+                setError(error instanceof Error ? error.message : "An unexpected error occurred")
                 toast.error("Error loading teachers data")
             } finally {
                 setLoading(false)
@@ -129,24 +140,40 @@ export default function TeachersPage() {
         fetchSessionAndData()
     }, [router])
 
-    // if (loading) {
-    //     return (
-    //         <div className="flex items-center justify-center min-h-screen">
-    //             <Loader2 className="h-8 w-8 animate-spin" />
-    //         </div>
-    //     )
-    // }
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <DashboardHeader
+                    heading="Teachers"
+                    text="Manage teacher profiles and their academic assignments"
+                    showBanner={true}
+                />
+                <TeachersClient
+                    teachers={[]}
+                    stats={{
+                        total: 0,
+                        subjects: 0,
+                        departments: 0,
+                        withClasses: 0,
+                        activeStudents: 0,
+                        activeClasses: 0
+                    }}
+                    error={undefined}
+                />
+            </div>
+        )
+    }
 
-    // if (error || !session) {
-    //     return (
-    //         <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-    //             <p className="text-red-500">{error || "Not authorized"}</p>
-    //             <Button onClick={() => router.push("/dashboard")}>
-    //                 Back to Dashboard
-    //             </Button>
-    //         </div>
-    //     )
-    // }
+    if (error || !session) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+                <p className="text-destructive">{error || "Not authorized"}</p>
+                <Button onClick={() => router.push("/login")}>
+                    Back to Login
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">

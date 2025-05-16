@@ -10,13 +10,24 @@ import Link from "next/link"
 import TeacherDetails from "./teacher-details"
 import TeacherClasses from "./teacher-classes"
 import TeacherSubjects from "./teacher-subjects"
+import { UserRole } from "@prisma/client"
+
+interface SessionData {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    schoolId: string | null;
+    profileImage: string | null;
+    teacherId?: string;
+}
 
 export default function TeacherPage() {
     const params = useParams()
     const router = useRouter()
     const searchParams = useSearchParams()
     const activeTab = searchParams.get("tab") || "details"
-    const [session, setSession] = useState<any>(null)
+    const [session, setSession] = useState<SessionData | null>(null)
     const [teacher, setTeacher] = useState<any>(null)
     const [availableClasses, setAvailableClasses] = useState<any[]>([])
     const [availableSubjects, setAvailableSubjects] = useState<any[]>([])
@@ -25,93 +36,108 @@ export default function TeacherPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        async function fetchSessionAndData() {
-            try {
-                // Get session
-                const sessionRes = await fetch('/api/auth/session')
-                if (!sessionRes.ok) {
-                    throw new Error('Failed to fetch session')
-                }
+    async function fetchData() {
+        try {
+            setLoading(true)
+            setError(null)
 
-                const sessionData = await sessionRes.json()
-                setSession(sessionData)
-
-                // If no session or not allowed, redirect
-                if (!sessionData) {
-                    router.push("/login")
-                    return
-                }
-
-                // Check permissions
-                if (
-                    sessionData.role !== "super_admin" &&
-                    sessionData.role !== "school_admin" &&
-                    sessionData.role !== "teacher"
-                ) {
-                    router.push("/dashboard")
-                    return
-                }
-
-                // Check if teacher is accessing another teacher's profile
-                if (sessionData.role === "teacher" && sessionData.teacherId !== params.id) {
-                    router.push("/dashboard")
-                    return
-                }
-
-                // Fetch teacher data
-                const teacherRes = await fetch(`/api/teachers/${params.id}`)
-                if (!teacherRes.ok) {
-                    throw new Error("Failed to fetch teacher details")
-                }
-
-                const teacherData = await teacherRes.json()
-                setTeacher(teacherData)
-
-                // Fetch available classes
-                const classesRes = await fetch('/api/classes')
-                if (classesRes.ok) {
-                    const classesData = await classesRes.json()
-                    setAvailableClasses(classesData)
-                }
-
-                // Fetch available subjects
-                const subjectsRes = await fetch('/api/subjects')
-                if (subjectsRes.ok) {
-                    const subjectsData = await subjectsRes.json()
-                    setAvailableSubjects(subjectsData)
-                }
-
-                // Set current subjects from teacher data
-                if (teacherData.teacherSubjects) {
-                    setCurrentSubjects(teacherData.teacherSubjects.map((ts: any) => ({
-                        id: ts.subject.id,
-                        name: ts.subject.name
-                    })))
-                }
-
-                // Fetch departments
-                const departmentsRes = await fetch('/api/departments')
-                if (departmentsRes.ok) {
-                    const departmentsData = await departmentsRes.json()
-                    setDepartments(departmentsData)
-                }
-
-            } catch (error) {
-                console.error("Error:", error)
-                if (error instanceof Error) {
-                    setError(error.message)
-                } else {
-                    setError("An unexpected error occurred")
-                }
-                toast.error("Error loading teacher details")
-            } finally {
-                setLoading(false)
+            // Get session
+            const sessionRes = await fetch('/api/auth/session')
+            if (!sessionRes.ok) {
+                throw new Error('Failed to fetch session')
             }
+
+            const sessionData: SessionData = await sessionRes.json()
+            setSession(sessionData)
+
+            // If no session or not allowed, redirect
+            if (!sessionData) {
+                router.push("/login")
+                return
+            }
+
+            // Check permissions
+            if (
+                sessionData.role !== UserRole.SUPER_ADMIN &&
+                sessionData.role !== UserRole.SCHOOL_ADMIN &&
+                sessionData.role !== UserRole.TEACHER
+            ) {
+                router.push("/dashboard")
+                return
+            }
+
+            // Check if teacher is accessing another teacher's profile
+            if (sessionData.role === UserRole.TEACHER && sessionData.teacherId !== params.id) {
+                router.push("/dashboard")
+                return
+            }
+
+            // Fetch teacher data
+            const teacherRes = await fetch(`/api/teachers/${params.id}`)
+            if (!teacherRes.ok) {
+                throw new Error("Failed to fetch teacher details")
+            }
+
+            const teacherData = await teacherRes.json()
+            setTeacher(teacherData)
+
+            // Fetch available classes
+            const classesRes = await fetch('/api/classes')
+            if (classesRes.ok) {
+                const classesData = await classesRes.json()
+                setAvailableClasses(classesData)
+            }
+
+            // Fetch available subjects
+            const subjectsRes = await fetch('/api/subjects')
+            if (subjectsRes.ok) {
+                const subjectsData = await subjectsRes.json()
+                setAvailableSubjects(subjectsData)
+            }
+
+            // Set current subjects from teacher data
+            if (teacherData.teacherSubjects) {
+                setCurrentSubjects(teacherData.teacherSubjects.map((ts: any) => ({
+                    id: ts.subject.id,
+                    name: ts.subject.name
+                })))
+            }
+
+            // Fetch departments
+            const departmentsRes = await fetch('/api/departments')
+            if (departmentsRes.ok) {
+                const departmentsData = await departmentsRes.json()
+                setDepartments(departmentsData)
+            }
+        } catch (error) {
+            console.error("Error:", error)
+            if (error instanceof Error) {
+                setError(error.message)
+            } else {
+                setError("An unexpected error occurred")
+            }
+            toast.error("Error loading teacher details")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Initial data fetch
+    useEffect(() => {
+        fetchData()
+    }, [params.id])
+
+    // Listen for router changes to refresh data
+    useEffect(() => {
+        const handleRouteChange = () => {
+            fetchData()
         }
 
-        fetchSessionAndData()
-    }, [params.id, router])
+        window.addEventListener('popstate', handleRouteChange)
+        return () => {
+            window.removeEventListener('popstate', handleRouteChange)
+        }
+    }, [])
 
     if (loading) {
         return (
@@ -144,8 +170,12 @@ export default function TeacherPage() {
                 </Button>
             </div>
 
-            <Tabs defaultValue="details" value={activeTab} className="w-full">
-
+            <Tabs defaultValue={activeTab} value={activeTab} className="w-full">
+                {/* <TabsList>
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="classes">Classes</TabsTrigger>
+                    <TabsTrigger value="subjects">Subjects</TabsTrigger>
+                </TabsList> */}
 
                 <TabsContent value="details">
                     <TeacherDetails
@@ -154,15 +184,16 @@ export default function TeacherPage() {
                         availableSubjects={availableSubjects}
                         currentSubjects={currentSubjects}
                         departments={departments}
+                        onUpdate={fetchData}
                     />
                 </TabsContent>
 
                 <TabsContent value="classes">
-                    <TeacherClasses teacher={teacher} />
+                    <TeacherClasses teacher={teacher} onUpdate={fetchData} />
                 </TabsContent>
 
                 <TabsContent value="subjects">
-                    <TeacherSubjects teacher={teacher} />
+                    <TeacherSubjects teacher={teacher} onUpdate={fetchData} />
                 </TabsContent>
             </Tabs>
         </div>

@@ -1,125 +1,122 @@
 # EduIT - School Management System
 
-EduIT is a comprehensive school management system built with Next.js, Tailwind CSS, and Neon PostgreSQL. It provides a complete solution for educational institutions to manage students, teachers, classes, subjects, attendance, and academic results.
+## Overview
+
+EduIT is a comprehensive school management system built with Next.js, React, TypeScript, Prisma, and PostgreSQL. It provides features for managing academic sessions, results, students, teachers, and more.
 
 ## Features
 
-- **User Management & Authentication**
-
-  - JWT-based secure authentication
-  - Role-based access control (RBAC) for Super Admin, School Admin, Teachers, Students, and Parents
-  - User registration and management
-
-- **School & Academic Management**
-
-  - Create and manage schools, classes, and subjects
-  - Assign teachers to classes and subjects
-  - Manage academic sessions
-
-- **Results Management**
-
-  - Record and calculate student grades
-  - Principal review and approval workflow
-  - Generate and download digital report cards
-
-- **Parent & Student Portals**
-
-  - Personalized dashboards for students and parents
-  - View academic records, results, and attendance
-
-- **Email Notifications**
-  - Automated welcome emails with login credentials
-  - Configurable email providers (SMTP, SendGrid, Resend)
-  - Debug tools for email troubleshooting
+- Academic session management
+- Results configuration and management
+- Student and teacher profiles
+- Attendance tracking
+- Payment processing
+- Event management
+- And more...
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14 with App Router, Tailwind CSS, shadcn/ui
-- **Backend**: Next.js API Routes, Node.js
-- **Database**: Neon PostgreSQL with Prisma ORM
-- **Authentication**: JWT (JSON Web Tokens)
-- **State Management**: React Hooks
-- **Email**: Nodemailer with multiple provider options
+- **Frontend**: Next.js, React, TypeScript, Tailwind CSS, Shadcn UI
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL
+- **Authentication**: NextAuth.js
+- **Testing**: Jest, React Testing Library
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.x or higher
-- Neon PostgreSQL database (or any PostgreSQL database)
-- npm or yarn
+- Node.js 18+ and npm
+- PostgreSQL database
 
 ### Installation
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/yourusername/eduit.git
-   cd eduit
-   ```
+```bash
+git clone https://github.com/yourusername/eduit.git
+cd eduit
+```
 
 2. Install dependencies:
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+```bash
+npm install
+```
 
-3. Copy the environment variables file and configure it:
+3. Set up environment variables:
 
-   ```bash
-   cp .env.example .env.local
-   ```
+Create a `.env` file in the root directory with the following variables:
 
-4. Update the `.env.local` file with your database connection string and other required variables.
+```
+DATABASE_URL="postgresql://username:password@localhost:5432/eduit"
+NEXTAUTH_SECRET="your-nextauth-secret"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-5. Run the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+4. Run database migrations:
 
-### Email Configuration
+```bash
+npx prisma migrate dev
+```
 
-EduIT supports multiple email providers for sending notifications:
+5. Seed the database (optional):
 
-1. **SMTP Configuration** (Default):
+```bash
+npm run seed
+```
 
-   ```
-   SMTP_HOST="smtp.yourprovider.com"
-   SMTP_PORT="587"
-   SMTP_USER="your-email@example.com"
-   SMTP_PASS="your-password"
-   EMAIL_FROM="noreply@yourdomain.com"
-   ```
+6. Start the development server:
 
-2. **SendGrid Configuration**:
+```bash
+npm run dev
+```
 
-   ```
-   SENDGRID_API_KEY="your-sendgrid-api-key"
-   EMAIL_FROM="noreply@yourdomain.com"
-   ```
+The application will be available at http://localhost:3000.
 
-3. **Resend.com Configuration**:
-   ```
-   RESEND_API_KEY="your-resend-api-key"
-   EMAIL_FROM="noreply@yourdomain.com"
-   ```
+## Testing
 
-### Email Debugging
+To run the tests:
 
-In development mode, EduIT provides comprehensive email debugging tools:
+```bash
+npm test
+```
 
-1. **Admin Dashboard**: Navigate to `/dashboard/debug` to access the email debugging dashboard.
+To run tests with coverage:
 
-2. **Debug Email Files**: All emails are saved as HTML files in the `.email-debug` directory for inspection.
+```bash
+npm run test:coverage
+```
 
-3. **API Call Logs**: The debug dashboard displays a history of recent email API calls with detailed error information.
+To run tests in watch mode:
 
-If you're experiencing issues with email delivery:
+```bash
+npm run test:watch
+```
 
-- Check your email provider configuration in `.env.local`
-- Review the debug dashboard for detailed error information
-- Inspect the HTML email files in the `.email-debug` directory
+## Project Structure
+
+```
+eduit/
+├── app/                  # Next.js app directory
+│   ├── api/              # API routes
+│   ├── dashboard/        # Dashboard pages
+│   └── ...               # Other app directories
+├── components/           # Reusable components
+├── lib/                  # Utility functions and libraries
+├── prisma/               # Prisma schema and migrations
+├── public/               # Static assets
+└── __tests__/            # Test files
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

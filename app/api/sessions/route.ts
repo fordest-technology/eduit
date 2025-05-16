@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getSession, type UserRole } from "@/lib/auth";
 
 // Helper function to convert BigInt values to numbers for serialization
 function serializeBigInts(data: any): any {
@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Only super_admin and school_admin can create sessions
-    if (!["super_admin", "school_admin"].includes(session.role)) {
+    const allowedRoles: UserRole[] = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+    if (!allowedRoles.includes(session.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     // Determine the school ID based on user role
     const effectiveSchoolId =
-      session.role === "super_admin" ? schoolId : session.schoolId;
+      session.role === "SUPER_ADMIN" ? schoolId : session.schoolId;
 
     if (!effectiveSchoolId) {
       return NextResponse.json(
@@ -129,30 +130,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for existing current session if this one is marked as current
-    if (body.isCurrent) {
-      const existingCurrent = await prisma.academicSession.findFirst({
-        where: {
-          schoolId: effectiveSchoolId,
-          isCurrent: true,
-        },
-      });
+    // Validate dates
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
 
-      if (existingCurrent) {
-        // Update the existing current session to not be current
-        await prisma.academicSession.update({
-          where: { id: existingCurrent.id },
-          data: { isCurrent: false },
-        });
-      }
+    if (endDateObj <= startDateObj) {
+      return NextResponse.json(
+        { error: "End date must be after start date" },
+        { status: 400 }
+      );
     }
 
     // Create new session
     const newSession = await prisma.academicSession.create({
       data: {
         name,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: startDateObj,
+        endDate: endDateObj,
         isCurrent: body.isCurrent || false,
         school: {
           connect: { id: effectiveSchoolId },
@@ -175,7 +169,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(serializeBigInts(newSession));
+    // Add isActive field for backward compatibility
+    const formattedSession = {
+      ...newSession,
+      isActive: newSession.isCurrent,
+    };
+
+    return NextResponse.json(formattedSession);
   } catch (error) {
     console.error("Error creating academic session:", error);
 

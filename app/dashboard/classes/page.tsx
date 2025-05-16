@@ -4,6 +4,105 @@ import { redirect } from "next/navigation"
 import { ClassesTable } from "./classes-table"
 import { BookOpen, Users } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Suspense } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
+
+async function getData(schoolId: string) {
+    try {
+        const [teachers, subjects, classes, school] = await Promise.all([
+            prisma.teacher.findMany({
+                where: {
+                    user: {
+                        role: "TEACHER",
+                        schoolId,
+                    }
+                },
+                select: {
+                    id: true,
+                    user: {
+                        select: {
+                            name: true,
+                            profileImage: true
+                        }
+                    }
+                },
+                orderBy: {
+                    user: {
+                        name: "asc"
+                    }
+                }
+            }),
+            prisma.subject.findMany({
+                where: {
+                    schoolId,
+                },
+                select: {
+                    id: true,
+                    name: true,
+                },
+                orderBy: {
+                    name: "asc",
+                },
+            }),
+            prisma.class.findMany({
+                where: {
+                    schoolId,
+                },
+                include: {
+                    _count: {
+                        select: {
+                            students: true,
+                            subjects: true,
+                        }
+                    }
+                }
+            }),
+            prisma.school.findUnique({
+                where: {
+                    id: schoolId,
+                },
+                select: {
+                    name: true,
+                    primaryColor: true,
+                    secondaryColor: true,
+                },
+            })
+        ])
+
+        return {
+            teachers,
+            subjects,
+            classes,
+            schoolColors: {
+                primaryColor: school?.primaryColor || "#3b82f6",
+                secondaryColor: school?.secondaryColor || "#1f2937",
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching data:", error)
+        throw new Error("Failed to load data")
+    }
+}
+
+function StatsSkeleton() {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center">
+                            <Skeleton className="h-12 w-12 rounded-full mr-4" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-8 w-16" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    )
+}
 
 export default async function ClassesPage() {
     const session = await getSession()
@@ -12,94 +111,38 @@ export default async function ClassesPage() {
         redirect("/login")
     }
 
-    try {
-        // Fetch teachers for the school
-        const teachers = await prisma.user.findMany({
-            where: {
-                role: "TEACHER",
-                schoolId: session.schoolId,
-            },
-            select: {
-                id: true,
-                name: true,
-                profileImage: true,
-            },
-            orderBy: {
-                name: "asc",
-            },
-        })
+    if (!session.schoolId) {
+        redirect("/dashboard")
+    }
 
-        // Fetch subjects for the school
-        const subjects = await prisma.subject.findMany({
-            where: {
-                schoolId: session.schoolId,
-            },
-            select: {
-                id: true,
-                name: true,
-            },
-            orderBy: {
-                name: "asc",
-            },
-        })
+    const { teachers, subjects, classes, schoolColors } = await getData(session.schoolId)
 
-        // Fetch classes with counts for stats
-        const classes = await prisma.class.findMany({
-            where: {
-                schoolId: session.schoolId,
-            },
-            include: {
-                _count: {
-                    select: {
-                        students: true,
-                        subjects: true,
-                    }
-                }
-            }
-        })
+    // Calculate totals for stats
+    const totalStudents = classes.reduce((acc, cls) => acc + cls._count.students, 0)
+    const totalSubjects = classes.reduce((acc, cls) => acc + cls._count.subjects, 0)
 
-        // Calculate totals for stats
-        const totalStudents = classes.reduce((acc, cls) => acc + cls._count.students, 0)
-        const totalSubjects = classes.reduce((acc, cls) => acc + cls._count.subjects, 0)
-
-        // Get school colors for styling
-        const school = await prisma.school.findUnique({
-            where: {
-                id: session.schoolId,
-            },
-            select: {
-                name: true,
-                primaryColor: true,
-                secondaryColor: true,
-            },
-        })
-
-        const schoolColors = {
-            primaryColor: school?.primaryColor || "#3b82f6",
-            secondaryColor: school?.secondaryColor || "#1f2937",
-        }
-
-        return (
-            <div className="container py-6">
-                {/* Hero section */}
-                <div
-                    className="w-full p-8 mb-6 rounded-lg relative overflow-hidden"
-                    style={{
-                        background: `linear-gradient(45deg, ${schoolColors.primaryColor}, ${schoolColors.secondaryColor})`,
-                    }}
-                >
-                    <div className="absolute inset-0 bg-grid-white/15 [mask-image:linear-gradient(0deg,rgba(255,255,255,0.1),rgba(255,255,255,0.5))]"></div>
-                    <div className="relative z-10">
-                        <h1 className="text-3xl font-bold text-white mb-2">Class Management</h1>
-                        <p className="text-white text-opacity-90 max-w-2xl">
-                            {session.role === "teacher"
-                                ? "View your assigned classes and manage enrolled students"
-                                : "Create classes, assign teachers, and manage students in each class"}
-                        </p>
-                    </div>
+    return (
+        <div className="container py-6">
+            {/* Hero section */}
+            <div
+                className="w-full p-8 mb-6 rounded-lg relative overflow-hidden"
+                style={{
+                    background: `linear-gradient(45deg, ${schoolColors.primaryColor}, ${schoolColors.secondaryColor})`,
+                }}
+            >
+                <div className="absolute inset-0 bg-grid-white/15 [mask-image:linear-gradient(0deg,rgba(255,255,255,0.1),rgba(255,255,255,0.5))]"></div>
+                <div className="relative z-10">
+                    <h1 className="text-3xl font-bold text-white mb-2">Class Management</h1>
+                    <p className="text-white text-opacity-90 max-w-2xl">
+                        {session.role === "TEACHER"
+                            ? "View your assigned classes and manage enrolled students"
+                            : "Create classes, assign teachers, and manage students in each class"}
+                    </p>
                 </div>
+            </div>
 
-                {/* Stats Cards */}
+            {/* Stats Cards */}
+            <Suspense fallback={<StatsSkeleton />}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <Card>
                         <CardContent className="pt-6 flex items-center">
@@ -135,28 +178,18 @@ export default async function ClassesPage() {
                         </CardContent>
                     </Card>
                 </div>
+            </Suspense>
 
-                {/* Classes Table */}
-                <div className="border rounded-lg overflow-hidden p-6 bg-white">
-                    <ClassesTable
-                        userRole={session.role}
-                        userId={session.id}
-                        schoolId={session.schoolId}
-                        teachers={teachers}
-                        subjects={subjects}
-                    />
-                </div>
+            {/* Classes Table */}
+            <div className="border rounded-lg overflow-hidden p-6 bg-white">
+                <ClassesTable
+                    userRole={session.role}
+                    userId={session.id}
+                    schoolId={session.schoolId}
+                    teachers={teachers}
+                    subjects={subjects}
+                />
             </div>
-        )
-    } catch (error) {
-        console.error("Error loading classes page:", error)
-        return (
-            <div className="container py-6">
-                <div className="bg-destructive/15 p-4 rounded-md">
-                    <h2 className="text-lg font-semibold text-destructive mb-2">Error</h2>
-                    <p>Failed to load classes. Please try again later.</p>
-                </div>
-            </div>
-        )
-    }
+        </div>
+    )
 } 

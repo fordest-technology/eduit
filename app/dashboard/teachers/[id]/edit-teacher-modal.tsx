@@ -41,26 +41,60 @@ interface Department {
 }
 
 interface TeacherData {
-    id: string
-    name: string
-    email: string
-    profileImage: string | null
-    createdAt: Date
-    updatedAt: Date
-    role: UserRole
-    // Teacher profile specific data
-    phone: string | null
-    employeeId: string | null
-    qualifications: string | null
-    specialization: string | null
-    department: Department | null
+    id: string;
+    name: string;
+    email: string;
+    profileImage: string | null;
+    phone: string | null;
+    employeeId: string | null;
+    qualifications: string | null;
+    specialization: string | null;
+    joiningDate: Date | null;
+    departmentId: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    dateOfBirth: Date | null;
+    gender: string | null;
+    emergencyContact: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        profileImage: string | null;
+    };
+    department?: Department;
+    stats: {
+        totalClasses: number;
+        totalStudents: number;
+        totalSubjects: number;
+    };
+    subjects: Array<{
+        id: string;
+        name: string;
+        code: string;
+        department: Department;
+    }>;
+    classes: Array<{
+        id: string;
+        name: string;
+        section: string;
+        level: {
+            id: string;
+            name: string;
+        };
+        studentCount: number;
+    }>;
 }
 
 interface EditTeacherModalProps {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    teacher: TeacherData
-    departments: Department[]
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    teacher: TeacherData;
+    departments: Department[];
 }
 
 const formSchema = z.object({

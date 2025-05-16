@@ -62,25 +62,33 @@ export default async function DashboardPage() {
   try {
     // Fetch comprehensive dashboard stats using Prisma
     const dashboardStats = await prisma.$transaction(async (prisma) => {
-      // Fetch total students
-      const totalStudents = await prisma.student.count({
-        where: { user: { schoolId: session.schoolId } }
+      // Fetch total students (unique by id)
+      const studentIds = await prisma.student.findMany({
+        where: { user: { schoolId: session.schoolId } },
+        select: { id: true }
       })
+      const totalStudents = new Set(studentIds.map(s => s.id)).size
 
-      // Fetch total teachers
-      const totalTeachers = await prisma.teacher.count({
-        where: { user: { schoolId: session.schoolId } }
+      // Fetch total teachers (unique by id)
+      const teacherIds = await prisma.teacher.findMany({
+        where: { user: { schoolId: session.schoolId } },
+        select: { id: true }
       })
+      const totalTeachers = new Set(teacherIds.map(t => t.id)).size
 
-      // Fetch total classes
-      const totalClasses = await prisma.class.count({
-        where: { schoolId: session.schoolId }
+      // Fetch total classes (unique by id)
+      const classIds = await prisma.class.findMany({
+        where: { schoolId: session.schoolId },
+        select: { id: true }
       })
+      const totalClasses = new Set(classIds.map(c => c.id)).size
 
-      // Fetch total subjects
-      const totalSubjects = await prisma.subject.count({
-        where: { schoolId: session.schoolId }
+      // Fetch total subjects (unique by id)
+      const subjectIds = await prisma.subject.findMany({
+        where: { schoolId: session.schoolId },
+        select: { id: true }
       })
+      const totalSubjects = new Set(subjectIds.map(s => s.id)).size
 
       // Calculate attendance rate
       const totalAttendanceRecords = await prisma.attendance.count({
@@ -104,23 +112,13 @@ export default async function DashboardPage() {
         ? (presentAttendanceRecords / totalAttendanceRecords) * 100
         : 0
 
-      // Calculate average score
-      const averageScoreResult = await prisma.result.aggregate({
-        where: {
-          student: {
-            user: { schoolId: session.schoolId }
-          }
-        },
-        _avg: { marks: true }
-      })
-
       return {
         totalStudents,
         totalTeachers,
         totalClasses,
         totalSubjects,
         attendanceRate: Number(attendanceRate.toFixed(2)),
-        averageScore: Number(averageScoreResult._avg.marks?.toFixed(2) || 0)
+        averageScore: 0 // Remove average score logic for now
       }
     })
 
@@ -201,6 +199,22 @@ export default async function DashboardPage() {
           return assignmentTotal + (assignment.studentPayments?.length || 0)
         }, 0)
       }, 0)
+    } else {
+      // For other roles, fetch recent activities (results) for the school
+      const results = await prisma.result.findMany({
+        where: {
+          student: {
+            user: { schoolId: session.schoolId }
+          }
+        },
+        include: {
+          student: { include: { user: true } },
+          subject: true
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 5
+      })
+      recentActivities = results
     }
 
     // Fetch upcoming events for all roles
@@ -268,7 +282,7 @@ export default async function DashboardPage() {
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium flex items-center text-blue-700">
@@ -307,12 +321,25 @@ export default async function DashboardPage() {
             <p className="text-sm text-emerald-600 mt-1">Subjects taught in your school</p>
           </CardContent>
         </Card>
+
+        <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium flex items-center text-pink-700">
+              <UserCheck className="mr-2 h-5 w-5" />
+              Teachers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-pink-800">{stats.totalTeachers}</p>
+            <p className="text-sm text-pink-600 mt-1">Teachers registered in your school</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Admin Dashboard or Regular Stats */}
-      {(session.role === "SUPER_ADMIN" || session.role === "SCHOOL_ADMIN") ? (
+      {/* {(session.role === "SUPER_ADMIN" || session.role === "SCHOOL_ADMIN") ? (
         <AdminDashboardClient stats={stats} />
-      ) : null}
+      ) : null} */}
 
       {/* Recent Activities and Events */}
       <div className="grid gap-4 md:grid-cols-7">
@@ -372,7 +399,7 @@ export default async function DashboardPage() {
           <CardTitle className="text-base">School Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-1">Attendance Rate</h4>
               <p className="font-medium">{stats.attendanceRate}%</p>
@@ -380,10 +407,6 @@ export default async function DashboardPage() {
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-1">Average Score</h4>
               <p className="font-medium">{stats.averageScore}%</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Total Teachers</h4>
-              <p className="font-medium">{stats.totalTeachers}</p>
             </div>
           </div>
         </CardContent>

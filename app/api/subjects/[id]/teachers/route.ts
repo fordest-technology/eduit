@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, type UserRole } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { UserRole as PrismaUserRole } from "@prisma/client";
 
 // Helper function to serialize BigInt values
 function serializeBigInts(data: any): any {
@@ -109,7 +110,10 @@ export async function POST(
     }
 
     // Only admins can assign teachers
-    if (session.role !== "super_admin" && session.role !== "school_admin") {
+    if (
+      session.role !== PrismaUserRole.SUPER_ADMIN &&
+      session.role !== PrismaUserRole.SCHOOL_ADMIN
+    ) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -232,7 +236,10 @@ export async function DELETE(
     }
 
     // Only admins can remove teacher assignments
-    if (session.role !== "super_admin" && session.role !== "school_admin") {
+    if (
+      session.role !== PrismaUserRole.SUPER_ADMIN &&
+      session.role !== PrismaUserRole.SCHOOL_ADMIN
+    ) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -307,7 +314,10 @@ export async function PUT(
     }
 
     // Only admins can manage teacher assignments
-    if (session.role !== "super_admin" && session.role !== "school_admin") {
+    if (
+      session.role !== PrismaUserRole.SUPER_ADMIN &&
+      session.role !== PrismaUserRole.SCHOOL_ADMIN
+    ) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 

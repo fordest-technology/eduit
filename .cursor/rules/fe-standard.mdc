@@ -1,0 +1,344 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Frontend Standards and Patterns
+
+## Page Structure
+
+1. **Page Layout**
+   ```typescript
+   // Standard page structure
+   export default function EntityPage() {
+     return (
+       <div className="space-y-6">
+         <DashboardHeader
+           heading="Entity Name"
+           text="Entity description"
+           showBanner={true}
+         />
+         <EntityClient
+           data={data}
+           stats={stats}
+           error={error}
+         />
+       </div>
+     )
+   }
+   ```
+
+2. **Client Component Structure**
+   ```typescript
+   // Standard client component structure
+   export function EntityClient({ data, stats, error }: EntityClientProps) {
+     return (
+       <div className="space-y-6">
+         {/* Stats Cards */}
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+           {/* Stat cards with consistent styling */}
+         </div>
+
+         {/* Main Content Card */}
+         <Card>
+           <CardHeader>
+             <CardTitle>Entity Name</CardTitle>
+             <CardDescription>Description</CardDescription>
+           </CardHeader>
+           <CardContent>
+             {/* Content */}
+           </CardContent>
+         </Card>
+       </div>
+     )
+   }
+   ```
+
+## Component Patterns
+
+1. **Modal Components**
+   ```typescript
+   interface EntityModalProps {
+     open: boolean;
+     onOpenChange: (open: boolean) => void;
+     onSuccess?: () => void;
+     entityToEdit?: any;
+   }
+
+   export function EntityModal({
+     open,
+     onOpenChange,
+     onSuccess,
+     entityToEdit
+   }: EntityModalProps) {
+     // Implementation
+   }
+   ```
+
+2. **Form Components**
+   ```typescript
+   const formSchema = z.object({
+     // Form fields with validation
+   });
+
+   export function EntityForm({
+     entity,
+     onSubmit,
+     isLoading
+   }: EntityFormProps) {
+     const form = useForm<z.infer<typeof formSchema>>({
+       resolver: zodResolver(formSchema),
+       defaultValues: {
+         // Default values
+       }
+     });
+   }
+   ```
+
+## UI Components
+
+1. **Stats Cards**
+   ```typescript
+   <Card className="bg-gradient-to-br from-[color]-50 to-[color]-100 border-[color]-200">
+     <CardHeader className="pb-2">
+       <CardTitle className="text-lg font-medium flex items-center text-[color]-700">
+         <Icon className="mr-2 h-5 w-5" />
+         Title
+       </CardTitle>
+     </CardHeader>
+     <CardContent>
+       <p className="text-3xl font-bold text-[color]-800">{value}</p>
+       <p className="text-sm text-[color]-600 mt-1">Description</p>
+     </CardContent>
+   </Card>
+   ```
+
+2. **Data Tables**
+   ```typescript
+   export const columns: ColumnDef<Entity>[] = [
+     {
+       accessorKey: "name",
+       header: "Name",
+       cell: ({ row }) => {
+         const entity = row.original;
+         return (
+           <div className="flex items-center gap-2">
+             <Avatar className="h-8 w-8">
+               <AvatarImage src={entity.profileImage || ""} alt={entity.name} />
+               <AvatarFallback>{entity.name.charAt(0)}</AvatarFallback>
+             </Avatar>
+             <div>
+               <div className="font-medium">{entity.name}</div>
+               <div className="text-xs text-muted-foreground">{entity.email}</div>
+             </div>
+           </div>
+         );
+       },
+     },
+     // Other columns
+   ];
+   ```
+
+## State Management
+
+1. **Loading States**
+   ```typescript
+   const [isLoading, setIsLoading] = useState(false);
+   const [isPending, startTransition] = useTransition();
+
+   // Usage in buttons
+   <Button disabled={isLoading || isPending}>
+     {isLoading ? (
+       <>
+         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+         Loading...
+       </>
+     ) : (
+       "Action"
+     )}
+   </Button>
+   ```
+
+2. **Error Handling**
+   ```typescript
+   const [error, setError] = useState<string | null>(null);
+
+   // Error display
+   {error && (
+     <div className="rounded-lg border bg-card p-8 text-card-foreground shadow-sm">
+       <div className="flex flex-col items-center justify-center space-y-4">
+         <h2 className="text-xl font-bold text-red-500">Error</h2>
+         <p className="text-center text-muted-foreground">{error}</p>
+         <Button onClick={() => window.location.reload()}>
+           Retry
+         </Button>
+       </div>
+     </div>
+   )}
+   ```
+
+## Form Patterns
+
+1. **Form Structure**
+   ```typescript
+   <Form {...form}>
+     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         <FormField
+           control={form.control}
+           name="fieldName"
+           render={({ field }) => (
+             <FormItem>
+               <FormLabel>Label</FormLabel>
+               <FormControl>
+                 <Input {...field} />
+               </FormControl>
+               <FormMessage />
+             </FormItem>
+           )}
+         />
+       </div>
+     </form>
+   </Form>
+   ```
+
+2. **Form Validation**
+   ```typescript
+   const formSchema = z.object({
+     name: z.string().min(2, "Name must be at least 2 characters"),
+     email: z.string().email("Please enter a valid email"),
+     // Other validations
+   });
+   ```
+
+## Modal Patterns
+
+1. **Edit Modal**
+   ```typescript
+   <Dialog open={open} onOpenChange={onOpenChange}>
+     <DialogContent className="sm:max-w-[500px]">
+       <DialogHeader>
+         <DialogTitle>Edit Entity</DialogTitle>
+         <DialogDescription>
+           Update entity information
+         </DialogDescription>
+       </DialogHeader>
+       {/* Form content */}
+       <DialogFooter>
+         <Button type="submit" disabled={isLoading}>
+           {isLoading ? "Saving..." : "Save Changes"}
+         </Button>
+       </DialogFooter>
+     </DialogContent>
+   </Dialog>
+   ```
+
+2. **Delete Modal**
+   ```typescript
+   <AlertDialog open={open} onOpenChange={onOpenChange}>
+     <AlertDialogContent>
+       <AlertDialogHeader>
+         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+         <AlertDialogDescription>
+           This action cannot be undone.
+         </AlertDialogDescription>
+       </AlertDialogHeader>
+       <AlertDialogFooter>
+         <AlertDialogCancel>Cancel</AlertDialogCancel>
+         <AlertDialogAction onClick={onConfirm}>
+           Delete
+         </AlertDialogAction>
+       </AlertDialogFooter>
+     </AlertDialogContent>
+   </AlertDialog>
+   ```
+
+## API Integration
+
+1. **Data Fetching**
+   ```typescript
+   const fetchData = async () => {
+     try {
+       setIsLoading(true);
+       const response = await fetch('/api/endpoint');
+       if (!response.ok) throw new Error('Failed to fetch data');
+       const data = await response.json();
+       setData(data);
+     } catch (error) {
+       setError(error instanceof Error ? error.message : 'An error occurred');
+     } finally {
+       setIsLoading(false);
+     }
+   };
+   ```
+
+2. **Data Mutation**
+   ```typescript
+   const handleSubmit = async (values: FormValues) => {
+     try {
+       setIsLoading(true);
+       const response = await fetch('/api/endpoint', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(values),
+       });
+       if (!response.ok) throw new Error('Failed to submit');
+       toast.success('Success');
+       router.refresh();
+     } catch (error) {
+       toast.error(error instanceof Error ? error.message : 'An error occurred');
+     } finally {
+       setIsLoading(false);
+     }
+   };
+   ```
+
+## Styling Guidelines
+
+1. **Color Scheme**
+   - Use consistent color gradients for stats cards
+   - Follow the established color patterns for different states
+   - Use semantic color names (primary, secondary, etc.)
+
+2. **Spacing**
+   - Use consistent spacing with Tailwind classes
+   - Maintain grid layouts for responsive design
+   - Follow the established padding and margin patterns
+
+3. **Typography**
+   - Use consistent font sizes and weights
+   - Follow the established text hierarchy
+   - Use appropriate text colors for different contexts
+
+4. **Responsive Design**
+   - Use mobile-first approach
+   - Implement consistent breakpoints
+   - Maintain responsive grid layouts
+
+## Best Practices
+
+1. **Code Organization**
+   - Keep components modular and reusable
+   - Follow consistent file naming conventions
+   - Maintain clear component hierarchy
+
+2. **Performance**
+   - Implement proper loading states
+   - Use appropriate data fetching strategies
+   - Optimize component rendering
+
+3. **Accessibility**
+   - Include proper ARIA labels
+   - Maintain keyboard navigation
+   - Ensure proper focus management
+
+4. **Error Handling**
+   - Implement proper error boundaries
+   - Show user-friendly error messages
+   - Provide recovery options
+
+5. **State Management**
+   - Use appropriate state management patterns
+   - Implement proper loading states
+
+   - Handle errors gracefully

@@ -1,0 +1,351 @@
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
+import { DataTable } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+    Student,
+    Subject,
+    Period,
+    Session,
+    AssessmentComponent,
+    Result,
+} from "../types";
+
+const resultEntrySchema = z.object({
+    studentId: z.string().min(1, "Student is required"),
+    subjectId: z.string().min(1, "Subject is required"),
+    periodId: z.string().min(1, "Period is required"),
+    sessionId: z.string().min(1, "Session is required"),
+    componentScores: z.record(z.number().min(0)),
+    affectiveTraits: z.record(z.string()).optional(),
+    psychomotorSkills: z.record(z.string()).optional(),
+    customFields: z.record(z.string()).optional(),
+    teacherComment: z.string().optional(),
+    adminComment: z.string().optional(),
+});
+
+type ResultEntry = z.infer<typeof resultEntrySchema>;
+
+interface ResultsManagementProps {
+    schoolId: string;
+    students: Student[];
+    subjects: Subject[];
+    periods: Period[];
+    sessions: Session[];
+    components: AssessmentComponent[];
+}
+
+export function ResultsManagement({
+    students,
+    subjects,
+    periods,
+    sessions,
+    components,
+    schoolId,
+}: ResultsManagementProps) {
+    const { toast } = useToast();
+    const router = useRouter();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [results, setResults] = useState<Result[]>([]);
+
+    const form = useForm<ResultEntry>({
+        resolver: zodResolver(resultEntrySchema),
+        defaultValues: {
+            componentScores: {},
+            affectiveTraits: {},
+            psychomotorSkills: {},
+            customFields: {},
+        },
+    });
+
+    async function onSubmit(data: ResultEntry) {
+        try {
+            setIsSubmitting(true);
+            const response = await fetch(`/api/schools/${schoolId}/results`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to save result");
+            }
+
+            toast({
+                title: "Success",
+                description: "Result saved successfully",
+            });
+
+            form.reset();
+            router.refresh();
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to save result",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    const columns: ColumnDef<Result>[] = [
+        {
+            accessorKey: "student.name",
+            header: "Student",
+        },
+        {
+            accessorKey: "subject.name",
+            header: "Subject",
+        },
+        {
+            accessorKey: "period.name",
+            header: "Period",
+        },
+        {
+            accessorKey: "total",
+            header: "Total Score",
+        },
+        {
+            accessorKey: "grade",
+            header: "Grade",
+        },
+        {
+            accessorKey: "remark",
+            header: "Remark",
+        },
+        {
+            accessorKey: "cumulativeAverage",
+            header: "Cumulative Average",
+            cell: ({ row }) => row.original.cumulativeAverage?.toFixed(2) || "-",
+        },
+    ];
+
+    return (
+        <div className="space-y-8">
+            <Card>
+                <CardContent className="pt-6">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="studentId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Student</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select student" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {students.map((student) => (
+                                                        <SelectItem key={student.id} value={student.id}>
+                                                            {student.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="subjectId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Subject</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select subject" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {subjects.map((subject) => (
+                                                        <SelectItem key={subject.id} value={subject.id}>
+                                                            {subject.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="periodId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Period</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select period" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {periods.map((period) => (
+                                                        <SelectItem key={period.id} value={period.id}>
+                                                            {period.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="sessionId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Session</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select session" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {sessions.map((session) => (
+                                                        <SelectItem key={session.id} value={session.id}>
+                                                            {session.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">Assessment Scores</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {components.map((component) => (
+                                        <FormField
+                                            key={component.id}
+                                            control={form.control}
+                                            name={`componentScores.${component.key}`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>{component.name}</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder={`Max: ${component.maxScore}`}
+                                                            {...field}
+                                                            onChange={(e) =>
+                                                                field.onChange(parseFloat(e.target.value))
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">Comments</h3>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="teacherComment"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Teacher's Comment</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="Enter teacher's comment"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="adminComment"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Admin's Comment</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="Enter admin's comment"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </div>
+
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? "Saving..." : "Save Result"}
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium">Results Overview</h3>
+                <DataTable columns={columns} data={results} />
+            </div>
+        </div>
+    );
+} 

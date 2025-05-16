@@ -2,73 +2,172 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
-import ParentModal from "../parent-modal";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import Link from "next/link";
-import { Pencil, Trash, UserPlus, Search, Loader2, Users } from "lucide-react";
+import { Pencil, Trash, UserPlus, Search, Loader2, Users, Mail, Phone, School, Shield, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
-type ChildrenType = {
+interface StudentData {
+    id: string;
+    name: string;
+    class: string;
+    enrollmentDate?: string;
+    profileImage?: string | null;
+}
+
+interface Parent {
+    id: string;
+    name: string;
+    email: string;
+    profileImage?: string | null;
+    phone?: string | null;
+    schoolId?: string | null;
+    status?: "active" | "inactive";
+    joinDate?: string;
+}
+
+interface ParentChild {
     id: string;
     name: string;
     class: string;
     relation: string;
     linkId: string;
-};
-
-interface StudentType {
-    id: string;
-    name: string;
-    class: string;
-    profileImage?: string;
+    isPrimary?: boolean;
+    profileImage?: string | null;
+    enrollmentDate?: string;
 }
 
 interface ParentDetailsProps {
-    parent: any;
-    children: ChildrenType[];
-    availableStudents: StudentType[];
+    parent: Parent;
+    children: ParentChild[];
+    availableStudents: StudentData[];
     canManage: boolean;
+}
+
+interface EditParentFormData {
+    name: string;
+    email: string;
+    phone: string;
+    status: "active" | "inactive";
 }
 
 export default function ParentDetails({
     parent,
     children,
-    availableStudents: initialAvailableStudents,
-    canManage,
+    availableStudents,
+    canManage
 }: ParentDetailsProps) {
     const router = useRouter();
-    const { toast } = useToast();
-    const [loading, setLoading] = useState(false);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [showLinkDialog, setShowLinkDialog] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-    const [relation, setRelation] = useState<string>("");
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
-    const [studentToUnlink, setStudentToUnlink] = useState<ChildrenType | null>(null);
-    const [isLoadingStudents, setIsLoadingStudents] = useState(false);
-    const [availableStudents, setAvailableStudents] = useState<StudentType[]>(initialAvailableStudents || []);
+    const [showEditDialog, setShowEditDialog] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState("");
+    const [selectedRelation, setSelectedRelation] = useState("");
+    const [isPrimary, setIsPrimary] = useState(false);
+    const [studentToUnlink, setStudentToUnlink] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [editFormData, setEditFormData] = useState<EditParentFormData>({
+        name: parent.name,
+        email: parent.email,
+        phone: parent.phone || "",
+        status: parent.status || "active"
+    });
 
-    // Filter students based on search term
+    // Filter available students based on search query
     const filteredStudents = useMemo(() => {
-        if (!availableStudents || availableStudents.length === 0) return [];
         return availableStudents.filter(student =>
-            student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (student.class && student.class.toLowerCase().includes(searchTerm.toLowerCase()))
+            student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            student.class.toLowerCase().includes(searchQuery.toLowerCase())
         );
-    }, [availableStudents, searchTerm]);
+    }, [availableStudents, searchQuery]);
 
-    // Handle delete parent
-    const handleDelete = async () => {
-        setLoading(true);
+    // Handle linking a student to the parent
+    const handleLinkStudent = async () => {
+        if (!selectedStudent || !selectedRelation) {
+            toast.error("Please select a student and specify the relation");
+            return;
+        }
+
+        if (selectedRelation.trim().length < 3) {
+            toast.error("Please enter a valid relation (minimum 3 characters)");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const response = await fetch(`/api/parents/${parent.id}/students`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    studentId: selectedStudent,
+                    relation: selectedRelation.trim(),
+                    isPrimary,
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || "Failed to link student");
+            }
+
+            toast.success("Student linked successfully");
+            setShowLinkDialog(false);
+            setSelectedStudent("");
+            setSelectedRelation("");
+            setIsPrimary(false);
+            setSearchQuery("");
+            router.refresh();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to link student. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Handle unlinking a student from the parent
+    const handleUnlinkStudent = async () => {
+        if (!studentToUnlink) return;
+
+        setIsLoading(true);
+        try {
+            const response = await fetch(`/api/parents/${parent.id}/students/${studentToUnlink}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to unlink student");
+            }
+
+            toast.success("Student unlinked successfully");
+            setShowUnlinkDialog(false);
+            setStudentToUnlink(null);
+            router.refresh();
+        } catch (error) {
+            toast.error("Failed to unlink student. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Handle deleting the parent account
+    const handleDeleteParent = async () => {
+        setIsLoading(true);
         try {
             const response = await fetch(`/api/parents/${parent.id}`, {
                 method: "DELETE",
@@ -78,312 +177,224 @@ export default function ParentDetails({
                 throw new Error("Failed to delete parent");
             }
 
-            toast({
-                title: "Parent deleted",
-                description: "Parent was deleted successfully",
-            });
-
+            toast.success("Parent account deleted successfully");
             router.push("/dashboard/parents");
             router.refresh();
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to delete parent",
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
-            setIsDeleteDialogOpen(false);
-        }
-    };
-
-    // Handle student selection
-    const handleStudentToggle = (studentId: string) => {
-        setSelectedStudents(prev => {
-            if (prev.includes(studentId)) {
-                return prev.filter(id => id !== studentId);
-            } else {
-                return [...prev, studentId];
-            }
-        });
-    };
-
-    // Handle opening the link dialog
-    const handleOpenLinkDialog = async () => {
-        setIsLoadingStudents(true);
-        try {
-            // Refresh available students
-            const response = await fetch(`/api/parents/${parent.id}`);
-            if (!response.ok) {
-                throw new Error("Failed to fetch available students");
-            }
-            const data = await response.json();
-
-            // Set the available students from the response
-            if (data.availableStudents && Array.isArray(data.availableStudents)) {
-                setAvailableStudents(data.availableStudents);
-            } else {
-                console.error("Invalid available students data:", data);
-                throw new Error("Invalid response format from server");
-            }
-
-            setShowLinkDialog(true);
         } catch (error) {
-            console.error("Error fetching available students:", error);
-            toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "Failed to load available students",
-                variant: "destructive",
-            });
-            setAvailableStudents([]); // Reset available students on error
+            toast.error("Failed to delete parent. Please try again.");
         } finally {
-            setIsLoadingStudents(false);
+            setIsLoading(false);
         }
     };
 
-    // Handle link students to parent
-    const handleLinkStudents = async () => {
-        if (selectedStudents.length === 0) {
-            toast({
-                title: "Error",
-                description: "Please select at least one student",
-                variant: "destructive",
-            });
+    // Handle editing parent details
+    const handleEditParent = async () => {
+        if (!editFormData.name.trim() || !editFormData.email.trim()) {
+            toast.error("Name and email are required");
             return;
         }
 
-        setLoading(true);
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(editFormData.email)) {
+            toast.error("Please enter a valid email address");
+            return;
+        }
+
+        setIsLoading(true);
         try {
-            const response = await fetch(`/api/parent-students`, {
-                method: "POST",
+            const response = await fetch(`/api/parents/${parent.id}`, {
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    parentId: parent.id,
-                    studentIds: selectedStudents,
-                    relation: relation || undefined,
+                    name: editFormData.name.trim(),
+                    email: editFormData.email.trim(),
+                    phone: editFormData.phone.trim() || null,
+                    status: editFormData.status,
                 }),
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to link students");
-            }
-
-            toast({
-                title: "Success",
-                description: `${selectedStudents.length} student(s) linked successfully`,
-            });
-
-            setShowLinkDialog(false);
-            setSelectedStudents([]);
-            setRelation("");
-            setSearchTerm("");
-            router.refresh();
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to link students",
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Handle unlink student
-    const handleUnlinkStudent = async (student: ChildrenType) => {
-        setStudentToUnlink(student);
-        setShowUnlinkDialog(true);
-    };
-
-    const confirmUnlinkStudent = async () => {
-        if (!studentToUnlink) return;
-
-        setLoading(true);
-        try {
-            const response = await fetch(`/api/parent-students/${studentToUnlink.linkId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Failed to unlink student');
+                throw new Error(error.message || "Failed to update parent");
             }
 
-            toast({
-                title: "Success",
-                description: "Student unlinked successfully",
-            });
-
+            toast.success("Parent details updated successfully");
+            setShowEditDialog(false);
             router.refresh();
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to unlink student",
-                variant: "destructive",
-            });
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to update parent. Please try again.");
         } finally {
-            setLoading(false);
-            setShowUnlinkDialog(false);
-            setStudentToUnlink(null);
-        }
-    };
-
-    // Reset modal state when opened/closed
-    const handleDialogChange = (open: boolean) => {
-        setShowLinkDialog(open);
-        if (!open) {
-            setSelectedStudents([]);
-            setRelation("");
-            setSearchTerm("");
+            setIsLoading(false);
         }
     };
 
     return (
         <div className="space-y-6">
             {/* Parent Information Card */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Parent Information</CardTitle>
+            <Card className="border-t-4 border-t-primary shadow-sm hover:shadow transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div>
+                        <CardTitle className="text-2xl font-bold">Parent Information</CardTitle>
+                        <CardDescription>View and manage parent details</CardDescription>
+                    </div>
                     {canManage && (
-                        <div className="flex space-x-2">
-                            <ParentModal
-                                parent={parent}
-                                trigger={
-                                    <Button variant="outline" size="icon">
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                }
-                                onSuccess={() => router.refresh()}
-                            />
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowEditDialog(true)}
+                                className="hover:bg-muted/50"
+                            >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                            </Button>
                             <Button
                                 variant="destructive"
-                                size="icon"
-                                onClick={() => setIsDeleteDialogOpen(true)}
-                                disabled={loading}
+                                size="sm"
+                                onClick={() => setShowDeleteDialog(true)}
+                                className="hover:bg-destructive/90"
                             >
-                                <Trash className="h-4 w-4" />
+                                <Trash className="mr-2 h-4 w-4" />
+                                Delete
                             </Button>
                         </div>
                     )}
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-col md:flex-row gap-6">
-                        <div className="flex flex-col items-center">
-                            <Avatar className="w-24 h-24 mb-2">
-                                <AvatarImage src={parent.profileImage || ""} alt={parent.name} />
-                                <AvatarFallback className="text-lg">
-                                    {parent.name
-                                        .split(" ")
-                                        .map((n: string) => n[0])
-                                        .join("")
-                                        .toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                        </div>
-
-                        <div className="flex-1 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Name</p>
-                                    <p className="text-base">{parent.name}</p>
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                        <Avatar className="h-24 w-24 border-2 border-primary/20 ring-2 ring-primary/10 ring-offset-2">
+                            <AvatarImage src={parent.profileImage || undefined} alt={parent.name} />
+                            <AvatarFallback className="text-lg bg-primary/10">
+                                {parent.name.split(" ").map((n) => n[0]).join("")}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-3 flex-1">
+                            <div>
+                                <h3 className="text-2xl font-semibold">{parent.name}</h3>
+                                <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                                    <div className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                                        <Mail className="h-4 w-4 mr-2" />
+                                        <a href={`mailto:${parent.email}`} className="hover:underline">
+                                            {parent.email}
+                                        </a>
+                                    </div>
+                                    {parent.phone && (
+                                        <div className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                                            <Phone className="h-4 w-4 mr-2" />
+                                            <a href={`tel:${parent.phone}`} className="hover:underline">
+                                                {parent.phone}
+                                            </a>
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Email</p>
-                                    <p className="text-base">{parent.email}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                                    <p className="text-base">{parent.phone || "Not provided"}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Children</p>
-                                    <p className="text-base">{children.length}</p>
-                                </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant={parent.status === "active" ? "default" : "secondary"}>
+                                    {parent.status || "Active"}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                    <Users className="h-3 w-3 mr-1" />
+                                    {children.length} {children.length === 1 ? 'Child' : 'Children'}
+                                </Badge>
+                                {parent.joinDate && (
+                                    <Badge variant="outline" className="text-xs">
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        Joined {new Date(parent.joinDate).toLocaleDateString()}
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Children List */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Linked Students</CardTitle>
+            {/* Children Section */}
+            <Card className="shadow-sm hover:shadow transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div>
+                        <CardTitle>Children</CardTitle>
+                        <CardDescription>Manage linked students</CardDescription>
+                    </div>
                     {canManage && (
-                        <div className="flex items-center space-x-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowLinkDialog(true)}
-                                disabled={loading}
-                            >
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Link Student
-                            </Button>
-                        </div>
+                        <Button
+                            onClick={() => setShowLinkDialog(true)}
+                            size="sm"
+                            className="hover:bg-primary/90"
+                        >
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Link Student
+                        </Button>
                     )}
                 </CardHeader>
                 <CardContent>
                     {children.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <Users className="h-12 w-12 text-muted-foreground mb-2" />
-                            <p className="text-muted-foreground">No students linked to this parent</p>
-                            {/* {canManage && ( */}
-                            <Button
-                                variant="outline"
-                                className="mt-4"
-                                onClick={() => setShowLinkDialog(true)}
-                            >
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Link a Student
-                            </Button>
-                            {/* )} */}
+                        <div className="text-center py-10 bg-muted/10 rounded-lg border-2 border-dashed">
+                            <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                            <h3 className="mt-4 text-sm font-semibold text-muted-foreground">
+                                No children linked
+                            </h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                {canManage
+                                    ? "Start by linking a student to this parent."
+                                    : "This parent has no linked students."}
+                            </p>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="divide-y">
                             {children.map((child) => (
                                 <div
                                     key={child.id}
-                                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                                    className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
                                 >
-                                    <div className="flex items-center space-x-4">
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarFallback className="bg-primary/10 text-primary">
-                                                {child.name.charAt(0)}
+                                    <div className="flex items-center gap-4">
+                                        <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2">
+                                            <AvatarImage src={child.profileImage || undefined} alt={child.name} />
+                                            <AvatarFallback className="bg-primary/10">
+                                                {child.name.split(" ").map((n) => n[0]).join("")}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <p className="font-medium">{child.name}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {child.class} • {child.relation}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-medium">{child.name}</p>
+                                                {child.isPrimary && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        <Shield className="h-3 w-3 mr-1" />
+                                                        Primary
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                <School className="h-3 w-3" />
+                                                {child.class}
+                                                <Separator orientation="vertical" className="h-3" />
+                                                {child.relation}
+                                                {child.enrollmentDate && (
+                                                    <>
+                                                        <Separator orientation="vertical" className="h-3" />
+                                                        <Calendar className="h-3 w-3" />
+                                                        {new Date(child.enrollmentDate).toLocaleDateString()}
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center space-x-2">
+                                    {canManage && (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            asChild
+                                            onClick={() => {
+                                                setStudentToUnlink(child.linkId);
+                                                setShowUnlinkDialog(true);
+                                            }}
+                                            className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50"
                                         >
-                                            <Link href={`/dashboard/students/${child.id}`}>
-                                                <Users className="h-4 w-4 mr-2" />
-                                                View Student
-                                            </Link>
+                                            <Trash className="h-4 w-4" />
+                                            <span className="sr-only">Unlink {child.name}</span>
                                         </Button>
-                                        {/* {canManage && ( */}
-                                        <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={() => handleUnlinkStudent(child)}
-                                            disabled={loading}
-                                        >
-                                            <Trash className="h-4 w-4 mr-2" />
-                                            Unassign Student
-                                        </Button>
-                                        {/* )} */}
-                                    </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -391,167 +402,264 @@ export default function ParentDetails({
                 </CardContent>
             </Card>
 
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog
-                open={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action will permanently delete this parent and all associated
-                            records. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete}
-                            disabled={loading}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            {loading ? "Deleting..." : "Delete"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Unlink Confirmation Dialog */}
-            <AlertDialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Unassign Student</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to unassign {studentToUnlink?.name} from this parent?
-                            This will remove the parent-student relationship and cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmUnlinkStudent}
-                            disabled={loading}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Unassigning...
-                                </>
-                            ) : (
-                                "Unassign Student"
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
             {/* Link Student Dialog */}
-            <Dialog open={showLinkDialog} onOpenChange={handleDialogChange}>
-                <DialogContent className="sm:max-w-[500px]">
+            <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Link Students</DialogTitle>
-                        <DialogDescription>
-                            Select students to link with this parent
-                        </DialogDescription>
+                        <DialogTitle>Link Student</DialogTitle>
                     </DialogHeader>
-                    <div className="py-4">
-                        <div className="space-y-4">
+                    <div className="space-y-4 py-4">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search students by name or class..."
+                                className="pl-8"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <ScrollArea className="h-[200px] rounded-md border p-2">
                             <div className="space-y-2">
-                                <Label htmlFor="search">Search Students</Label>
-                                <div className="relative">
-                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        id="search"
-                                        placeholder="Search by name or class..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        disabled={loading || isLoadingStudents}
-                                        className="pl-8"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="relation">Relation (Optional)</Label>
-                                <Input
-                                    id="relation"
-                                    placeholder="e.g. Father, Mother, Guardian"
-                                    value={relation}
-                                    onChange={(e) => setRelation(e.target.value)}
-                                    disabled={loading || isLoadingStudents}
-                                />
-                            </div>
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                {isLoadingStudents ? (
-                                    <div className="flex items-center justify-center py-4">
-                                        <Loader2 className="h-6 w-6 animate-spin" />
-                                    </div>
-                                ) : filteredStudents.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-4 text-center">
-                                        <Users className="h-8 w-8 text-muted-foreground mb-2" />
-                                        <p className="text-sm text-muted-foreground">
-                                            {searchTerm ? "No students found matching your search" : "No available students found"}
-                                        </p>
+                                {filteredStudents.length === 0 ? (
+                                    <div className="text-center py-4 text-sm text-muted-foreground">
+                                        No students found
                                     </div>
                                 ) : (
                                     filteredStudents.map((student) => (
                                         <div
                                             key={student.id}
-                                            className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-accent"
+                                            className={cn(
+                                                "flex items-center space-x-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors",
+                                                selectedStudent === student.id && "bg-muted"
+                                            )}
+                                            onClick={() => setSelectedStudent(student.id)}
                                         >
-                                            <Checkbox
-                                                id={`student-${student.id}`}
-                                                checked={selectedStudents.includes(student.id)}
-                                                onCheckedChange={() => handleStudentToggle(student.id)}
-                                                disabled={loading || isLoadingStudents}
+                                            <input
+                                                type="radio"
+                                                id={student.id}
+                                                name="student"
+                                                value={student.id}
+                                                checked={selectedStudent === student.id}
+                                                onChange={(e) => setSelectedStudent(e.target.value)}
+                                                className="h-4 w-4"
                                             />
-                                            <Label htmlFor={`student-${student.id}`} className="flex-1">
-                                                <div className="flex items-center space-x-3">
-                                                    <Avatar>
-                                                        <AvatarImage src={student.profileImage} />
-                                                        <AvatarFallback>
-                                                            {student.name.charAt(0)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <p className="font-medium">{student.name}</p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {student.class || 'No class assigned'}
-                                                        </p>
-                                                    </div>
+                                            <Label htmlFor={student.id} className="flex-1 cursor-pointer">
+                                                <div className="font-medium">{student.name}</div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {student.class}
+                                                    {student.enrollmentDate && (
+                                                        <>
+                                                            <span className="mx-2">•</span>
+                                                            Enrolled: {new Date(student.enrollmentDate).toLocaleDateString()}
+                                                        </>
+                                                    )}
                                                 </div>
                                             </Label>
                                         </div>
                                     ))
                                 )}
                             </div>
+                        </ScrollArea>
+                        <div className="space-y-2">
+                            <Label htmlFor="relation">Relation</Label>
+                            <Input
+                                id="relation"
+                                placeholder="e.g., Father, Mother, Guardian"
+                                value={selectedRelation}
+                                onChange={(e) => setSelectedRelation(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="primary"
+                                checked={isPrimary}
+                                onCheckedChange={(checked) => setIsPrimary(checked as boolean)}
+                            />
+                            <Label htmlFor="primary" className="text-sm">
+                                Set as primary guardian
+                            </Label>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            onClick={() => setShowLinkDialog(false)}
-                            disabled={loading || isLoadingStudents}
+                            onClick={() => {
+                                setShowLinkDialog(false);
+                                setSelectedStudent("");
+                                setSelectedRelation("");
+                                setIsPrimary(false);
+                                setSearchQuery("");
+                            }}
+                            disabled={isLoading}
                         >
                             Cancel
                         </Button>
                         <Button
-                            onClick={handleLinkStudents}
-                            disabled={loading || isLoadingStudents || selectedStudents.length === 0}
+                            onClick={handleLinkStudent}
+                            disabled={isLoading || !selectedStudent || !selectedRelation.trim()}
                         >
-                            {loading ? (
+                            {isLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Linking...
                                 </>
                             ) : (
-                                "Link Students"
+                                "Link Student"
                             )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Unlink Student Dialog */}
+            <AlertDialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Unlink Student</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to unlink this student from the parent? This action cannot be undone.
+                            {children.find(c => c.linkId === studentToUnlink)?.isPrimary && (
+                                <p className="mt-2 text-destructive">
+                                    Warning: This student is set as the primary guardian's child.
+                                </p>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleUnlinkStudent}
+                            disabled={isLoading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Unlinking...
+                                </>
+                            ) : (
+                                "Unlink Student"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Edit Parent Dialog */}
+            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Parent Details</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input
+                                id="name"
+                                value={editFormData.name}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="Enter parent's name"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                value={editFormData.email}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                                placeholder="Enter parent's email"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">Phone (Optional)</Label>
+                            <Input
+                                id="phone"
+                                type="tel"
+                                value={editFormData.phone}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                placeholder="Enter parent's phone number"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                value={editFormData.status}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as "active" | "inactive" }))}
+                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowEditDialog(false);
+                                setEditFormData({
+                                    name: parent.name,
+                                    email: parent.email,
+                                    phone: parent.phone || "",
+                                    status: parent.status || "active"
+                                });
+                            }}
+                            disabled={isLoading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleEditParent}
+                            disabled={isLoading || !editFormData.name.trim() || !editFormData.email.trim()}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save Changes"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Parent Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Parent Account</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this parent account? This action cannot be undone.
+                            {children.length > 0 && (
+                                <p className="mt-2 text-destructive">
+                                    Warning: This will remove links to {children.length} student{children.length !== 1 ? 's' : ''}.
+                                </p>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteParent}
+                            disabled={isLoading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                "Delete Parent"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 } 

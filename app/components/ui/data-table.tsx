@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import * as React from "react"
 import {
     ColumnDef,
     flexRender,
     getCoreRowModel,
+    useReactTable,
     getPaginationRowModel,
     getSortedRowModel,
     SortingState,
     getFilteredRowModel,
-    useReactTable,
     ColumnFiltersState,
 } from "@tanstack/react-table"
 
@@ -21,27 +21,26 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
+
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, ChevronRight, Search } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
-    searchColumn?: string
-    searchPlaceholder?: string
+    filterColumn?: string
+    filterPlaceholder?: string
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData, TValue = any>({
     columns,
     data,
-    searchColumn,
-    searchPlaceholder = "Search..."
+    filterColumn = "name",
+    filterPlaceholder = "Filter..."
 }: DataTableProps<TData, TValue>) {
-    const [sorting, setSorting] = useState<SortingState>([])
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-    const [rowsPerPage, setRowsPerPage] = useState(10)
+    const [sorting, setSorting] = React.useState<SortingState>([])
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
 
     const table = useReactTable({
         data,
@@ -55,31 +54,27 @@ export function DataTable<TData, TValue>({
         state: {
             sorting,
             columnFilters,
-            pagination: {
-                pageSize: rowsPerPage,
-                pageIndex: 0,
-            },
         },
     })
 
+    // Check if the filter column exists before accessing it
+    const hasFilterColumn = !!filterColumn && !!table.getColumn(filterColumn)
+
     return (
         <div className="space-y-4">
-            {searchColumn && (
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 w-full max-w-sm">
-                        <Search className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder={searchPlaceholder}
-                            value={(table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""}
-                            onChange={(event) =>
-                                table.getColumn(searchColumn)?.setFilterValue(event.target.value)
-                            }
-                            className="h-9"
-                        />
-                    </div>
+            {hasFilterColumn && (
+                <div className="flex items-center gap-4">
+                    <Input
+                        placeholder={filterPlaceholder}
+                        value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
+                        onChange={(event) =>
+                            table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+                        }
+                        className="max-w-sm"
+                    />
                 </div>
             )}
-            <div className="rounded-md border">
+            <ScrollArea className="rounded-md border h-[calc(100vh-350px)]">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -122,55 +117,24 @@ export function DataTable<TData, TValue>({
                         )}
                     </TableBody>
                 </Table>
-            </div>
-
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                    <p className="text-sm text-muted-foreground">
-                        Rows per page
-                    </p>
-                    <Select
-                        value={`${rowsPerPage}`}
-                        onValueChange={(value: string) => {
-                            setRowsPerPage(Number(value))
-                            table.setPageSize(Number(value))
-                        }}
-                    >
-                        <SelectTrigger className="h-8 w-[70px]">
-                            <SelectValue placeholder={rowsPerPage} />
-                        </SelectTrigger>
-                        <SelectContent side="top">
-                            {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                                <SelectItem key={pageSize} value={`${pageSize}`}>
-                                    {pageSize}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <p className="text-sm text-muted-foreground">
-                        Page {table.getState().pagination.pageIndex + 1} of{" "}
-                        {table.getPageCount()}
-                    </p>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
+            </ScrollArea>
+            <div className="flex items-center justify-end space-x-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                >
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                >
+                    Next
+                </Button>
             </div>
         </div>
     )

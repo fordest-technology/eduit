@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PlusCircle, Pencil } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 interface Subject {
     id: string
@@ -24,18 +25,66 @@ interface TeacherSubject {
     subject: Subject
 }
 
+interface Department {
+    name: string
+}
+
 interface Teacher {
     id: string
     name: string
-    teacherSubjects: TeacherSubject[]
+    subjects: Array<{
+        id: string
+        name: string
+        code: string
+        department: Department
+    }>
 }
 
-export default function TeacherSubjects({ teacher }: { teacher: Teacher }) {
+interface TeacherSubjectsProps {
+    teacher: Teacher;
+    onUpdate: () => Promise<void>;
+}
+
+export default function TeacherSubjects({ teacher, onUpdate }: TeacherSubjectsProps) {
     const [loading, setLoading] = useState(false)
+    const [subjects, setSubjects] = useState<TeacherSubject[]>(
+        teacher.subjects.map(s => ({
+            id: s.id,
+            subjectId: s.id,
+            subject: {
+                id: s.id,
+                name: s.name,
+                department: s.department ? { name: s.department.name } : null,
+                level: null
+            }
+        }))
+    )
     const router = useRouter()
 
+    // Fetch up-to-date subject data
+    useEffect(() => {
+        const fetchSubjects = async () => {
+            try {
+                setLoading(true)
+                const response = await fetch(`/api/teachers/${teacher.id}/subjects`)
+                if (!response.ok) throw new Error("Failed to fetch subjects")
+                const data = await response.json()
+                if (data.subjects) {
+                    setSubjects(data.subjects)
+                }
+                await onUpdate()
+            } catch (error) {
+                console.error("Error fetching subjects:", error)
+                toast.error("Failed to fetch updated subject information")
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchSubjects()
+    }, [teacher.id, onUpdate])
+
     const handleManageSubjects = () => {
-        // Implement your logic to open a modal or navigate to subject management
         router.push(`/dashboard/teachers/${teacher.id}/subjects`)
     }
 
@@ -49,9 +98,9 @@ export default function TeacherSubjects({ teacher }: { teacher: Teacher }) {
                 </Button>
             </CardHeader>
             <CardContent>
-                {teacher.teacherSubjects && teacher.teacherSubjects.length > 0 ? (
+                {subjects.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {teacher.teacherSubjects.map((ts) => (
+                        {subjects.map((ts) => (
                             <Card key={ts.id} className="border overflow-hidden">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg">{ts.subject.name}</CardTitle>
@@ -62,13 +111,6 @@ export default function TeacherSubjects({ teacher }: { teacher: Teacher }) {
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm text-muted-foreground">Department:</span>
                                                 <Badge variant="outline">{ts.subject.department.name}</Badge>
-                                            </div>
-                                        )}
-
-                                        {ts.subject.level && (
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-muted-foreground">Level:</span>
-                                                <Badge variant="outline">{ts.subject.level.name}</Badge>
                                             </div>
                                         )}
                                     </div>

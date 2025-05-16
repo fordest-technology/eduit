@@ -25,7 +25,12 @@ interface Teacher {
     classes: Class[]
 }
 
-export default function TeacherClasses({ teacher }: { teacher: Teacher }) {
+interface TeacherClassesProps {
+    teacher: Teacher
+    onUpdate: () => Promise<void>
+}
+
+export default function TeacherClasses({ teacher, onUpdate }: TeacherClassesProps) {
     const [loading, setLoading] = useState(false)
     const [classes, setClasses] = useState<Class[]>(teacher.classes || [])
     const router = useRouter()
@@ -41,6 +46,7 @@ export default function TeacherClasses({ teacher }: { teacher: Teacher }) {
                 if (data.classes) {
                     setClasses(data.classes)
                 }
+                await onUpdate()
             } catch (error) {
                 console.error("Error fetching classes:", error)
                 toast.error("Failed to fetch updated class information")
@@ -50,7 +56,7 @@ export default function TeacherClasses({ teacher }: { teacher: Teacher }) {
         }
 
         fetchClasses()
-    }, [teacher.id])
+    }, [teacher.id, onUpdate])
 
     const handleManageClasses = () => {
         router.push(`/dashboard/teachers/${teacher.id}/classes`)

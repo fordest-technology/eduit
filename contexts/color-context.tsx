@@ -6,8 +6,8 @@ type SchoolColors = {
     primaryColor: string
     secondaryColor: string
 }
-
 type ColorContextType = {
+    primaryColor?: string
     colors: SchoolColors
     setColors: (colors: SchoolColors) => void
 }

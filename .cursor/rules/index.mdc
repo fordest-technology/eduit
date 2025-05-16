@@ -1,0 +1,107 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Master index of all development rules and guidelines for EduIT
+globs: 
+alwaysApply: true
+---
+# EduIT - Master Rule Index
+
+This document serves as the central index for all active Cursor rules within the EduIT repository, organized by category. These rules are derived from the actual `.cursor/rules` directory.
+
+## Frontend Development
+
+Guidelines for frontend development and UI implementation.
+
+| Rule File                          | Description                                                 |
+| :--------------------------------- | :---------------------------------------------------------- |
+| @fe-standard.mdc                   | Frontend development standards and best practices           |
+| @tailwindd-css-shad-cn.mdc         | Tailwind CSS and Shadcn UI implementation guidelines        |
+| @nextjs1-rule.mdc                  | Next.js App Router implementation patterns                  |
+| @zusand.mdc                        | Zustand state management implementation                    |
+
+## Backend & API
+
+Guidelines for API development and backend implementation.
+
+| Rule File                          | Description                                                 |
+| :--------------------------------- | :---------------------------------------------------------- |
+| @api-dev.mdc                       | API development patterns and best practices                 |
+
+## Email & Communication
+
+Guidelines for email handling and communication features.
+
+| Rule File                          | Description                                                 |
+| :--------------------------------- | :---------------------------------------------------------- |
+| @email-setup.mdc                   | Email system setup and configuration                        |
+| @email-cred-sending.mdc            | Email credential sending implementation                     |
+
+## Project Standards
+
+General project standards and rule management.
+
+| Rule File                          | Description                                                 |
+| :--------------------------------- | :---------------------------------------------------------- |
+| @cursor-rules.mdc                  | Guidelines for managing Cursor rules in the project         |
+| @index.mdc                         | Master index of all project rules                           |
+
+## Rule Categories
+
+### Frontend Standards (@fe-standard.mdc)
+- Component structure and organization
+- State management patterns
+- Performance optimization
+- TypeScript usage
+- Error handling
+- Testing guidelines
+
+### UI Components (@tailwindd-css-shad-cn.mdc)
+- Tailwind CSS implementation
+- Shadcn UI component usage
+- Responsive design patterns
+- Theme customization
+- Component styling guidelines
+
+### Next.js Implementation (@nextjs1-rule.mdc)
+- App Router patterns
+- Server Components usage
+- Client Components guidelines
+- Route handling
+- Data fetching patterns
+
+### State Management (@zusand.mdc)
+- Zustand store setup
+- State organization
+- Action patterns
+- Type safety
+- Performance considerations
+
+### API Development (@api-dev.mdc)
+- Route structure
+- Authentication patterns
+- Error handling
+- Response formatting
+- Database operations
+- Security best practices
+
+### Email System (@email-setup.mdc, @email-cred-sending.mdc)
+- Email service configuration
+- Template management
+- Credential handling
+- Security considerations
+- Error handling
+- Rate limiting
+
+### Rule Management (@cursor-rules.mdc)
+- Rule creation guidelines
+- Rule organization
+- Rule documentation
+- Rule maintenance
+- Rule application
+
+This index provides a clear overview of all available rules in the project, making it easy to find and reference specific guidelines when needed. Each rule file contains detailed implementation patterns and best practices specific to its domain.
+

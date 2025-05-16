@@ -13,11 +13,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { Loader2, Trash, Edit, Plus, Eye, MoreHorizontal, BookOpen, Users } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { UserRole } from "@prisma/client"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -26,51 +23,9 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-
-interface DeleteConfirmationProps {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    onConfirm: () => void
-    isDeleting: boolean
-    title: string
-    description: string
-}
-
-function DeleteConfirmation({
-    open,
-    onOpenChange,
-    onConfirm,
-    isDeleting,
-    title,
-    description
-}: DeleteConfirmationProps) {
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                </DialogHeader>
-                <div className="py-4">
-                    <p>{description}</p>
-                </div>
-                <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDeleting}>
-                        Cancel
-                    </Button>
-                    <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
-                        {isDeleting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-                            </>
-                        ) : (
-                            "Delete"
-                        )}
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
-}
+import { LevelModal } from "./components/level-modal"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { UserRole } from "@prisma/client"
 
 interface SchoolLevel {
     id: string
@@ -85,111 +40,90 @@ interface SchoolLevel {
 
 interface SchoolLevelTableProps {
     initialLevels: SchoolLevel[]
-    userRole: string
+    userRole: UserRole | string
     schoolId: string
     onDataChange?: () => void
 }
 
 export function SchoolLevelTable({ initialLevels = [], userRole, schoolId, onDataChange }: SchoolLevelTableProps) {
-    const router = useRouter();
+    const router = useRouter()
     const [levels, setLevels] = useState<SchoolLevel[]>(initialLevels)
-    const [showCreateDialog, setShowCreateDialog] = useState(false)
-    const [showEditDialog, setShowEditDialog] = useState(false)
+    const [showCreateModal, setShowCreateModal] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-    const [isCreating, setIsCreating] = useState(false)
-    const [isUpdating, setIsUpdating] = useState(false)
-    const [isDeleting, setIsDeleting] = useState(false)
     const [selectedLevel, setSelectedLevel] = useState<SchoolLevel | null>(null)
+    const [searchQuery, setSearchQuery] = useState("")
 
-    const [newLevel, setNewLevel] = useState({
-        name: "",
-        description: "",
-        order: 0
-    })
+    const filteredLevels = levels.filter((level) =>
+        level.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        level.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
 
-    const [editLevel, setEditLevel] = useState({
-        id: "",
-        name: "",
-        description: "",
-        order: 0
-    })
-
-    const fetchLevels = async () => {
+    const handleCreateLevel = async (data: Omit<SchoolLevel, "id">) => {
         try {
-            const response = await fetch("/api/school-levels")
-            if (!response.ok) throw new Error("Failed to fetch school levels")
-            const data = await response.json()
-            setLevels(data)
-            if (onDataChange) onDataChange()
-        } catch (error) {
-            toast.error("Error fetching school levels")
-        }
-    }
-
-    const handleCreateLevel = async () => {
-        try {
-            setIsCreating(true)
             const response = await fetch("/api/school-levels", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: newLevel.name,
-                    description: newLevel.description,
-                    order: Number(newLevel.order)
-                }),
+                body: JSON.stringify(data),
             })
 
             if (!response.ok) {
                 const error = await response.json()
-                throw new Error(error.error || "Failed to create school level")
+                throw new Error(error.error || "Failed to create level")
             }
 
-            toast.success("School level created successfully")
-            setShowCreateDialog(false)
-            setNewLevel({ name: "", description: "", order: 0 })
-            await fetchLevels()
+            // Get the newly created level data
+            const newLevel = await response.json()
+
+            // Immediately fetch updated levels
+            const updatedLevelsResponse = await fetch("/api/school-levels")
+            if (!updatedLevelsResponse.ok) {
+                throw new Error("Failed to fetch updated levels")
+            }
+            const updatedLevels = await updatedLevelsResponse.json()
+            setLevels(updatedLevels)
+
+            // Close the modal
+            setShowCreateModal(false)
+
+            toast.success("Level created successfully")
+
+            // Still call onDataChange for parent component updates if needed
             if (onDataChange) onDataChange()
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message)
             } else {
-                toast.error("Error creating school level")
+                toast.error("Error creating level")
             }
-        } finally {
-            setIsCreating(false)
+            throw error
         }
     }
 
-    const handleUpdateLevel = async () => {
+    const handleUpdateLevel = async (data: Omit<SchoolLevel, "id">) => {
+        if (!selectedLevel) return
+
         try {
-            setIsUpdating(true)
-            const response = await fetch(`/api/school-levels/${editLevel.id}`, {
+            const response = await fetch(`/api/school-levels/${selectedLevel.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: editLevel.name,
-                    description: editLevel.description,
-                    order: Number(editLevel.order)
-                }),
+                body: JSON.stringify(data),
             })
 
             if (!response.ok) {
                 const error = await response.json()
-                throw new Error(error.error || "Failed to update school level")
+                throw new Error(error.error || "Failed to update level")
             }
 
-            toast.success("School level updated successfully")
-            setShowEditDialog(false)
-            await fetchLevels()
+            toast.success("Level updated successfully")
             if (onDataChange) onDataChange()
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message)
             } else {
-                toast.error("Error updating school level")
+                toast.error("Error updating level")
             }
-        } finally {
-            setIsUpdating(false)
+            throw error
         }
     }
 
@@ -197,255 +131,194 @@ export function SchoolLevelTable({ initialLevels = [], userRole, schoolId, onDat
         if (!selectedLevel) return
 
         try {
-            setIsDeleting(true)
             const response = await fetch(`/api/school-levels/${selectedLevel.id}`, {
-                method: "DELETE"
+                method: "DELETE",
             })
 
             if (!response.ok) {
                 const error = await response.json()
-                throw new Error(error.error || "Failed to delete school level")
+                throw new Error(error.error || "Failed to delete level")
             }
 
-            toast.success("School level deleted successfully")
+            toast.success("Level deleted successfully")
             setShowDeleteDialog(false)
-            await fetchLevels()
             if (onDataChange) onDataChange()
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message)
             } else {
-                toast.error("Error deleting school level")
+                toast.error("Error deleting level")
             }
-        } finally {
-            setIsDeleting(false)
         }
     }
 
     const handleViewLevel = (id: string) => {
-        router.push(`/dashboard/school-levels/${id}`);
-    };
+        router.push(`/dashboard/school-levels/${id}`)
+    }
 
     // Check if user has permission to manage levels
-    const canManageLevels = userRole === "super_admin" || userRole === "school_admin"
+    const canManageLevels = userRole === UserRole.SUPER_ADMIN || userRole === UserRole.SCHOOL_ADMIN
 
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Input
+                        placeholder="Search levels..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-64"
+                    />
+                </div>
                 {canManageLevels && (
-                    <Button onClick={() => setShowCreateDialog(true)}>
+                    <Button onClick={() => setShowCreateModal(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Add New Level
                     </Button>
                 )}
             </div>
             <Separator className="my-4" />
 
-            {levels.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg">
-                    <p className="mb-4 text-muted-foreground">No school levels found</p>
-                    {canManageLevels && (
-                        <Button onClick={() => setShowCreateDialog(true)}>
+            {filteredLevels.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg bg-background">
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        {searchQuery
+                            ? "No levels found matching your search"
+                            : "No levels have been created yet"}
+                    </p>
+                    {canManageLevels && !searchQuery && (
+                        <Button
+                            onClick={() => setShowCreateModal(true)}
+                            variant="outline"
+                            className="mt-4"
+                        >
                             <Plus className="mr-2 h-4 w-4" /> Add First Level
                         </Button>
                     )}
                 </div>
             ) : (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Order</TableHead>
-                            <TableHead>Classes</TableHead>
-                            <TableHead>Subjects</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {levels.map((level) => (
-                            <TableRow
-                                key={level.id}
-                                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                onClick={() => handleViewLevel(level.id)}
-                            >
-                                <TableCell className="font-medium">{level.name}</TableCell>
-                                <TableCell>
-                                    {level.description ?
-                                        level.description.length > 50 ?
-                                            `${level.description.substring(0, 50)}...` :
-                                            level.description
-                                        : '-'
-                                    }
-                                </TableCell>
-                                <TableCell>{level.order}</TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-1">
-                                        <Users className="h-3 w-3 text-muted-foreground" />
-                                        <span>{level._count?.classes || 0}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-1">
-                                        <BookOpen className="h-3 w-3 text-muted-foreground" />
-                                        <span>{level._count?.subjects || 0}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell
-                                    className="text-right"
-                                    onClick={(e) => e.stopPropagation()} // Prevent row click when clicking actions
-                                >
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => handleViewLevel(level.id)}>
-                                                <Eye className="mr-2 h-4 w-4" />
-                                                View Details
-                                            </DropdownMenuItem>
-                                            {canManageLevels && (
-                                                <>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => {
-                                                        setEditLevel({
-                                                            id: level.id,
-                                                            name: level.name,
-                                                            description: level.description || "",
-                                                            order: level.order || 0
-                                                        });
-                                                        setShowEditDialog(true);
-                                                    }}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:text-destructive"
-                                                        onClick={() => {
-                                                            setSelectedLevel(level);
-                                                            setShowDeleteDialog(true);
-                                                        }}
-                                                    >
-                                                        <Trash className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Level Name</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead>Classes</TableHead>
+                                <TableHead>Subjects</TableHead>
+                                <TableHead>Order</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredLevels.map((level) => (
+                                <TableRow key={level.id}>
+                                    <TableCell className="font-medium">
+                                        {level.name}
+                                    </TableCell>
+                                    <TableCell>
+                                        {level.description || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center">
+                                            <Users className="h-4 w-4 mr-1 text-muted-foreground" />
+                                            <span>{level._count?.classes || 0}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center">
+                                            <BookOpen className="h-4 w-4 mr-1 text-muted-foreground" />
+                                            <span>{level._count?.subjects || 0}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>{level.order}</TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <span className="sr-only">Open menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    onClick={() => handleViewLevel(level.id)}
+                                                >
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    View Details
+                                                </DropdownMenuItem>
+                                                {canManageLevels && (
+                                                    <>
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                setSelectedLevel(level)
+                                                                setShowEditModal(true)
+                                                            }}
+                                                        >
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-destructive"
+                                                            onClick={() => {
+                                                                setSelectedLevel(level)
+                                                                setShowDeleteDialog(true)
+                                                            }}
+                                                        >
+                                                            <Trash className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             )}
 
-            {/* Create Dialog */}
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add New School Level</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <label htmlFor="name">Name</label>
-                            <Input
-                                id="name"
-                                placeholder="Level Name"
-                                value={newLevel.name}
-                                onChange={(e) => setNewLevel({ ...newLevel, name: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="description">Description</label>
-                            <Textarea
-                                id="description"
-                                placeholder="Description"
-                                value={newLevel.description}
-                                onChange={(e) => setNewLevel({ ...newLevel, description: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="order">Display Order</label>
-                            <Input
-                                id="order"
-                                type="number"
-                                placeholder="Order"
-                                value={newLevel.order}
-                                onChange={(e) => setNewLevel({ ...newLevel, order: parseInt(e.target.value) || 0 })}
-                            />
-                        </div>
-                        <Button onClick={handleCreateLevel} disabled={isCreating || !newLevel.name}>
-                            {isCreating ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
-                                </>
-                            ) : (
-                                "Create Level"
-                            )}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            {/* Create/Edit Modal */}
+            <LevelModal
+                open={showCreateModal}
+                onOpenChange={setShowCreateModal}
+                onSubmit={handleCreateLevel}
+                mode="create"
+            />
 
-            {/* Edit Dialog */}
-            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit School Level</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <label htmlFor="edit-name">Name</label>
-                            <Input
-                                id="edit-name"
-                                placeholder="Level Name"
-                                value={editLevel.name}
-                                onChange={(e) => setEditLevel({ ...editLevel, name: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="edit-description">Description</label>
-                            <Textarea
-                                id="edit-description"
-                                placeholder="Description"
-                                value={editLevel.description}
-                                onChange={(e) => setEditLevel({ ...editLevel, description: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="edit-order">Display Order</label>
-                            <Input
-                                id="edit-order"
-                                type="number"
-                                placeholder="Order"
-                                value={editLevel.order}
-                                onChange={(e) => setEditLevel({ ...editLevel, order: parseInt(e.target.value) || 0 })}
-                            />
-                        </div>
-                        <Button onClick={handleUpdateLevel} disabled={isUpdating || !editLevel.name}>
-                            {isUpdating ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...
-                                </>
-                            ) : (
-                                "Update Level"
-                            )}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <LevelModal
+                open={showEditModal}
+                onOpenChange={setShowEditModal}
+                onSubmit={handleUpdateLevel}
+                initialData={selectedLevel || undefined}
+                mode="edit"
+            />
 
             {/* Delete Confirmation */}
-            <DeleteConfirmation
-                open={showDeleteDialog}
-                onOpenChange={setShowDeleteDialog}
-                onConfirm={handleDeleteLevel}
-                isDeleting={isDeleting}
-                title="Delete School Level"
-                description={`Are you sure you want to delete the school level "${selectedLevel?.name}"? This action cannot be undone.`}
-            />
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Level</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this level? This action cannot be undone.
+                            Any classes and subjects associated with this level will be affected.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteLevel}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 } 

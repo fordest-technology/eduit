@@ -83,6 +83,7 @@ model Student {
   bloodGroup      String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  classId         String?
   attendance      Attendance[]
   paymentRequests PaymentRequest[]
   results         Result[]
@@ -111,27 +112,30 @@ model Parent {
 }
 
 model School {
-  id              String            @id @default(cuid())
+  id              String                @id @default(cuid())
   name            String
   address         String?
   phone           String?
-  email           String            @unique
+  email           String                @unique
   logo            String?
-  subdomain       String            @unique
+  subdomain       String                @unique
   primaryColor    String?
   secondaryColor  String?
-  shortName       String            @unique
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  shortName       String                @unique
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
   sessions        AcademicSession[]
   bills           Bill[]
   classes         Class[]
   departments     Department[]
   events          Event[]
   paymentAccounts PaymentAccount[]
+  resultConfigs   ResultConfiguration[]
   levels          SchoolLevel[]
   subjects        Subject[]
   users           User[]
+
+  @@index([subdomain])
 }
 
 model Department {
@@ -183,18 +187,19 @@ model Subject {
 }
 
 model AcademicSession {
-  id             String         @id @default(cuid())
-  name           String
-  startDate      DateTime
-  endDate        DateTime
-  isCurrent      Boolean        @default(false)
-  schoolId       String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  school         School         @relation(fields: [schoolId], references: [id])
-  attendance     Attendance[]
-  results        Result[]
-  studentClasses StudentClass[]
+  id                   String                @id @default(cuid())
+  name                 String
+  startDate            DateTime
+  endDate              DateTime
+  isCurrent            Boolean               @default(false)
+  schoolId             String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  school               School                @relation(fields: [schoolId], references: [id])
+  attendance           Attendance[]
+  results              Result[]
+  resultConfigurations ResultConfiguration[]
+  studentClasses       StudentClass[]
 }
 
 model StudentClass {
@@ -267,33 +272,31 @@ model Attendance {
 }
 
 model Result {
-  id           String          @id @default(cuid())
-  studentId    String
-  subjectId    String
-  sessionId    String
-  examType     ExamType
-  marks        Float
-  totalMarks   Float
-  grade        String?
-  remarks      String?
-  isApproved   Boolean         @default(false)
-  position     Int?
-  classAverage Float?
-  skillRatings Json?
-  attendance   Float?
-  behavior     Int?
-  effort       Int?
-  teacherNote  String?
-  approvedBy   String?
-  approvedAt   DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  approver     User?           @relation("ResultApprover", fields: [approvedBy], references: [id])
-  session      AcademicSession @relation(fields: [sessionId], references: [id])
-  student      Student         @relation(fields: [studentId], references: [id])
-  subject      Subject         @relation(fields: [subjectId], references: [id])
+  id                String           @id @default(cuid())
+  studentId         String
+  subjectId         String
+  sessionId         String
+  grade             String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  adminComment      String?
+  affectiveTraits   Json?
+  approvedById      String?
+  cumulativeAverage Float?
+  customFields      Json?
+  periodId          String
+  psychomotorSkills Json?
+  remark            String
+  teacherComment    String?
+  total             Float
+  componentScores   ComponentScore[]
+  approvedBy        User?            @relation("ResultApprover", fields: [approvedById], references: [id])
+  period            ResultPeriod     @relation(fields: [periodId], references: [id])
+  session           AcademicSession  @relation(fields: [sessionId], references: [id])
+  student           Student          @relation(fields: [studentId], references: [id])
+  subject           Subject          @relation(fields: [subjectId], references: [id])
 
-  @@unique([studentId, subjectId, sessionId, examType])
+  @@unique([studentId, subjectId, periodId, sessionId])
 }
 
 model Event {
@@ -479,6 +482,70 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model ResultConfiguration {
+  id                    String                @id @default(cuid())
+  schoolId              String
+  cumulativeEnabled     Boolean               @default(true)
+  cumulativeMethod      String                @default("progressive_average")
+  showCumulativePerTerm Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  sessionId             String
+  assessmentComponents  AssessmentComponent[]
+  gradingScale          GradingScale[]
+  school                School                @relation(fields: [schoolId], references: [id])
+  session               AcademicSession       @relation(fields: [sessionId], references: [id])
+  periods               ResultPeriod[]
+
+  @@unique([schoolId, sessionId])
+}
+
+model ResultPeriod {
+  id              String              @id @default(cuid())
+  name            String
+  weight          Float               @default(1)
+  configurationId String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  results         Result[]
+  configuration   ResultConfiguration @relation(fields: [configurationId], references: [id])
+}
+
+model AssessmentComponent {
+  id              String              @id @default(cuid())
+  name            String
+  key             String
+  maxScore        Float
+  configurationId String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  configuration   ResultConfiguration @relation(fields: [configurationId], references: [id])
+  scores          ComponentScore[]
+}
+
+model GradingScale {
+  id              String              @id @default(cuid())
+  minScore        Float
+  maxScore        Float
+  grade           String
+  remark          String
+  configurationId String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  configuration   ResultConfiguration @relation(fields: [configurationId], references: [id])
+}
+
+model ComponentScore {
+  id          String              @id @default(cuid())
+  score       Float
+  componentId String
+  resultId    String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  component   AssessmentComponent @relation(fields: [componentId], references: [id])
+  result      Result              @relation(fields: [resultId], references: [id])
 }
 
 enum UserRole {

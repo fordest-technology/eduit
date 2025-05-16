@@ -35,7 +35,17 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, BookOpen, Trash2, Eye, Loader2 } from "lucide-react"
+import { MoreHorizontal, Pencil, BookOpen, Trash2, Eye, Loader2, Users } from "lucide-react"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Class {
     id: string
@@ -89,7 +99,7 @@ interface Subject {
 interface ClassesTableProps {
     userRole: string
     userId: string
-    schoolId?: string
+    schoolId: string
     teachers: Teacher[]
     subjects: Subject[]
 }
@@ -112,15 +122,33 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
     const [isCreating, setIsCreating] = useState(false)
     const [levels, setLevels] = useState<any[]>([])
     const [error, setError] = useState<string | null>(null)
+    const [showAddStudentDialog, setShowAddStudentDialog] = useState(false)
+    const [selectedStudent, setSelectedStudent] = useState<string>("")
+    const [availableStudents, setAvailableStudents] = useState<{ id: string; name: string }[]>([])
+    const [isLoading, setIsLoading] = useState({
+        table: true,
+        create: false,
+        delete: false,
+        assignSubject: false,
+        addStudent: false
+    })
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [classToDelete, setClassToDelete] = useState<string>("")
+    const [academicSessions, setAcademicSessions] = useState<{ id: string; name: string }[]>([])
+    const [selectedSession, setSelectedSession] = useState<string>("")
 
     const fetchClasses = async () => {
         try {
+            setIsLoading(prev => ({ ...prev, table: true }))
             const response = await fetch("/api/classes")
             if (!response.ok) throw new Error("Failed to fetch classes")
             const data = await response.json()
             setClasses(data)
         } catch (error) {
-            toast.error("Error fetching classes")
+            toast.error("Failed to load classes. Please try again.")
+            setError("Failed to load classes")
+        } finally {
+            setIsLoading(prev => ({ ...prev, table: false }))
         }
     }
 
@@ -135,31 +163,66 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
         }
     }
 
+    const fetchAvailableStudents = async (classId: string) => {
+        try {
+            const response = await fetch(`/api/classes/${classId}/available-students`)
+            if (!response.ok) throw new Error("Failed to fetch available students")
+            const data = await response.json()
+            setAvailableStudents(data.map((student: any) => ({
+                id: student.id,
+                name: student.user.name
+            })))
+        } catch (error) {
+            toast.error("Error fetching available students")
+            setAvailableStudents([])
+        }
+    }
+
+    const fetchAcademicSessions = async () => {
+        try {
+            const response = await fetch("/api/academic-sessions")
+            if (!response.ok) throw new Error("Failed to fetch academic sessions")
+            const data = await response.json()
+            setAcademicSessions(data)
+            // Set current session as default if available
+            const currentSession = data.find((session: any) => session.isCurrent)
+            if (currentSession) {
+                setSelectedSession(currentSession.id)
+            }
+        } catch (error) {
+            toast.error("Error fetching academic sessions")
+        }
+    }
+
     useEffect(() => {
         fetchClasses()
         fetchLevels()
+        fetchAcademicSessions()
         setLoading(false)
     }, [])
+
+    useEffect(() => {
+        if (selectedClass) {
+            fetchAvailableStudents(selectedClass)
+        }
+    }, [selectedClass])
 
     const handleCreateClass = async () => {
         try {
             if (!newClass.name.trim()) {
-                toast.error("Class name is required");
-                return;
+                toast.error("Class name is required")
+                return
             }
 
-            setIsCreating(true);
-            setError(null);
+            setIsLoading(prev => ({ ...prev, create: true }))
+            setError(null)
 
-            // Transform data before sending
             const formData = {
                 name: newClass.name.trim(),
                 section: newClass.section.trim() || null,
                 teacherId: newClass.teacherId === "null" ? null : newClass.teacherId,
                 levelId: newClass.levelId === "null" ? null : newClass.levelId
-            };
-
-            console.log("Sending data to API:", formData); // Debug log
+            }
 
             const response = await fetch("/api/classes", {
                 method: "POST",
@@ -167,36 +230,30 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(formData),
-            });
+            })
 
-            const data = await response.json();
-            console.log("API Response:", data); // Debug log
+            const data = await response.json()
 
             if (!response.ok) {
-                if (data.errors) {
-                    const errorMessage = data.errors.map((err: { field: string; message: string }) => err.message).join(", ");
-                    throw new Error(errorMessage);
-                }
-                throw new Error(data.error || "Failed to create class");
+                throw new Error(data.message || "Failed to create class")
             }
 
-            await fetchClasses(); // Refresh the classes list
-            toast.success("Class created successfully");
-            setShowCreateDialog(false);
-            // Reset form with null-like values for selects
+            toast.success("Class created successfully")
+            setShowCreateDialog(false)
             setNewClass({
                 name: "",
                 section: "",
                 teacherId: "null",
-                levelId: "null"
-            });
+                levelId: "null",
+            })
+            fetchClasses()
         } catch (error) {
-            console.error("Error creating class:", error);
-            toast.error(error instanceof Error ? error.message : "Failed to create class");
+            toast.error(error instanceof Error ? error.message : "Failed to create class")
+            setError(error instanceof Error ? error.message : "Failed to create class")
         } finally {
-            setIsCreating(false);
+            setIsLoading(prev => ({ ...prev, create: false }))
         }
-    };
+    }
 
     const handleAssignSubject = async () => {
         try {
@@ -235,55 +292,110 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
         }
     }
 
+    const handleAddStudent = async () => {
+        try {
+            const response = await fetch(`/api/classes/${selectedClass}/add-student`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    studentId: selectedStudent
+                }),
+            })
+
+            if (!response.ok) throw new Error("Failed to add student")
+
+            toast.success("Student added successfully")
+            fetchClasses()
+            setSelectedClass("")
+            setSelectedStudent("")
+            setShowAddStudentDialog(false)
+        } catch (error) {
+            toast.error("Error adding student")
+        }
+    }
+
+    const handleDeleteClick = (classId: string) => {
+        setClassToDelete(classId)
+        setShowDeleteDialog(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        try {
+            setIsLoading(prev => ({ ...prev, delete: true }))
+            const response = await fetch(`/api/classes/${classToDelete}`, {
+                method: "DELETE",
+            })
+
+            if (!response.ok) throw new Error("Failed to delete class")
+
+            toast.success("Class deleted successfully")
+            fetchClasses()
+        } catch (error) {
+            toast.error("Error deleting class")
+        } finally {
+            setIsLoading(prev => ({ ...prev, delete: false }))
+            setShowDeleteDialog(false)
+            setClassToDelete("")
+        }
+    }
+
     if (loading) {
         return <div>Loading...</div>
     }
 
-    const isAdmin = userRole === "super_admin" || userRole === "school_admin"
+    const isAdmin = userRole === "SUPER_ADMIN" || userRole === "SCHOOL_ADMIN"
 
     return (
-        <div>
-            {isAdmin && (
-                <div className="mb-6 space-x-2">
+        <div className="space-y-4">
+            {userRole !== "STUDENT" && (
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold tracking-tight">Classes</h2>
                     <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
                         <DialogTrigger asChild>
-                            <Button>Create New Class</Button>
+                            <Button>
+                                Create Class
+                            </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Create New Class</DialogTitle>
                             </DialogHeader>
-                            <div className="space-y-4">
+                            <div className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">Class Name</label>
+                                    <label htmlFor="name" className="text-sm font-medium">
+                                        Class Name
+                                    </label>
                                     <Input
-                                        placeholder="Enter class name"
+                                        id="name"
                                         value={newClass.name}
                                         onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
+                                        placeholder="Enter class name"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">Section (Optional)</label>
+                                    <label htmlFor="section" className="text-sm font-medium">
+                                        Section
+                                    </label>
                                     <Input
-                                        placeholder="Enter section"
+                                        id="section"
                                         value={newClass.section}
                                         onChange={(e) => setNewClass({ ...newClass, section: e.target.value })}
+                                        placeholder="Enter section (optional)"
                                     />
                                 </div>
-                                <div className="space-y-2 visiblity-0 opacity-0 h-0">
-                                    <label className="text-sm font-medium">Teacher (Optional)</label>
+                                <div className="space-y-2">
+                                    <label htmlFor="teacher" className="text-sm font-medium">
+                                        Teacher
+                                    </label>
                                     <Select
                                         value={newClass.teacherId}
-                                        onValueChange={(value) => {
-                                            console.log("Selected teacher value:", value); // Debug log
-                                            setNewClass({ ...newClass, teacherId: "" });
-                                        }}
+                                        onValueChange={(value) => setNewClass({ ...newClass, teacherId: value })}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select Teacher" />
+                                            <SelectValue placeholder="Select teacher" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="null">None</SelectItem>
+                                            <SelectItem value="null">No teacher assigned</SelectItem>
                                             {teachers.map((teacher) => (
                                                 <SelectItem key={teacher.id} value={teacher.id}>
                                                     {teacher.name}
@@ -293,16 +405,18 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">School Level (Optional)</label>
+                                    <label htmlFor="level" className="text-sm font-medium">
+                                        Level
+                                    </label>
                                     <Select
                                         value={newClass.levelId}
-                                        onValueChange={(value) => setNewClass({ ...newClass, levelId: value === "null" ? "" : value })}
+                                        onValueChange={(value) => setNewClass({ ...newClass, levelId: value })}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select School Level" />
+                                            <SelectValue placeholder="Select level" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="null">None</SelectItem>
+                                            <SelectItem value="null">No level assigned</SelectItem>
                                             {levels.map((level) => (
                                                 <SelectItem key={level.id} value={level.id}>
                                                     {level.name}
@@ -311,176 +425,269 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <Button
-                                    onClick={handleCreateClass}
-                                    disabled={isCreating || !newClass.name.trim()}
-                                    className="w-full"
-                                >
-                                    {isCreating ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Creating...
-                                        </>
-                                    ) : (
-                                        "Create Class"
-                                    )}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button>Assign Subject</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Assign Subject to Class</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                                <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Class" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id}>
-                                                {cls.name} {cls.section}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Subject" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {subjects.map((subject) => (
-                                            <SelectItem key={subject.id} value={subject.id}>
-                                                {subject.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Button onClick={handleAssignSubject}>Assign Subject</Button>
+                                {error && (
+                                    <div className="text-sm text-destructive">{error}</div>
+                                )}
+                                <div className="flex justify-end space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setShowCreateDialog(false)}
+                                        disabled={isLoading.create}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleCreateClass}
+                                        disabled={isLoading.create}
+                                    >
+                                        {isLoading.create ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Creating...
+                                            </>
+                                        ) : (
+                                            "Create Class"
+                                        )}
+                                    </Button>
+                                </div>
                             </div>
                         </DialogContent>
                     </Dialog>
                 </div>
             )}
 
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Section</TableHead>
-                        <TableHead>Teacher</TableHead>
-                        <TableHead>Level</TableHead>
-                        <TableHead>Students</TableHead>
-                        <TableHead>Subjects</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {classes.map((cls) => (
-                        <TableRow key={cls.id}>
-                            <TableCell>{cls.name}</TableCell>
-                            <TableCell>{cls.section || "N/A"}</TableCell>
-                            <TableCell>
-                                {cls.teacher ? (
-                                    <div className="flex items-center gap-2">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={cls.teacher.user.profileImage || undefined} />
-                                            <AvatarFallback className="bg-primary/10 text-primary">
-                                                {cls.teacher.user.name.charAt(0).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <span>{cls.teacher.user.name}</span>
-                                    </div>
-                                ) : (
-                                    <span className="text-muted-foreground">Not Assigned</span>
-                                )}
-                            </TableCell>
-                            <TableCell>
-                                {cls.level ? (
-                                    <span className="font-medium">{cls.level.name}</span>
-                                ) : (
-                                    <span className="text-muted-foreground">Not Assigned</span>
-                                )}
-                            </TableCell>
-                            <TableCell>
-                                <div className="flex items-center gap-1">
-                                    <span className="font-medium">{cls.students?.length || 0}</span>
-                                    <span className="text-muted-foreground">students</span>
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="flex items-center gap-1">
-                                    <span className="font-medium">{cls.subjects?.length || 0}</span>
-                                    <span className="text-muted-foreground">subjects</span>
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="flex items-center justify-end space-x-2">
-                                    {userRole === "super_admin" || userRole === "school_admin" ? (
-                                        <>
-                                            <Button
-                                                asChild
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-8 gap-1"
-                                            >
-                                                <Link href={`/dashboard/classes/${cls.id}`}>
-                                                    View Details
-                                                </Link>
-                                            </Button>
+            {isLoading.table ? (
+                <div className="flex items-center justify-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : error ? (
+                <div className="bg-destructive/15 p-4 rounded-md">
+                    <p className="text-destructive">{error}</p>
+                    <Button
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => {
+                            setError(null)
+                            fetchClasses()
+                        }}
+                    >
+                        Try Again
+                    </Button>
+                </div>
+            ) : (
+                <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Class</TableHead>
+                                <TableHead>Teacher</TableHead>
+                                <TableHead>Level</TableHead>
+                                <TableHead>Students</TableHead>
+                                <TableHead>Subjects</TableHead>
+                                <TableHead className="w-[100px]">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {classes.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                        No classes found
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                classes.map((cls) => (
+                                    <TableRow key={cls.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{cls.name}</div>
+                                            {cls.section && (
+                                                <div className="text-sm text-muted-foreground">
+                                                    Section {cls.section}
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {cls.teacher ? (
+                                                <div className="flex items-center space-x-2">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage
+                                                            src={cls.teacher.user.profileImage || undefined}
+                                                            alt={cls.teacher.user.name}
+                                                        />
+                                                        <AvatarFallback>
+                                                            {cls.teacher.user.name
+                                                                .split(" ")
+                                                                .map((n) => n[0])
+                                                                .join("")}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span>{cls.teacher.user.name}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground">No teacher assigned</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {cls.level ? (
+                                                <span>{cls.level.name}</span>
+                                            ) : (
+                                                <span className="text-muted-foreground">No level assigned</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>{cls._count?.students || 0}</TableCell>
+                                        <TableCell>{cls._count?.subjects || 0}</TableCell>
+                                        <TableCell>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <Button variant="ghost" className="h-8 w-8 p-0">
                                                         <MoreHorizontal className="h-4 w-4" />
-                                                        <span className="sr-only">Open menu</span>
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => setClassToEdit(cls)}
-                                                    >
-                                                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/dashboard/classes/${cls.id}`}>
+                                                            <Eye className="mr-2 h-4 w-4" />
+                                                            View Class
+                                                        </Link>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => {
-                                                        setCurrentClass(cls);
-                                                        setShowAssignSubjectDialog(true);
-                                                    }}>
-                                                        <BookOpen className="mr-2 h-4 w-4" /> Assign Subject
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setCurrentClass(cls)
+                                                            setShowAssignSubjectDialog(true)
+                                                        }}
+                                                    >
+                                                        <BookOpen className="mr-2 h-4 w-4" />
+                                                        Assign Subject
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setCurrentClass(cls)
+                                                            setShowAddStudentDialog(true)
+                                                        }}
+                                                    >
+                                                        <Users className="mr-2 h-4 w-4" />
+                                                        Add Student
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem
-                                                        onClick={() => handleDeleteClass(cls.id)}
-                                                        className="text-red-600"
+                                                        onClick={() => handleDeleteClick(cls.id)}
+                                                        className="text-destructive"
                                                     >
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Delete Class
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
-                                        </>
-                                    ) : (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8"
-                                        >
-                                            <Link href={`/dashboard/classes/${cls.id}`}>
-                                                View Class
-                                            </Link>
-                                        </Button>
-                                    )}
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the class
+                            and remove all associated data.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteConfirm}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={isLoading.delete}
+                        >
+                            {isLoading.delete ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                "Delete"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Add Student Dialog */}
+            <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Student to Class</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label htmlFor="session" className="text-sm font-medium">
+                                Academic Session
+                            </label>
+                            <Select
+                                value={selectedSession}
+                                onValueChange={setSelectedSession}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select academic session" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {academicSessions.map((session) => (
+                                        <SelectItem key={session.id} value={session.id}>
+                                            {session.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="student" className="text-sm font-medium">
+                                Student
+                            </label>
+                            <Select
+                                value={selectedStudent}
+                                onValueChange={setSelectedStudent}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select student" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableStudents.map((student) => (
+                                        <SelectItem key={student.id} value={student.id}>
+                                            {student.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowAddStudentDialog(false)}
+                                disabled={isLoading.addStudent}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleAddStudent}
+                                disabled={!selectedStudent || !selectedSession || isLoading.addStudent}
+                            >
+                                {isLoading.addStudent ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Adding...
+                                    </>
+                                ) : (
+                                    "Add Student"
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 } 

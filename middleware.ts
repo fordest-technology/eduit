@@ -96,23 +96,6 @@ export async function middleware(request: NextRequest) {
   // Check if the path is public
   const isPublicPath = publicPaths.some((p) => path.startsWith(p));
 
-  // Handle non-API routes
-  if (!path.startsWith("/api")) {
-    // If authenticated and trying to access login/register
-    if (user && authRedirectPaths.includes(path)) {
-      const dashboardUrl = new URL("/dashboard", request.url);
-      return NextResponse.redirect(dashboardUrl);
-    }
-
-    // If not authenticated and trying to access protected route
-    if (!user && authRequiredPaths.some((p) => path.startsWith(p))) {
-      const loginUrl = new URL("/login", request.url);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    return response;
-  }
-
   // Handle API routes
   if (path.startsWith("/api")) {
     // Allow public API routes
@@ -138,7 +121,21 @@ export async function middleware(request: NextRequest) {
       response.headers.set("x-school-id", user.schoolId);
     }
 
+    // For API routes, we don't need to modify the URL
     return response;
+  }
+
+  // Handle non-API routes
+  // If authenticated and trying to access login/register
+  if (user && authRedirectPaths.includes(path)) {
+    const dashboardUrl = new URL("/dashboard", request.url);
+    return NextResponse.redirect(dashboardUrl);
+  }
+
+  // If not authenticated and trying to access protected route
+  if (!user && authRequiredPaths.some((p) => path.startsWith(p))) {
+    const loginUrl = new URL("/login", request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
   return response;

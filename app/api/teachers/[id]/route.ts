@@ -207,10 +207,21 @@ export async function GET(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const teacherId = params.id;
+    if (!teacherId) {
+      return NextResponse.json(
+        { message: "Teacher ID is required" },
+        { status: 400 }
+      );
+    }
+
     // Find the teacher with all related information
     const teacher = await prisma.teacher.findUnique({
       where: {
-        id: params.id,
+        id: teacherId,
+        user: {
+          schoolId: session.schoolId,
+        },
       },
       include: {
         user: {
@@ -222,10 +233,20 @@ export async function GET(
             createdAt: true,
             updatedAt: true,
             role: true,
+            schoolId: true,
           },
         },
         department: true,
-        classes: true,
+        classes: {
+          include: {
+            level: true,
+            students: {
+              where: {
+                status: "ACTIVE",
+              },
+            },
+          },
+        },
         subjects: {
           include: {
             subject: {
@@ -243,6 +264,14 @@ export async function GET(
       return NextResponse.json(
         { message: "Teacher not found" },
         { status: 404 }
+      );
+    }
+
+    // Verify school access
+    if (teacher.user.schoolId !== session.schoolId) {
+      return NextResponse.json(
+        { message: "Access denied: Teacher not in your school" },
+        { status: 403 }
       );
     }
 
@@ -269,8 +298,14 @@ export async function GET(
       updatedAt: teacher.user.updatedAt,
       role: teacher.user.role,
       profileImage: teacher.user.profileImage,
-      teacherClasses: teacher.classes,
-      teacherSubjects: teacher.subjects.map((ts) => ({
+      classes: teacher.classes.map((cls) => ({
+        id: cls.id,
+        name: cls.name,
+        section: cls.section,
+        level: cls.level,
+        studentCount: cls.students.length,
+      })),
+      subjects: teacher.subjects.map((ts) => ({
         id: ts.id,
         subjectId: ts.subjectId,
         subject: ts.subject,

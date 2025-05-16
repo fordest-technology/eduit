@@ -12,34 +12,19 @@ export async function GET(
     const auth = await requireAuth(request);
 
     if (!auth.authenticated || !auth.user || !auth.user.schoolId) {
-      return NextResponse.json(
-        { error: "You must be logged in to access this resource" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { user } = auth;
-    const classId = params.id;
-
-    // Get current academic session
-    const currentSession = await prisma.academicSession.findFirst({
+    const classDetails = await prisma.class.findUnique({
       where: {
-        schoolId: user.schoolId,
-        isCurrent: true,
-      },
-    });
-
-    const classData = await prisma.class.findUnique({
-      where: {
-        id: classId,
-        schoolId: user.schoolId,
+        id: params.id,
+        schoolId: auth.user.schoolId,
       },
       include: {
         teacher: {
           include: {
             user: {
               select: {
-                id: true,
                 name: true,
                 email: true,
                 profileImage: true,
@@ -56,32 +41,15 @@ export async function GET(
         level: true,
         subjects: {
           include: {
-            subject: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-                department: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
+            subject: true,
           },
         },
         students: {
-          where: {
-            status: "ACTIVE",
-            sessionId: currentSession?.id, // Only get students for current session
-          },
           include: {
             student: {
               include: {
                 user: {
                   select: {
-                    id: true,
                     name: true,
                     email: true,
                     profileImage: true,
@@ -96,39 +64,19 @@ export async function GET(
               },
             },
           },
-          orderBy: {
-            student: {
-              user: {
-                name: "asc",
-              },
-            },
-          },
         },
       },
     });
 
-    if (!classData) {
+    if (!classDetails) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    // Format the response to include session info
-    const formattedResponse = {
-      ...classData,
-      currentSession: currentSession
-        ? {
-            id: currentSession.id,
-            name: currentSession.name,
-            startDate: currentSession.startDate,
-            endDate: currentSession.endDate,
-          }
-        : null,
-    };
-
-    return NextResponse.json(formattedResponse);
+    return NextResponse.json(classDetails);
   } catch (error) {
-    console.error("[CLASS_GET] Error:", error);
+    console.error("[CLASS_GET]", error);
     return NextResponse.json(
-      { error: "Failed to fetch class details" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -140,7 +88,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request, ["super_admin", "school_admin"]);
+    const auth = await requireAuth(request, [
+      UserRole.SUPER_ADMIN,
+      UserRole.SCHOOL_ADMIN,
+    ]);
 
     if (!auth.authenticated || !auth.authorized) {
       return NextResponse.json(
@@ -193,7 +144,7 @@ export async function PUT(
 
     return NextResponse.json(updatedClass);
   } catch (error) {
-    console.error("[CLASS_PUT] Error:", error);
+    console.error("[CLASS_PUT]", error);
     return NextResponse.json(
       { error: "Failed to update class" },
       { status: 500 }
@@ -207,7 +158,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request, ["super_admin", "school_admin"]);
+    const auth = await requireAuth(request, [
+      UserRole.SUPER_ADMIN,
+      UserRole.SCHOOL_ADMIN,
+    ]);
 
     if (!auth.authenticated || !auth.authorized) {
       return NextResponse.json(
@@ -240,7 +194,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Class deleted successfully" });
   } catch (error) {
-    console.error("[CLASS_DELETE] Error:", error);
+    console.error("[CLASS_DELETE]", error);
     return NextResponse.json(
       { error: "Failed to delete class" },
       { status: 500 }
