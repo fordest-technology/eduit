@@ -164,7 +164,15 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-          { title: "Result", href: "/dashboard/results", icon: ClipboardCheck },
+          { 
+            title: "Results", 
+            href: "/dashboard/results", 
+            icon: ClipboardCheck,
+            children: [
+              { title: "Results Management", href: "/dashboard/results" },
+              { title: "Results Configuration", href: "/dashboard/results/configuration" },
+            ]
+          },
           { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
           { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
           { title: "Classes", href: "/dashboard/classes", icon: School },
@@ -181,7 +189,15 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-          { title: "Result", href: "/dashboard/results", icon: ClipboardCheck },
+          { 
+            title: "Results", 
+            href: "/dashboard/results", 
+            icon: ClipboardCheck,
+            children: [
+              { title: "Results Management", href: "/dashboard/results" },
+              { title: "Results Configuration", href: "/dashboard/results/configuration" },
+            ]
+          },
           { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
           { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
           { title: "Classes", href: "/dashboard/classes", icon: School },
@@ -197,6 +213,15 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
           { title: "My Classes", href: "/dashboard/my-classes", icon: School },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
+          { 
+            title: "Results", 
+            href: "/dashboard/results", 
+            icon: ClipboardCheck,
+            children: [
+              { title: "Results Management", href: "/dashboard/results" },
+              { title: "Results Configuration", href: "/dashboard/results/configuration" },
+            ]
+          },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]

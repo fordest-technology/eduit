@@ -47,26 +47,33 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
     // Function to fetch colors from subdomain
     const fetchSubdomainColors = async () => {
         try {
+            // Check if we're on localhost - don't attempt to fetch subdomain colors in development
             const host = window.location.host
-            const subdomain = host.split('.')[0]
-
-            if (!subdomain || subdomain === 'localhost:3000') {
-                return // Don't fetch for localhost
+            
+            // Skip for localhost to avoid 404 errors
+            if (host.includes('localhost') || !host.includes('.')) {
+                console.log("Skipping subdomain color fetch for localhost")
+                return
             }
-
+            
+            // Extract subdomain properly (first part before first period)
+            const subdomain = host.split('.')[0]
+            
             const response = await fetch(`/api/public/schools/${subdomain}`)
             if (!response.ok) throw new Error("Failed to fetch subdomain colors")
 
             const data = await response.json()
-            if (data.school?.primaryColor) {
+            
+            // Make sure we get valid data with the expected structure
+            if (data.success && data.data?.primaryColor) {
                 setColors({
-                    primaryColor: data.school.primaryColor,
-                    secondaryColor: data.school.secondaryColor || DEFAULT_COLORS.secondaryColor,
+                    primaryColor: data.data.primaryColor,
+                    secondaryColor: data.data.secondaryColor || DEFAULT_COLORS.secondaryColor,
                 })
 
                 // Set CSS variables
-                document.documentElement.style.setProperty('--primary-color', data.school.primaryColor)
-                document.documentElement.style.setProperty('--secondary-color', data.school.secondaryColor || DEFAULT_COLORS.secondaryColor)
+                document.documentElement.style.setProperty('--primary-color', data.data.primaryColor)
+                document.documentElement.style.setProperty('--secondary-color', data.data.secondaryColor || DEFAULT_COLORS.secondaryColor)
             }
         } catch (error) {
             console.error("Error fetching subdomain colors:", error)
