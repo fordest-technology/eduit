@@ -34,7 +34,6 @@ export async function GET(
     // Build the query
     const query: any = {
       where: {
-        schoolId: params.schoolId,
         periodId,
         sessionId,
       },
@@ -62,11 +61,6 @@ export async function GET(
         },
       },
     };
-
-    // Add classId filter if provided
-    if (classId) {
-      query.where.classId = classId;
-    }
 
     // Check for teacher permissions
     if (session.role === "TEACHER") {
@@ -189,7 +183,6 @@ export async function POST(
           subjectId: result.subjectId,
           periodId: result.periodId,
           sessionId: result.sessionId,
-          schoolId: params.schoolId,
         },
         include: {
           componentScores: true,
@@ -203,7 +196,13 @@ export async function POST(
           data: {
             // Update main result fields
             updatedAt: new Date(),
-            classId: result.classId,
+            // Add required fields
+            total: result.componentScores.reduce(
+              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
+              0
+            ),
+            grade: result.grade || existingResult.grade || "N/A", // Use existing if available
+            remark: result.remark || existingResult.remark || "Pending", // Use existing if available
 
             // Update component scores
             componentScores: {
@@ -229,8 +228,13 @@ export async function POST(
             subjectId: result.subjectId,
             periodId: result.periodId,
             sessionId: result.sessionId,
-            schoolId: params.schoolId,
-            classId: result.classId,
+            // Add required fields
+            total: result.componentScores.reduce(
+              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
+              0
+            ),
+            grade: result.grade || "N/A", // Default grade or from input
+            remark: result.remark || "Pending", // Default remark
             componentScores: {
               createMany: {
                 data: result.componentScores.map((cs: any) => ({
