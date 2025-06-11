@@ -234,9 +234,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         return [
           { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
           { title: "My Children", href: "/dashboard/children", icon: GraduationCap },
-          { title: "School Fees", href: "/dashboard/fees", icon: Coins },
-          { title: "Events", href: "/dashboard/calendar", icon: Calendar },
-          { title: "Settings", href: "/dashboard/settings", icon: Settings },
+          { title: "School Fees", href: "/dashboard/cfees", icon: Coins },
+          { title: "Events", href: "/dashboard/pevents", icon: Calendar },
+          { title: "Settings", href: "/dashboard/p-settings", icon: Settings },
         ]
       default:
         return []

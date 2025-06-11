@@ -32,14 +32,8 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
             </Button>
 
             {/* Sidebar */}
-            <aside
-                className={cn(
-                    "fixed md:relative h-screen w-fit bg-background border-r transition-transform duration-200 ease-in-out overflow-y-auto scrollbar-hide",
-                    isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-                )}
-            >
-                <DashboardSidebar user={session} />
-            </aside>
+
+            <DashboardSidebar user={session} />
 
             {/* Main content */}
             <main className="flex-1 w-full h-screen overflow-y-auto">

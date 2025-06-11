@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { formatCurrency } from '@/app/lib/utils'
 
 interface AdminFeeData {
     totalBilled: number
@@ -232,63 +233,67 @@ export default function FeeDashboardPage() {
         )
     }
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: "USD",
-        }).format(amount)
-    }
-
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <DashboardHeader
-                    heading="Fee Management"
-                    text="Manage and track student fees"
-                />
-            </div>
+            <DashboardHeader
+                heading="Fee Management"
+                text="Manage and track student fees"
+                showBanner={true}
+                icon={<DollarSign className="h-6 w-6" />}
+            />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Billed</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
+                            <DollarSign className="mr-2 h-5 w-5" />
+                            Total Billed
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(adminFeeData.totalBilled)}</div>
-                        <p className="text-xs text-muted-foreground">Total amount billed to students</p>
+                        <p className="text-3xl font-bold text-blue-800">{formatCurrency(adminFeeData.totalBilled)}</p>
+                        <p className="text-sm text-blue-600 mt-1">Total amount billed to students</p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg font-medium flex items-center text-green-700">
+                            <CreditCard className="mr-2 h-5 w-5" />
+                            Total Paid
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(adminFeeData.totalPaid)}</div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-3xl font-bold text-green-800">{formatCurrency(adminFeeData.totalPaid)}</p>
+                        <p className="text-sm text-green-600 mt-1">
                             {((adminFeeData.totalPaid / adminFeeData.totalBilled) * 100 || 0).toFixed(1)}% of total billed
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg font-medium flex items-center text-yellow-700">
+                            <FileText className="mr-2 h-5 w-5" />
+                            Pending Payments
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{adminFeeData.totalPending}</div>
-                        <p className="text-xs text-muted-foreground">Awaiting payment</p>
+                        <p className="text-3xl font-bold text-yellow-800">{adminFeeData.totalPending}</p>
+                        <p className="text-sm text-yellow-600 mt-1">Awaiting payment</p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Overdue Payments</CardTitle>
-                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg font-medium flex items-center text-red-700">
+                            <AlertCircle className="mr-2 h-5 w-5" />
+                            Overdue Payments
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{adminFeeData.totalOverdue}</div>
-                        <p className="text-xs text-muted-foreground">Requires immediate attention</p>
+                        <p className="text-3xl font-bold text-red-800">{adminFeeData.totalOverdue}</p>
+                        <p className="text-sm text-red-600 mt-1">Requires immediate attention</p>
                     </CardContent>
                 </Card>
             </div>
@@ -297,14 +302,23 @@ export default function FeeDashboardPage() {
 
             <Tabs defaultValue="bills" value={activeTab} onValueChange={setActiveTab}>
                 <div className="space-y-4">
-                    <TabsList className="bg-background w-full justify-start rounded-none border-b data-[state=active]:bg-background">
-                        <TabsTrigger value="bills" className="rounded-none data-[state=active]:border-primary data-[state=active]:bg-background">
+                    <TabsList className="bg-background w-full justify-start rounded-none border-b">
+                        <TabsTrigger
+                            value="bills"
+                            className="relative rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-background hover:bg-muted/50"
+                        >
                             Bills
                         </TabsTrigger>
-                        <TabsTrigger value="accounts" className="rounded-none data-[state=active]:border-primary data-[state=active]:bg-background">
+                        <TabsTrigger
+                            value="accounts"
+                            className="relative rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-background hover:bg-muted/50"
+                        >
                             Payment Accounts
                         </TabsTrigger>
-                        <TabsTrigger value="requests" className="rounded-none data-[state=active]:border-primary data-[state=active]:bg-background">
+                        <TabsTrigger
+                            value="requests"
+                            className="relative rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-background hover:bg-muted/50"
+                        >
                             Payment Requests
                             {adminFeeData.pendingRequests > 0 && (
                                 <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
@@ -314,7 +328,7 @@ export default function FeeDashboardPage() {
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="bills" className="space-y-4">
+                    <TabsContent value="bills" className="m-0">
                         <BillsTab
                             bills={bills}
                             classes={classes}
@@ -323,11 +337,11 @@ export default function FeeDashboardPage() {
                         />
                     </TabsContent>
 
-                    <TabsContent value="accounts" className="space-y-4">
+                    <TabsContent value="accounts" className="m-0">
                         <PaymentAccountsTab accounts={paymentAccounts} />
                     </TabsContent>
 
-                    <TabsContent value="requests" className="space-y-4">
+                    <TabsContent value="requests" className="m-0">
                         <PaymentRequestsTab payments={paymentRequests} />
                     </TabsContent>
                 </div>

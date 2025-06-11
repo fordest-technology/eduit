@@ -451,9 +451,8 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <ChevronDown
-                          className={`h-4 w-4 transition-transform duration-200 ${
-                            expandedId === request.id ? "rotate-180" : ""
-                          }`}
+                          className={`h-4 w-4 transition-transform duration-200 ${expandedId === request.id ? "rotate-180" : ""
+                            }`}
                         />
                       </Button>
                     </CollapsibleTrigger>

@@ -95,7 +95,7 @@ export function FeeDashboardContent({ data }: FeeDashboardContentProps) {
                     <TabsTrigger value="bills">Bills</TabsTrigger>
                     <TabsTrigger value="accounts">Payment Accounts</TabsTrigger>
                     <TabsTrigger value="requests">
-                        Payment Requests
+
                         {data.pendingPayments.length > 0 && (
                             <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
                                 {data.pendingPayments.length}
