@@ -20,9 +20,7 @@ import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { DepartmentsDialog } from "./departments-dialog"
-
-type UserRole = "SUPER_ADMIN" | "SCHOOL_ADMIN" | "TEACHER" | "STUDENT" | "PARENT"
+import { UserRole } from "@prisma/client"
 
 interface Department {
     id: string
@@ -30,8 +28,8 @@ interface Department {
     description: string | null
     _count: {
         subjects: number
-        students: number
-        teachers: number
+        students?: number
+        teachers?: number
     }
 }
 
@@ -53,7 +51,7 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
     })
 
     // Check if user has permission to manage departments
-    const canManageDepartments = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(userRole)
+    const canManageDepartments = userRole === UserRole.SUPER_ADMIN || userRole === UserRole.SCHOOL_ADMIN
 
     // Stats summary for the page
     const totalSubjects = departments.reduce((total, dept) => total + (dept._count.subjects || 0), 0);
@@ -106,7 +104,6 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
     }
 
     const handleDelete = async (id: string) => {
-        if (!canManageDepartments) return
         setIsDeleting(id)
 
         try {
@@ -115,8 +112,8 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
             })
 
             if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.error || "Failed to delete department")
+                const errorText = await response.text()
+                throw new Error(errorText || "Failed to delete department")
             }
 
             setDepartments(departments.filter(dept => dept.id !== id))
@@ -130,7 +127,6 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
     }
 
     const handleEdit = (department: Department) => {
-        if (!canManageDepartments) return
         setSelectedDepartment(department)
         setFormData({
             name: department.name,
@@ -145,11 +141,6 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
         setSelectedDepartment(null)
         setIsEditMode(false)
         setIsDialogOpen(false)
-    }
-
-    const handleSuccess = () => {
-        setIsEditMode(false)
-        setSelectedDepartment(null)
     }
 
     return (
@@ -296,13 +287,62 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
                 </Table>
             </div>
 
-            <DepartmentsDialog
-                open={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                isEditMode={isEditMode}
-                departmentToEdit={selectedDepartment || undefined}
-                onSuccess={handleSuccess}
-            />
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{isEditMode ? 'Edit Department' : 'Create Department'}</DialogTitle>
+                        <DialogDescription>
+                            {isEditMode
+                                ? "Update the department's information below."
+                                : "Add a new department by filling out the information below."}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-4">
+                            <div>
+                                <Label htmlFor="name">Name</Label>
+                                <Input
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    placeholder="Enter department name"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="description">Description</Label>
+                                <Textarea
+                                    id="description"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    placeholder="Enter department description"
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsDialogOpen(false)}
+                                disabled={isLoading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isLoading}>
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {isEditMode ? 'Updating...' : 'Creating...'}
+                                    </>
+                                ) : (
+                                    isEditMode ? 'Update Department' : 'Create Department'
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 } 

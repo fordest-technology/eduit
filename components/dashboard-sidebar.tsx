@@ -164,9 +164,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-          { 
-            title: "Results", 
-            href: "/dashboard/results", 
+          {
+            title: "Results",
+            href: "/dashboard/results",
             icon: ClipboardCheck,
             children: [
               { title: "Results Management", href: "/dashboard/results" },
@@ -189,9 +189,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-          { 
-            title: "Results", 
-            href: "/dashboard/results", 
+          {
+            title: "Results",
+            href: "/dashboard/results",
             icon: ClipboardCheck,
             children: [
               { title: "Results Management", href: "/dashboard/results" },
@@ -213,9 +213,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
           { title: "My Classes", href: "/dashboard/my-classes", icon: School },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-          { 
-            title: "Results", 
-            href: "/dashboard/results", 
+          {
+            title: "Results",
+            href: "/dashboard/results",
             icon: ClipboardCheck,
             children: [
               { title: "Results Management", href: "/dashboard/results" },
@@ -291,15 +291,17 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     <TooltipProvider delayDuration={0}>
       <div
         className={cn(
-          "flex h-screen flex-col border-r transition-all duration-300 ease-in-out z-50 bg-white",
+          "flex h-screen flex-col border-r transition-all duration-300 ease-in-out z-50 bg-white overflow-hidden",
           collapsed ? "w-[4.5rem]" : "w-64",
         )}
         style={{
           backgroundColor: activeColorHsl ? `hsl(${activeColorHsl.split(' ')[0]} 40% 95%)` : undefined,
+          height: '100vh',
+          maxHeight: '100vh',
         }}
       >
         {/* Header */}
-        <div className="flex h-14 items-center border-b px-4 z-50 ">
+        <div className="flex h-14 items-center border-b px-4 z-50 flex-shrink-0">
           {schoolInfo?.logo ? (
             <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
               <div className="h-8 w-8 rounded-md overflow-hidden flex-shrink-0 z-50">
@@ -322,9 +324,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 z-50">
+        <nav className="flex-1 overflow-y-auto py-4 px-3 z-50 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {/* Main navigation items */}
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {groupedNavItems.main.map((item) => {
               const Icon = item.icon
               const isItemActive = isActive(item.href)
@@ -336,14 +338,16 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                       <Link
                         href={item.href}
                         className={cn(
-                          "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                          isItemActive ? "text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                          isItemActive
+                            ? "text-white shadow-sm"
+                            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                           collapsed ? "justify-center" : "gap-3",
                         )}
                         style={isItemActive ? { backgroundColor: activeColor } : undefined}
                       >
-                        <Icon className="h-5 w-5 flex-shrink-0" />
-                        {!collapsed && <span>{item.title}</span>}
+                        <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                        {!collapsed && <span className="truncate">{item.title}</span>}
                       </Link>
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">{item.title}</TooltipContent>}
@@ -357,9 +361,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           {groupedNavItems.users && groupedNavItems.users.length > 0 && (
             <>
               <div className={cn("mt-6 mb-2", collapsed ? "px-0 text-center" : "px-3")}>
-                <h3 className="text-xs font-medium text-muted-foreground">{!collapsed ? "Account Management" : "—"}</h3>
+                <h3 className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
+                  {!collapsed ? "Account Management" : "—"}
+                </h3>
               </div>
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {groupedNavItems.users.map((item) => {
                   const Icon = item.icon
                   const isItemActive = isActive(item.href)
@@ -371,16 +377,16 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                           <Link
                             href={item.href}
                             className={cn(
-                              "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                              "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                               isItemActive
-                                ? "text-white"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                                ? "text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                               collapsed ? "justify-center" : "gap-3",
                             )}
                             style={isItemActive ? { backgroundColor: activeColor } : undefined}
                           >
-                            <Icon className="h-5 w-5 flex-shrink-0" />
-                            {!collapsed && <span>{item.title}</span>}
+                            <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                            {!collapsed && <span className="truncate">{item.title}</span>}
                           </Link>
                         </TooltipTrigger>
                         {collapsed && <TooltipContent side="right">{item.title}</TooltipContent>}
@@ -396,9 +402,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           {groupedNavItems.academics && groupedNavItems.academics.length > 0 && (
             <>
               <div className={cn("mt-6 mb-2", collapsed ? "px-0 text-center" : "px-3")}>
-                <h3 className="text-xs font-medium text-muted-foreground">{!collapsed ? "Academics" : "—"}</h3>
+                <h3 className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
+                  {!collapsed ? "Academics" : "—"}
+                </h3>
               </div>
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {groupedNavItems.academics.map((item) => {
                   const Icon = item.icon
                   const isItemActive = isActive(item.href)
@@ -410,16 +418,16 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                           <Link
                             href={item.href}
                             className={cn(
-                              "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                              "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                               isItemActive
-                                ? "text-white"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                                ? "text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                               collapsed ? "justify-center" : "gap-3",
                             )}
                             style={isItemActive ? { backgroundColor: activeColor } : undefined}
                           >
-                            <Icon className="h-5 w-5 flex-shrink-0" />
-                            {!collapsed && <span>{item.title}</span>}
+                            <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                            {!collapsed && <span className="truncate">{item.title}</span>}
                           </Link>
                         </TooltipTrigger>
                         {collapsed && <TooltipContent side="right">{item.title}</TooltipContent>}
@@ -435,9 +443,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           {groupedNavItems.system && groupedNavItems.system.length > 0 && (
             <>
               <div className={cn("mt-6 mb-2", collapsed ? "px-0 text-center" : "px-3")}>
-                <h3 className="text-xs font-medium text-muted-foreground">{!collapsed ? "System" : "—"}</h3>
+                <h3 className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
+                  {!collapsed ? "System" : "—"}
+                </h3>
               </div>
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {groupedNavItems.system.map((item) => {
                   const Icon = item.icon
                   const isItemActive = isActive(item.href)
@@ -449,16 +459,16 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                           <Link
                             href={item.href}
                             className={cn(
-                              "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                              "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                               isItemActive
-                                ? "text-white"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                                ? "text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                               collapsed ? "justify-center" : "gap-3",
                             )}
                             style={isItemActive ? { backgroundColor: activeColor } : undefined}
                           >
-                            <Icon className="h-5 w-5 flex-shrink-0" />
-                            {!collapsed && <span>{item.title}</span>}
+                            <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                            {!collapsed && <span className="truncate">{item.title}</span>}
                           </Link>
                         </TooltipTrigger>
                         {collapsed && <TooltipContent side="right">{item.title}</TooltipContent>}
@@ -480,7 +490,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         </button>
 
         {/* Footer with user info */}
-        <div className="border-t p-4">
+        <div className="border-t p-4 flex-shrink-0">
           <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "gap-3")}>
             <Avatar className={cn(collapsed && "h-8 w-8")}>
               <AvatarImage src={user.profileImage || undefined} />

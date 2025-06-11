@@ -3,79 +3,8 @@ import { getSession } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { DepartmentsTable } from "./departments-table"
 import { UserRole } from "@prisma/client"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { Suspense } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { BookOpen } from "lucide-react"
-
-// Fetch data function to keep the code organized
-async function getDepartmentsData(schoolId: string) {
-    try {
-        // Fetch departments with counts
-        const departments = await prisma.department.findMany({
-            where: {
-                schoolId,
-            },
-            include: {
-                _count: {
-                    select: {
-                        subjects: true,
-                        students: true,
-                        teachers: true,
-                    },
-                },
-            },
-            orderBy: {
-                name: "asc",
-            },
-        })
-
-        // Get school colors for styling
-        const school = await prisma.school.findUnique({
-            where: {
-                id: schoolId,
-            },
-            select: {
-                name: true,
-                primaryColor: true,
-                secondaryColor: true,
-            },
-        })
-
-        // Calculate summary statistics
-        const totalSubjects = departments.reduce((sum, dept) => sum + (dept._count?.subjects || 0), 0)
-        const totalTeachers = departments.reduce((sum, dept) => sum + (dept._count?.teachers || 0), 0)
-        const totalStudents = departments.reduce((sum, dept) => sum + (dept._count?.students || 0), 0)
-
-        return {
-            departments,
-            schoolColors: {
-                primaryColor: school?.primaryColor || "#3b82f6",
-                secondaryColor: school?.secondaryColor || "#1f2937",
-            },
-            stats: {
-                totalDepartments: departments.length,
-                totalSubjects,
-                totalTeachers,
-                totalStudents,
-            }
-        }
-    } catch (error) {
-        console.error("Error fetching departments data:", error)
-        throw new Error("Failed to load departments data")
-    }
-}
-
-// Loading skeleton for stats
-function StatsSkeleton() {
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32" />
-            ))}
-        </div>
-    )
-}
+import { Card, CardContent } from "@/components/ui/card"
+import { BookOpen, Users, GraduationCap, Building2 } from "lucide-react"
 
 export default async function DepartmentsPage() {
     const session = await getSession()
@@ -91,52 +20,124 @@ export default async function DepartmentsPage() {
     }
 
     try {
-        const data = await getDepartmentsData(session.schoolId!)
+        // Fetch departments with counts for the current school
+        const departments = await prisma.department.findMany({
+            where: {
+                schoolId: session.schoolId,
+            },
+            include: {
+                _count: {
+                    select: {
+                        subjects: true,
+                        students: true,
+                        teachers: true,
+                    },
+                },
+            },
+            orderBy: {
+                name: "asc",
+            },
+        })
+
+        // Get school colors for styling the banner
+        const school = await prisma.school.findUnique({
+            where: {
+                id: session.schoolId,
+            },
+            select: {
+                name: true,
+                primaryColor: true,
+                secondaryColor: true,
+            },
+        })
+
+        // Calculate summary statistics
+        const totalSubjects = departments.reduce((sum, dept) => sum + (dept._count?.subjects || 0), 0)
+        const totalTeachers = departments.reduce((sum, dept) => sum + (dept._count?.teachers || 0), 0)
+        const totalStudents = departments.reduce((sum, dept) => sum + (dept._count?.students || 0), 0)
+
+        const schoolColors = {
+            primaryColor: school?.primaryColor || "#3b82f6",
+            secondaryColor: school?.secondaryColor || "#1f2937",
+        }
 
         return (
-            <div className="space-y-6">
-                <DashboardHeader
-                    heading="Department Management"
-                    text="Create and manage departments, assign students and teachers, and organize your institution's academic structure."
-                    icon={<BookOpen className="h-6 w-6" />}
-                />
+            <div className="container py-6">
+                {/* Banner section */}
+                <div
+                    className="w-full p-8 mb-6 rounded-lg relative overflow-hidden"
+                    style={{
+                        background: `linear-gradient(45deg, ${schoolColors.primaryColor}, ${schoolColors.secondaryColor})`,
+                    }}
+                >
+                    <div className="absolute inset-0 bg-grid-white/15 [mask-image:linear-gradient(0deg,rgba(255,255,255,0.1),rgba(255,255,255,0.5))]"></div>
+                    <div className="relative z-10">
+                        <h1 className="text-3xl font-bold text-white mb-2">Departments</h1>
+                        <p className="text-white text-opacity-90 max-w-2xl">
+                            Manage academic departments across your institution. Create new departments, assign students and faculty, and track department performance.
+                        </p>
+                    </div>
+                </div>
 
                 {/* Stats Cards */}
-                <Suspense fallback={<StatsSkeleton />}>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <StatsCard
-                            title="Total Departments"
-                            value={data.stats.totalDepartments}
-                            description="Active departments"
-                            className="bg-blue-50"
-                        />
-                        <StatsCard
-                            title="Total Students"
-                            value={data.stats.totalStudents}
-                            description="Enrolled students"
-                            className="bg-green-50"
-                        />
-                        <StatsCard
-                            title="Total Teachers"
-                            value={data.stats.totalTeachers}
-                            description="Assigned teachers"
-                            className="bg-purple-50"
-                        />
-                        <StatsCard
-                            title="Total Subjects"
-                            value={data.stats.totalSubjects}
-                            description="Active subjects"
-                            className="bg-amber-50"
-                        />
-                    </div>
-                </Suspense>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center space-x-4">
+                                <div className="p-2 bg-purple-100 rounded-full">
+                                    <Building2 className="h-6 w-6 text-purple-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Total Departments</p>
+                                    <h3 className="text-2xl font-bold text-purple-600">{departments.length}</h3>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center space-x-4">
+                                <div className="p-2 bg-blue-100 rounded-full">
+                                    <Users className="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Total Students</p>
+                                    <h3 className="text-2xl font-bold text-blue-600">{totalStudents}</h3>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center space-x-4">
+                                <div className="p-2 bg-green-100 rounded-full">
+                                    <GraduationCap className="h-6 w-6 text-green-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Total Teachers</p>
+                                    <h3 className="text-2xl font-bold text-green-600">{totalTeachers}</h3>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center space-x-4">
+                                <div className="p-2 bg-amber-100 rounded-full">
+                                    <BookOpen className="h-6 w-6 text-amber-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Total Subjects</p>
+                                    <h3 className="text-2xl font-bold text-amber-600">{totalSubjects}</h3>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                {/* Departments Table */}
-                <div className="border rounded-lg">
-                    <DepartmentsTable
-                        departments={data.departments}
-                        userRole={session.role}
-                    />
+                {/* Display the departments table */}
+                <div className="border rounded-lg overflow-hidden bg-white">
+                    <DepartmentsTable departments={departments} userRole={session.role} />
                 </div>
             </div>
         )
@@ -151,27 +152,4 @@ export default async function DepartmentsPage() {
             </div>
         )
     }
-}
-
-// Stats card component
-function StatsCard({
-    title,
-    value,
-    description,
-    className = "",
-}: {
-    title: string
-    value: number
-    description: string
-    className?: string
-}) {
-    return (
-        <div className={`rounded-lg border p-4 ${className}`}>
-            <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-            <div className="mt-2">
-                <p className="text-3xl font-bold">{value}</p>
-                <p className="text-sm text-muted-foreground">{description}</p>
-            </div>
-        </div>
-    )
 } 

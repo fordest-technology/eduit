@@ -1,9 +1,6 @@
 "use client"
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ProfileSettings } from "./profile-settings"
 import { SchoolSettings } from "./school-settings"
-import { useColors } from "@/contexts/color-context"
 import { UserRole } from "@prisma/client"
 
 interface SettingsContentProps {
@@ -11,29 +8,22 @@ interface SettingsContentProps {
     userId: string
 }
 
-export function SettingsContent({ userRole, userId }: SettingsContentProps) {
+export function SettingsContent({ userRole }: SettingsContentProps) {
     const isSchoolAdmin = userRole === "SCHOOL_ADMIN"
+
+    if (!isSchoolAdmin) {
+        return (
+            <div className="container mx-auto px-4 py-6">
+                <div className="bg-destructive/15 p-4 rounded-md">
+                    <p className="text-destructive">You don't have permission to access school settings.</p>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="container mx-auto px-4 py-6">
-            <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList>
-                    <TabsTrigger value="profile">Profile</TabsTrigger>
-                    {isSchoolAdmin && (
-                        <TabsTrigger value="school">School Settings</TabsTrigger>
-                    )}
-                </TabsList>
-
-                <TabsContent value="profile" className="space-y-6">
-                    <ProfileSettings userRole={userRole} userId={userId} />
-                </TabsContent>
-
-                {isSchoolAdmin && (
-                    <TabsContent value="school" className="space-y-6">
-                        <SchoolSettings />
-                    </TabsContent>
-                )}
-            </Tabs>
+            <SchoolSettings />
         </div>
     )
 } 
