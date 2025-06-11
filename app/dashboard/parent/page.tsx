@@ -60,7 +60,7 @@ export default async function ParentDashboardPage() {
     // Fetch fee information
     const studentIds = children.map(child => child.student.id)
 
-    // Get bills assigned to the children
+    // Fetch bills assigned to the children or their classes
     const bills = await prisma.bill.findMany({
         where: {
             schoolId: session.schoolId,
@@ -69,9 +69,7 @@ export default async function ParentDashboardPage() {
                     OR: [
                         {
                             targetType: "STUDENT",
-                            targetId: {
-                                in: studentIds
-                            }
+                            targetId: { in: studentIds }
                         },
                         {
                             targetType: "CLASS",
@@ -86,22 +84,11 @@ export default async function ParentDashboardPage() {
             }
         },
         include: {
-            account: true,
-            assignments: {
-                include: {
-                    studentPayments: {
-                        where: {
-                            studentId: {
-                                in: studentIds
-                            }
-                        }
-                    }
-                }
-            }
+            assignments: true
         }
     })
 
-    // Get payment accounts
+    // Fetch payment accounts
     const paymentAccounts = await prisma.paymentAccount.findMany({
         where: {
             schoolId: session.schoolId,
@@ -109,52 +96,24 @@ export default async function ParentDashboardPage() {
         }
     })
 
-    // Get payment history
+    // Fetch payment requests
     const paymentRequests = await prisma.paymentRequest.findMany({
         where: {
-            studentId: {
-                in: studentIds
-            }
+            studentId: { in: studentIds }
         },
         include: {
-            student: {
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true
-                        }
-                    }
-                }
-            },
-            billAssignment: {
-                include: {
-                    bill: {
-                        include: {
-                            account: true
-                        }
-                    }
-                }
-            },
-            processedBy: {
-                select: {
-                    id: true,
-                    name: true
-                }
-            }
+            processedBy: true
         },
         orderBy: {
             createdAt: 'desc'
         }
     })
 
-    // Get approved academic results
+    // Fetch approved results
     const approvedResults = await prisma.result.findMany({
         where: {
-            studentId: {
-                in: studentIds
-            },
-            isApproved: true
+            studentId: { in: studentIds },
+            approvedById: { not: null }
         },
         include: {
             student: {
@@ -162,18 +121,12 @@ export default async function ParentDashboardPage() {
                     user: true
                 }
             },
-            subject: true,
-            session: true,
-            approver: {
-                select: {
-                    id: true,
-                    name: true
-                }
-            }
+            subject: true
         },
         orderBy: {
             updatedAt: 'desc'
-        }
+        },
+        take: 10
     })
 
     // Calculate stats
@@ -199,14 +152,14 @@ export default async function ParentDashboardPage() {
     // Transform data for the components
     const formattedPaymentRequests = paymentRequests.map(request => ({
         ...request,
-        reviewedBy: request.processedBy, // Map processedBy to reviewedBy for component consistency
+        reviewedBy: request.processedBy,
         reviewedAt: request.processedAt,
         reviewNotes: request.notes
     }))
 
     const formattedResults = approvedResults.map(result => ({
         ...result,
-        term: { id: "current", name: "Current Term" }, // Add dummy term data if needed by the component
+        term: { id: "current", name: "Current Term" },
         status: "APPROVED"
     }))
 

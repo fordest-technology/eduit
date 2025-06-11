@@ -1,12 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { UserRole } from "@prisma/client"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { UserRole as AuthUserRole } from "@/lib/auth"
+import { UserRole } from "@/lib/auth"
 
 interface DashboardContentProps {
     children: React.ReactNode
@@ -19,17 +18,6 @@ interface DashboardContentProps {
 
 export function DashboardContent({ children, session }: DashboardContentProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-
-    // Map Prisma UserRole to auth UserRole
-    const roleMapping: Record<UserRole, AuthUserRole> = {
-        [UserRole.SUPER_ADMIN]: "SUPER_ADMIN",
-        [UserRole.SCHOOL_ADMIN]: "SCHOOL_ADMIN",
-        [UserRole.TEACHER]: "TEACHER",
-        [UserRole.STUDENT]: "STUDENT",
-        [UserRole.PARENT]: "PARENT",
-    };
-
-    const userRole = roleMapping[session.role] || "SCHOOL_ADMIN";
 
     return (
         <div className="relative flex h-screen overflow-hidden">
@@ -50,7 +38,7 @@ export function DashboardContent({ children, session }: DashboardContentProps) {
                     isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
-                <DashboardSidebar user={{ ...session, role: userRole }} />
+                <DashboardSidebar user={session} />
             </aside>
 
             {/* Main content */}

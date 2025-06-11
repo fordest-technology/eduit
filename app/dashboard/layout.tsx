@@ -13,17 +13,9 @@ export default async function DashboardLayout({
     return null // or redirect to login
   }
 
-  // Map the session data to match the expected types
-  const userRoleMapping: Record<string, UserRole> = {
-    "super_admin": UserRole.SUPER_ADMIN,
-    "school_admin": UserRole.SCHOOL_ADMIN,
-    "teacher": UserRole.TEACHER,
-    "student": UserRole.STUDENT,
-    "parent": UserRole.PARENT
-  };
-
+  // The session already has the correct role format, no need for mapping
   const userData = {
-    role: userRoleMapping[session.role] || UserRole.SCHOOL_ADMIN,
+    role: session.role,
     name: session.name,
     profileImage: session.profileImage
   }

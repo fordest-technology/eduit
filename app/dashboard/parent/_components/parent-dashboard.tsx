@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,8 +40,6 @@ interface ParentDashboardProps {
 }
 
 export function ParentDashboard({ data }: ParentDashboardProps) {
-    const [activeTab, setActiveTab] = useState("overview")
-
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat("en-US", {
             style: "currency",
@@ -52,166 +49,147 @@ export function ParentDashboard({ data }: ParentDashboardProps) {
 
     return (
         <div className="space-y-6">
-            <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="fees">Fee Management</TabsTrigger>
-                    <TabsTrigger value="results">Academic Results</TabsTrigger>
-                    <TabsTrigger value="events">Events</TabsTrigger>
-                </TabsList>
+            {/* Stats Overview */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
+                        <CardTitle className="text-sm font-medium">Children</CardTitle>
+                        <Users className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{data.children.length}</div>
+                        <p className="text-xs text-muted-foreground">Students linked to your account</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
+                        <CardTitle className="text-sm font-medium">Total Billed</CardTitle>
+                        <DollarSign className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(data.stats.totalBilled)}</div>
+                        <p className="text-xs text-muted-foreground">Total fees for your children</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
+                        <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
+                        <Clock className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{data.stats.pendingPayments}</div>
+                        <p className="text-xs text-muted-foreground">Awaiting approval</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
+                        <CardTitle className="text-sm font-medium">Remaining Balance</CardTitle>
+                        <CreditCard className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(data.stats.remainingBalance)}</div>
+                        <p className="text-xs text-muted-foreground">Outstanding balance</p>
+                    </CardContent>
+                </Card>
+            </div>
 
-                <TabsContent value="overview" className="space-y-6">
-                    {/* Stats Overview */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
-                                <CardTitle className="text-sm font-medium">Children</CardTitle>
-                                <Users className="h-4 w-4 text-primary" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{data.children.length}</div>
-                                <p className="text-xs text-muted-foreground">Students linked to your account</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
-                                <CardTitle className="text-sm font-medium">Total Billed</CardTitle>
-                                <DollarSign className="h-4 w-4 text-primary" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{formatCurrency(data.stats.totalBilled)}</div>
-                                <p className="text-xs text-muted-foreground">Total fees for your children</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
-                                <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-                                <Clock className="h-4 w-4 text-primary" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{data.stats.pendingPayments}</div>
-                                <p className="text-xs text-muted-foreground">Awaiting approval</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
-                                <CardTitle className="text-sm font-medium">Remaining Balance</CardTitle>
-                                <CreditCard className="h-4 w-4 text-primary" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{formatCurrency(data.stats.remainingBalance)}</div>
-                                <p className="text-xs text-muted-foreground">Outstanding balance</p>
-                            </CardContent>
-                        </Card>
-                    </div>
+            {/* Children Cards */}
+            <ParentStudentsCard children={data.children} />
 
-                    {/* Children Cards */}
-                    <ParentStudentsCard children={data.children} />
-
-                    {/* Quick Access Widgets */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {/* Upcoming Events */}
-                        <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
-                            <CardHeader className="bg-primary/5">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-base">Upcoming Events</CardTitle>
-                                    <CalendarDays className="h-4 w-4 text-primary" />
-                                </div>
-                                <CardDescription>School events and activities</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-4">
-                                {data.upcomingEvents.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {data.upcomingEvents.slice(0, 3).map((event) => (
-                                            <div key={event.id} className="flex items-start space-x-3">
-                                                <div className="bg-primary/10 rounded-md p-2 text-primary">
-                                                    <CalendarDays className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-sm font-medium">{event.title}</h4>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {format(new Date(event.startDate), "PPP")}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
+            {/* Quick Access Widgets */}
+            <div className="grid gap-4 md:grid-cols-2">
+                {/* Upcoming Events */}
+                <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="bg-primary/5">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">Upcoming Events</CardTitle>
+                            <CalendarDays className="h-4 w-4 text-primary" />
+                        </div>
+                        <CardDescription>School events and activities</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        {data.upcomingEvents.length > 0 ? (
+                            <div className="space-y-4">
+                                {data.upcomingEvents.slice(0, 3).map((event) => (
+                                    <div key={event.id} className="flex items-start space-x-3">
+                                        <div className="bg-primary/10 rounded-md p-2 text-primary">
+                                            <CalendarDays className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-medium">{event.title}</h4>
+                                            <p className="text-xs text-muted-foreground">
+                                                {format(new Date(event.startDate), "PPP")}
+                                            </p>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">No upcoming events</p>
-                                )}
-                            </CardContent>
-                            <CardFooter className="bg-muted/30 py-2">
-                                <Button variant="ghost" size="sm" className="w-full" onClick={() => setActiveTab("events")}>
-                                    View All Events
-                                </Button>
-                            </CardFooter>
-                        </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">No upcoming events</p>
+                        )}
+                    </CardContent>
+                    <CardFooter className="bg-muted/30 py-2">
+                        <Link href="/dashboard/calendar" className="w-full">
+                            <Button variant="ghost" size="sm" className="w-full">
+                                View All Events
+                            </Button>
+                        </Link>
+                    </CardFooter>
+                </Card>
 
-                        {/* Recent Results */}
-                        <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
-                            <CardHeader className="bg-primary/5">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-base">Recent Results</CardTitle>
-                                    <GraduationCap className="h-4 w-4 text-primary" />
-                                </div>
-                                <CardDescription>Latest approved academic results</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-4">
-                                {data.approvedResults.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {data.approvedResults.slice(0, 3).map((result) => (
-                                            <div key={result.id} className="flex items-start space-x-3">
-                                                <Avatar className="h-9 w-9">
-                                                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                                        {result.student.user.name.substring(0, 2).toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <div className="flex items-center">
-                                                        <h4 className="text-sm font-medium">{result.student.user.name}</h4>
-                                                        <Separator orientation="vertical" className="mx-2 h-4" />
-                                                        <span className="text-xs">{result.subject.name}</span>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2 mt-1">
-                                                        <Badge variant="outline" className="text-xs h-5">
-                                                            Score: {result.marks}/{result.totalMarks}
-                                                        </Badge>
-                                                        <span className={cn(
-                                                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold h-5",
-                                                            getScoreBadgeStyle(result.marks / result.totalMarks)
-                                                        )}>
-                                                            {Math.round((result.marks / result.totalMarks) * 100)}%
-                                                        </span>
-                                                    </div>
-                                                </div>
+                {/* Recent Results */}
+                <Card className="border-primary/10 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="bg-primary/5">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">Recent Results</CardTitle>
+                            <GraduationCap className="h-4 w-4 text-primary" />
+                        </div>
+                        <CardDescription>Latest approved academic results</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        {data.approvedResults.length > 0 ? (
+                            <div className="space-y-4">
+                                {data.approvedResults.slice(0, 3).map((result) => (
+                                    <div key={result.id} className="flex items-start space-x-3">
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                                {result.student.user.name.substring(0, 2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <div className="flex items-center">
+                                                <h4 className="text-sm font-medium">{result.student.user.name}</h4>
+                                                <Separator orientation="vertical" className="mx-2 h-4" />
+                                                <span className="text-xs">{result.subject.name}</span>
                                             </div>
-                                        ))}
+                                            <div className="flex items-center space-x-2 mt-1">
+                                                <Badge variant="outline" className="text-xs h-5">
+                                                    Grade: {result.grade}
+                                                </Badge>
+                                                <span className={cn(
+                                                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold h-5",
+                                                    getScoreBadgeStyle(result.total / 100)
+                                                )}>
+                                                    {Math.round(result.total)}%
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">No approved results available</p>
-                                )}
-                            </CardContent>
-                            <CardFooter className="bg-muted/30 py-2">
-                                <Button variant="ghost" size="sm" className="w-full" onClick={() => setActiveTab("results")}>
-                                    View All Results
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="fees">
-                    <ParentFeeDashboard data={data} />
-                </TabsContent>
-
-                <TabsContent value="results">
-                    <ParentResultsCard results={data.approvedResults} />
-                </TabsContent>
-
-                <TabsContent value="events">
-                    <ParentEventsCard events={data.upcomingEvents} />
-                </TabsContent>
-            </Tabs>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">No approved results available</p>
+                        )}
+                    </CardContent>
+                    <CardFooter className="bg-muted/30 py-2">
+                        <Link href="/dashboard/results" className="w-full">
+                            <Button variant="ghost" size="sm" className="w-full">
+                                View All Results
+                            </Button>
+                        </Link>
+                    </CardFooter>
+                </Card>
+            </div>
         </div>
     )
 }

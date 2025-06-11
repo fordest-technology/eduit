@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Mail, Loader2, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { type ParentFormData } from "./types";
 
@@ -44,6 +44,8 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
     const [previewUrl, setPreviewUrl] = useState<string | null>(
         parent?.profileImage || null
     );
+    const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+    const [emailError, setEmailError] = useState<string | null>(null);
 
     // Initialize form with default values or existing parent data
     const form = useForm<FormValues>({
@@ -69,6 +71,8 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
     // Handle form submission
     const onSubmit = async (data: FormValues) => {
         setIsLoading(true);
+        setEmailStatus('idle');
+        setEmailError(null);
         try {
             const formData = new FormData();
             formData.append("name", data.name);
@@ -110,10 +114,63 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
             if (parent) {
                 toast.success("Parent updated successfully");
             } else {
-                if (result.emailSent === false) {
+                // Send welcome email for new parents
+                try {
+                    setEmailStatus('sending');
+
+                    // Get school information
+                    let schoolName = "School";
+                    const schoolId = result.schoolId;
+                    let schoolUrl = window.location.origin;
+
+                    try {
+                        if (schoolId) {
+                            const schoolResponse = await fetch(`/api/schools/${schoolId}`);
+                            if (schoolResponse.ok) {
+                                const schoolData = await schoolResponse.json();
+                                schoolName = schoolData.name || schoolName;
+                                if (schoolData.subdomain) {
+                                    schoolUrl = `https://${schoolData.subdomain}.eduit.app`;
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error fetching school info:", err);
+                    }
+
+                    const emailResponse = await fetch("/api/send-credentials", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            name: result.name,
+                            email: result.email,
+                            password: data.password || result.password,
+                            role: "parent",
+                            schoolName: schoolName,
+                            schoolId: schoolId,
+                            schoolUrl: schoolUrl,
+                            revalidate: true,
+                        }),
+                    });
+
+                    if (!emailResponse.ok) {
+                        const emailError = await emailResponse.text();
+                        throw new Error(emailError || "Failed to send login credentials");
+                    }
+
+                    setEmailStatus('success');
+                    toast.success("Parent created successfully and login credentials sent");
+                } catch (emailError) {
+                    console.error("Failed to send email:", emailError);
+                    setEmailStatus('error');
+                    if (emailError instanceof Error) {
+                        setEmailError(emailError.message);
+                    } else {
+                        setEmailError("Failed to send login credentials");
+                    }
                     toast.warning("Parent account created. However, there was an issue sending the login email. You may need to provide credentials manually.");
-                } else {
-                    toast.success(result.message || "Parent created successfully");
                 }
             }
 
@@ -238,6 +295,31 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
                         )}
                     />
 
+                    <div className="bg-muted/50 p-3 rounded-md">
+                        <div className="flex items-center text-sm">
+                            <Mail className="h-4 w-4 mr-2" />
+                            <p>A welcome email with login credentials will be sent automatically to the provided email address.</p>
+                        </div>
+                        {emailStatus === 'sending' && (
+                            <div className="flex items-center mt-2 text-sm text-amber-600">
+                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                <p>Sending login credentials to email...</p>
+                            </div>
+                        )}
+                        {emailStatus === 'success' && (
+                            <div className="flex items-center mt-2 text-sm text-green-600">
+                                <CheckCircle className="h-3 w-3 mr-2" />
+                                <p>Login credentials sent successfully!</p>
+                            </div>
+                        )}
+                        {emailStatus === 'error' && (
+                            <div className="flex items-center mt-2 text-sm text-red-600">
+                                <AlertCircle className="h-3 w-3 mr-2" />
+                                <p>{emailError || "Failed to send email with credentials. Please contact the user directly."}</p>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex justify-end gap-2 pt-4">
                         <Button
                             type="button"
@@ -250,7 +332,7 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? (
                                 <>
-                                    <AlertCircle className="mr-2 h-4 w-4 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     {parent ? "Updating..." : "Creating..."}
                                 </>
                             ) : parent ? (

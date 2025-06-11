@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { UserRole } from "@/lib/auth"
 import {
   LogOut,
   School,
@@ -28,7 +29,7 @@ import { useToast } from "@/hooks/use-toast"
 
 interface DashboardSidebarProps {
   user: {
-    role: string
+    role: UserRole
     name: string
     profileImage?: string | null
   }
@@ -157,7 +158,6 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
   const getNavigationItems = () => {
     switch (user.role) {
-      case "super_admin":
       case "SUPER_ADMIN":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -182,7 +182,6 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
-      case "school_admin":
       case "SCHOOL_ADMIN":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -207,7 +206,6 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
-      case "teacher":
       case "TEACHER":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -225,7 +223,6 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
-      case "student":
       case "STUDENT":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -233,13 +230,12 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
-      case "parent":
       case "PARENT":
         return [
-          { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { title: "Pay School Fees", href: "/dashboard/fees", icon: Coins },
-          { title: "Children", href: "/dashboard/children", icon: GraduationCap },
-          { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+          { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
+          { title: "My Children", href: "/dashboard/children", icon: GraduationCap },
+          { title: "School Fees", href: "/dashboard/fees", icon: Coins },
+          { title: "Events", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       default:
@@ -256,15 +252,14 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
   // Group navigation items by category for admin roles
   const getGroupedNavItems = () => {
+    // For non-admin roles (including parent), return all items in the main group
     if (
-      user.role !== "super_admin" &&
-      user.role !== "SUPER_ADMIN" &&
-      user.role !== "school_admin" &&
-      user.role !== "SCHOOL_ADMIN"
+      !["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(user.role)
     ) {
       return { main: getNavigationItems() }
     }
 
+    // For admin roles, group the items by category
     const items = getNavigationItems()
     return {
       main: items.filter((item) => ["/dashboard", "/dashboard/fees", "/dashboard/calendar"].includes(item.href)),

@@ -1,46 +1,39 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Plus, Loader2, Users, Mail, UserPlus, BookOpen } from "lucide-react"
+import { Users, Mail, UserPlus, BookOpen, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { DashboardHeader } from "@/app/components/dashboard-header"
-import ParentsTable from "./parents-table"
-import { getSession } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { prisma } from "@/lib/prisma"
+import { ParentsTable } from "@/app/dashboard/parents/parents-table"
 import { UserRole } from "@prisma/client"
-import { ParentsClient } from "./parents-client"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface UserSession {
     id: string
-    role: "SUPER_ADMIN" | "SCHOOL_ADMIN" | "TEACHER" | "PARENT" | "STUDENT"
+    role: UserRole
     schoolId: string
     email: string
     name: string
-}
-
-interface School {
-    id: string
-    name: string
-    address: string
-    phone: string
-    email: string
-    logo?: string
 }
 
 interface Parent {
     id: string
     name: string
     email: string
-    profileImage?: string
     phone?: string | null
     childrenCount: number
+    createdAt: string
+}
+
+interface ParentStats {
+    total: number
+    withChildren: number
+    totalChildren: number
+    activeChildren: number
 }
 
 interface SchoolColors {
@@ -53,70 +46,10 @@ const defaultColors: SchoolColors = {
     secondaryColor: "#1f2937"
 }
 
-async function getData(schoolId: string) {
-    try {
-        const [parents, school] = await Promise.all([
-            prisma.user.findMany({
-                where: {
-                    role: UserRole.PARENT,
-                    schoolId,
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    profileImage: true,
-                    parent: {
-                        select: {
-                            phone: true,
-                            _count: {
-                                select: {
-                                    children: true
-                                }
-                            }
-                        }
-                    }
-                },
-                orderBy: {
-                    name: "asc"
-                }
-            }),
-            prisma.school.findUnique({
-                where: {
-                    id: schoolId,
-                },
-                select: {
-                    name: true,
-                    primaryColor: true,
-                    secondaryColor: true,
-                }
-            })
-        ])
-
-        return {
-            parents: parents.map(parent => ({
-                id: parent.id,
-                name: parent.name,
-                email: parent.email,
-                profileImage: parent.profileImage,
-                phone: parent.parent?.phone,
-                childrenCount: parent.parent?._count?.children || 0
-            })),
-            schoolColors: {
-                primaryColor: school?.primaryColor || "#3b82f6",
-                secondaryColor: school?.secondaryColor || "#1f2937",
-            }
-        }
-    } catch (error) {
-        console.error("Error fetching data:", error)
-        throw new Error("Failed to load data")
-    }
-}
-
 function StatsSkeleton() {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {[1, 2].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
                 <Card key={i}>
                     <CardContent className="pt-6">
                         <div className="flex items-center">
@@ -138,6 +71,12 @@ export default function ParentsPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [parents, setParents] = useState<Parent[]>([])
+    const [stats, setStats] = useState<ParentStats>({
+        total: 0,
+        withChildren: 0,
+        totalChildren: 0,
+        activeChildren: 0
+    })
     const [schoolColors, setSchoolColors] = useState<SchoolColors>(defaultColors)
 
     useEffect(() => {
@@ -169,6 +108,12 @@ export default function ParentsPage() {
 
                 const data = await parentsRes.json()
                 setParents(data.parents || [])
+                setStats(data.stats || {
+                    total: 0,
+                    withChildren: 0,
+                    totalChildren: 0,
+                    activeChildren: 0
+                })
                 if (data.schoolColors?.primaryColor && data.schoolColors?.secondaryColor) {
                     setSchoolColors({
                         primaryColor: data.schoolColors.primaryColor,
@@ -189,8 +134,16 @@ export default function ParentsPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="space-y-6">
+                <DashboardHeader
+                    heading="Parents"
+                    text="Manage parent accounts and their connections with students"
+                    showBanner={true}
+                />
+                <StatsSkeleton />
+                <div className="border rounded-lg overflow-hidden p-6 bg-white">
+                    <Skeleton className="h-[400px] w-full" />
+                </div>
             </div>
         )
     }
@@ -207,26 +160,16 @@ export default function ParentsPage() {
     }
 
     return (
-        <div className="container py-6">
-            {/* Hero section */}
-            <div
-                className="w-full p-8 mb-6 rounded-lg relative overflow-hidden"
-                style={{
-                    background: `linear-gradient(45deg, ${schoolColors.primaryColor}, ${schoolColors.secondaryColor})`
-                }}
-            >
-                <div className="absolute inset-0 bg-grid-white/15 [mask-image:linear-gradient(0deg,rgba(255,255,255,0.1),rgba(255,255,255,0.5))]"></div>
-                <div className="relative z-10">
-                    <h1 className="text-3xl font-bold text-white mb-2">Parent Management</h1>
-                    <p className="text-white text-opacity-90 max-w-2xl">
-                        Manage parent accounts and their connections with students
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-6">
+            <DashboardHeader
+                heading="Parents"
+                text="Manage parent accounts and their connections with students"
+                showBanner={true}
+            />
 
             {/* Stats Cards */}
             <Suspense fallback={<StatsSkeleton />}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     <Card>
                         <CardContent className="pt-6 flex items-center">
                             <div className="rounded-full p-3 bg-blue-100 mr-4">
@@ -234,20 +177,40 @@ export default function ParentsPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Parents</p>
-                                <h3 className="text-2xl font-bold">{parents.length}</h3>
+                                <h3 className="text-2xl font-bold">{stats.total}</h3>
                             </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="pt-6 flex items-center">
                             <div className="rounded-full p-3 bg-green-100 mr-4">
-                                <Users className="h-6 w-6 text-green-600" />
+                                <UserPlus className="h-6 w-6 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Parents with Children</p>
+                                <h3 className="text-2xl font-bold">{stats.withChildren}</h3>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-6 flex items-center">
+                            <div className="rounded-full p-3 bg-purple-100 mr-4">
+                                <BookOpen className="h-6 w-6 text-purple-600" />
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Children</p>
-                                <h3 className="text-2xl font-bold">
-                                    {parents.reduce((acc, parent) => acc + parent.childrenCount, 0)}
-                                </h3>
+                                <h3 className="text-2xl font-bold">{stats.totalChildren}</h3>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-6 flex items-center">
+                            <div className="rounded-full p-3 bg-orange-100 mr-4">
+                                <Mail className="h-6 w-6 text-orange-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Active Children</p>
+                                <h3 className="text-2xl font-bold">{stats.activeChildren}</h3>
                             </div>
                         </CardContent>
                     </Card>
@@ -256,7 +219,7 @@ export default function ParentsPage() {
 
             {/* Parents Table */}
             <div className="border rounded-lg overflow-hidden p-6 bg-white">
-                <ParentsClient parents={parents} />
+                <ParentsTable parents={parents} />
             </div>
         </div>
     )
