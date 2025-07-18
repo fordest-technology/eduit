@@ -148,45 +148,50 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    if (!["super_admin", "school_admin"].includes(session.role)) {
+    if (
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN
+    ) {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
-    // Check if teacher exists and belongs to the same school
-    const user = await prisma.user.findUnique({
+    // Find the teacher profile first
+    const teacher = await prisma.teacher.findUnique({
       where: {
         id: params.id,
-        role: UserRole.TEACHER,
-        schoolId: session.schoolId,
       },
       include: {
-        teacher: true,
+        user: true,
       },
     });
 
-    if (!user) {
+    if (!teacher) {
       return new NextResponse("Teacher not found", { status: 404 });
+    }
+
+    // Verify the teacher belongs to the same school
+    if (teacher.user.schoolId !== session.schoolId) {
+      return new NextResponse("Forbidden: Teacher not in your school", {
+        status: 403,
+      });
     }
 
     // Delete in a transaction
     await prisma.$transaction(async (tx) => {
-      // If teacher profile exists
-      if (user.teacher) {
-        // First remove teacher from classes
-        await tx.class.updateMany({
-          where: { teacherId: user.teacher.id },
-          data: { teacherId: null },
-        });
+      // First remove teacher from classes
+      await tx.class.updateMany({
+        where: { teacherId: teacher.id },
+        data: { teacherId: null },
+      });
 
-        // Remove teacher-subject relationships
-        await tx.subjectTeacher.deleteMany({
-          where: { teacherId: user.teacher.id },
-        });
-      }
+      // Remove teacher-subject relationships
+      await tx.subjectTeacher.deleteMany({
+        where: { teacherId: teacher.id },
+      });
 
       // Delete the user (will cascade delete teacher profile)
       await tx.user.delete({
-        where: { id: params.id },
+        where: { id: teacher.userId },
       });
     });
 

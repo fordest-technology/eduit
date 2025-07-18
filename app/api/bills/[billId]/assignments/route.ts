@@ -55,10 +55,33 @@ export async function POST(
           id: targetId,
           schoolId: user.schoolId,
         },
+        include: {
+          students: true,
+        },
       });
       if (!classExists) {
         return NextResponse.json({ error: "Class not found" }, { status: 404 });
       }
+
+      // Create bill assignments for each student in the class
+      const assignments = await Promise.all(
+        classExists.students.map(async (student) => {
+          return prisma.billAssignment.create({
+            data: {
+              billId: params.billId,
+              targetType: "STUDENT",
+              targetId: student.id,
+              dueDate: new Date(dueDate),
+              status: "PENDING",
+            },
+            include: {
+              studentPayments: true,
+            },
+          });
+        })
+      );
+
+      return NextResponse.json(assignments, { status: 201 });
     } else if (targetType === "STUDENT") {
       const student = await prisma.student.findUnique({
         where: { id: targetId },

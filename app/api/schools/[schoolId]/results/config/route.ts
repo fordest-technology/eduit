@@ -2,6 +2,26 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { z } from "zod";
+import { UserRole } from "@prisma/client";
+
+// Helper functions
+const unauthorized = () =>
+  NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const forbidden = () =>
+  NextResponse.json({ error: "Forbidden" }, { status: 403 });
+const notFound = () =>
+  NextResponse.json({ error: "Not found" }, { status: 404 });
+const badRequest = (message: string) =>
+  NextResponse.json({ error: message }, { status: 400 });
+
+// Define allowed roles
+const ALLOWED_ROLES = [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN] as const;
+type AllowedRole = (typeof ALLOWED_ROLES)[number];
+
+// Type guard for allowed roles
+function isAllowedRole(role: string): role is AllowedRole {
+  return ALLOWED_ROLES.includes(role as AllowedRole);
+}
 
 // Define types for raw query results
 interface ConfigResult {
@@ -210,9 +230,22 @@ export async function GET(
   { params }: { params: { schoolId: string } }
 ) {
   try {
+    // Authentication
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session) return unauthorized();
+
+    // Authorization
+    if (!isAllowedRole(session.role)) return forbidden();
+
+    // School context validation
+    if (!session.schoolId) return badRequest("School context required");
+
+    // Verify school context matches route param for non-super admins
+    if (
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.schoolId !== params.schoolId
+    ) {
+      return forbidden();
     }
 
     // Get all configurations for the school
@@ -270,12 +303,9 @@ export async function GET(
 
     return NextResponse.json(results);
   } catch (error) {
-    console.error("Error fetching result configurations:", error);
+    console.error("[GET] /schools/[schoolId]/results/config:", error);
     return NextResponse.json(
-      {
-        error: "Failed to fetch result configurations",
-        details: error instanceof Error ? error.message : String(error),
-      },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -286,134 +316,153 @@ export async function PUT(
   { params }: { params: { schoolId: string } }
 ) {
   try {
+    // Authentication
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session) return unauthorized();
+
+    // Authorization
+    if (!isAllowedRole(session.role)) return forbidden();
+
+    // School context validation
+    if (!session.schoolId) return badRequest("School context required");
+
+    // Verify school context matches route param for non-super admins
+    if (
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.schoolId !== params.schoolId
+    ) {
+      return forbidden();
     }
 
     const body = await request.json();
     const { id, ...data } = body;
-    const validatedData = configurationSchema.parse(data);
+
+    // Validate input
+    const validationResult = configurationSchema.safeParse(data);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { errors: validationResult.error.errors },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validationResult.data;
+
+    // Verify resource ownership
+    const existing = await prisma.resultConfiguration.findFirst({
+      where: {
+        id,
+        schoolId: params.schoolId,
+      },
+    });
+
+    if (!existing) return notFound();
 
     // Get session ID from academic year name
     const academicSession = await prisma.academicSession.findFirst({
       where: {
         name: validatedData.academicYear,
-        schoolId: params.schoolId,
+        schoolId: session.schoolId,
       },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
 
-    if (!academicSession) {
-      return NextResponse.json(
-        { error: "Academic session not found" },
-        { status: 400 }
-      );
-    }
+    if (!academicSession) return badRequest("Academic session not found");
 
-    // Update configuration
-    await prisma.$executeRaw`
-      UPDATE "ResultConfiguration"
-      SET 
-        "cumulativeEnabled" = ${validatedData.cumulativeEnabled},
-        "cumulativeMethod" = ${validatedData.cumulativeMethod},
-        "showCumulativePerTerm" = ${validatedData.showCumulativePerTerm},
-        "updatedAt" = NOW()
-      WHERE "id" = ${id}
-    `;
-
-    // Delete existing related records
-    await prisma.$executeRaw`DELETE FROM "ResultPeriod" WHERE "configurationId" = ${id}`;
-    await prisma.$executeRaw`DELETE FROM "AssessmentComponent" WHERE "configurationId" = ${id}`;
-    await prisma.$executeRaw`DELETE FROM "GradingScale" WHERE "configurationId" = ${id}`;
-
-    // Insert periods
-    for (const period of validatedData.periods) {
-      await prisma.$executeRaw`
-        INSERT INTO "ResultPeriod" 
-        ("id", "name", "weight", "configurationId", "createdAt", "updatedAt")
-        VALUES 
-        (gen_random_uuid(), ${period.name}, ${period.weight}, ${id}, NOW(), NOW())
+    // Use transaction for related operations
+    const result = await prisma.$transaction(async (tx) => {
+      // Update configuration
+      await tx.$executeRaw`
+        UPDATE "ResultConfiguration"
+        SET 
+          "cumulativeEnabled" = ${validatedData.cumulativeEnabled},
+          "cumulativeMethod" = ${validatedData.cumulativeMethod},
+          "showCumulativePerTerm" = ${validatedData.showCumulativePerTerm},
+          "updatedAt" = NOW()
+        WHERE "id" = ${id} AND "schoolId" = ${session.schoolId}
       `;
-    }
 
-    // Insert assessment components
-    for (const component of validatedData.assessmentComponents) {
-      await prisma.$executeRaw`
-        INSERT INTO "AssessmentComponent" 
-        ("id", "name", "key", "maxScore", "configurationId", "createdAt", "updatedAt")
-        VALUES 
-        (gen_random_uuid(), ${component.name}, ${component.key}, ${component.maxScore},
-         ${id}, NOW(), NOW())
+      // Delete existing related records
+      await tx.$executeRaw`DELETE FROM "ResultPeriod" WHERE "configurationId" = ${id}`;
+      await tx.$executeRaw`DELETE FROM "AssessmentComponent" WHERE "configurationId" = ${id}`;
+      await tx.$executeRaw`DELETE FROM "GradingScale" WHERE "configurationId" = ${id}`;
+
+      // Insert periods
+      for (const period of validatedData.periods) {
+        await tx.$executeRaw`
+          INSERT INTO "ResultPeriod" 
+          ("id", "name", "weight", "configurationId", "createdAt", "updatedAt")
+          VALUES 
+          (gen_random_uuid(), ${period.name}, ${period.weight}, ${id}, NOW(), NOW())
+        `;
+      }
+
+      // Insert assessment components
+      for (const component of validatedData.assessmentComponents) {
+        await tx.$executeRaw`
+          INSERT INTO "AssessmentComponent" 
+          ("id", "name", "key", "maxScore", "configurationId", "createdAt", "updatedAt")
+          VALUES 
+          (gen_random_uuid(), ${component.name}, ${component.key}, ${component.maxScore},
+           ${id}, NOW(), NOW())
+        `;
+      }
+
+      // Insert grading scale
+      for (const scale of validatedData.gradingScale) {
+        await tx.$executeRaw`
+          INSERT INTO "GradingScale" 
+          ("id", "minScore", "maxScore", "grade", "remark", "configurationId", "createdAt", "updatedAt")
+          VALUES 
+          (gen_random_uuid(), ${scale.minScore}, ${scale.maxScore}, ${scale.grade},
+           ${scale.remark}, ${id}, NOW(), NOW())
+        `;
+      }
+
+      // Get updated configuration with all related data
+      const configResult = await tx.$queryRaw<ConfigResult[]>`
+        SELECT 
+          rc."id", rc."schoolId", rc."sessionId", 
+          rc."cumulativeEnabled", 
+          rc."cumulativeMethod",
+          rc."showCumulativePerTerm",
+          s."name" AS "academicYear" 
+        FROM "ResultConfiguration" rc
+        JOIN "AcademicSession" s ON rc."sessionId" = s."id"
+        WHERE rc."id" = ${id} AND rc."schoolId" = ${session.schoolId}
       `;
-    }
 
-    // Insert grading scale
-    for (const scale of validatedData.gradingScale) {
-      await prisma.$executeRaw`
-        INSERT INTO "GradingScale" 
-        ("id", "minScore", "maxScore", "grade", "remark", "configurationId", "createdAt", "updatedAt")
-        VALUES 
-        (gen_random_uuid(), ${scale.minScore}, ${scale.maxScore}, ${scale.grade},
-         ${scale.remark}, ${id}, NOW(), NOW())
+      const periodsResult = await tx.$queryRaw<PeriodResult[]>`
+        SELECT rp."id", rp."name", rp."weight" 
+        FROM "ResultPeriod" rp 
+        WHERE rp."configurationId" = ${id}
       `;
-    }
 
-    // Get the updated configuration
-    const configResult = await prisma.$queryRaw<ConfigResult[]>`
-      SELECT 
-        rc."id", rc."schoolId", rc."sessionId", 
-        rc."cumulativeEnabled", 
-        rc."cumulativeMethod",
-        rc."showCumulativePerTerm",
-        s."name" AS "academicYear" 
-      FROM "ResultConfiguration" rc
-      JOIN "AcademicSession" s ON rc."sessionId" = s."id"
-      WHERE rc."id" = ${id}
-    `;
+      const componentsResult = await tx.$queryRaw<ComponentResult[]>`
+        SELECT ac."id", ac."name", ac."key", ac."maxScore" 
+        FROM "AssessmentComponent" ac 
+        WHERE ac."configurationId" = ${id}
+      `;
 
-    if (!Array.isArray(configResult) || configResult.length === 0) {
-      throw new Error("Failed to retrieve updated configuration");
-    }
+      const gradingScaleResult = await tx.$queryRaw<GradingScaleResult[]>`
+        SELECT gs."id", gs."minScore", gs."maxScore", gs."grade", gs."remark" 
+        FROM "GradingScale" gs 
+        WHERE gs."configurationId" = ${id}
+      `;
 
-    // Get periods
-    const periodsResult = await prisma.$queryRaw<PeriodResult[]>`
-      SELECT rp."id", rp."name", rp."weight" FROM "ResultPeriod" rp WHERE rp."configurationId" = ${id}
-    `;
-
-    // Get components
-    const componentsResult = await prisma.$queryRaw<ComponentResult[]>`
-      SELECT ac."id", ac."name", ac."key", ac."maxScore" FROM "AssessmentComponent" ac 
-      WHERE ac."configurationId" = ${id}
-    `;
-
-    // Get grading scale
-    const gradingScaleResult = await prisma.$queryRaw<GradingScaleResult[]>`
-      SELECT gs."id", gs."minScore", gs."maxScore", gs."grade", gs."remark" 
-      FROM "GradingScale" gs WHERE gs."configurationId" = ${id}
-    `;
-
-    const periods = Array.isArray(periodsResult) ? periodsResult : [];
-    const components = Array.isArray(componentsResult) ? componentsResult : [];
-    const gradingScale = Array.isArray(gradingScaleResult)
-      ? gradingScaleResult
-      : [];
-
-    return NextResponse.json({
-      ...configResult[0],
-      periods,
-      assessmentComponents: components,
-      gradingScale,
+      return {
+        ...configResult[0],
+        periods: periodsResult,
+        assessmentComponents: componentsResult,
+        gradingScale: gradingScaleResult,
+      };
     });
+
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Error updating result configuration:", error);
+    console.error("[PUT] /schools/[schoolId]/results/config:", error);
     return NextResponse.json(
-      {
-        error: "Failed to update result configuration",
-        details: error instanceof Error ? error.message : String(error),
-      },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

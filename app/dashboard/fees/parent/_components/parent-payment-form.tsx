@@ -161,7 +161,9 @@ export function ParentPaymentForm({
             // If no direct assignment, check for class assignments
             if (!assignment) {
                 const student = children.find((child) => child.id === studentId);
-                const classIds = student?.classes.map((c: any) => c.classId) || [];
+                const classIds = Array.isArray(student?.classes)
+                    ? student.classes.map((c: any) => c.classId)
+                    : [];
 
                 assignment = bill.assignments.find(
                     (a: any) => a.targetType === "CLASS" && classIds.includes(a.targetId)
@@ -187,7 +189,9 @@ export function ParentPaymentForm({
         if (!selectedChild) return [];
 
         const studentId = selectedChild.id;
-        const classIds = selectedChild.classes.map((c: any) => c.classId);
+        const classIds = Array.isArray(selectedChild.classes)
+            ? selectedChild.classes.map((c: any) => c.classId)
+            : [];
 
         return bills.filter((bill: any) => {
             return bill.assignments.some(

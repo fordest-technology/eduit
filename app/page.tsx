@@ -975,7 +975,7 @@ export default function Home() {
                 </div>
                 <div className="mb-6">
                   <div className="flex items-end gap-2">
-                    <span className="text-4xl font-bold">$4</span>
+                    <span className="text-4xl font-bold">₦1000</span>
                     <span className="text-gray-500 mb-1">/ student / month</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-2">Perfect for small schools starting their digital journey</p>
@@ -1010,7 +1010,7 @@ export default function Home() {
                 </div>
                 <div className="mb-6">
                   <div className="flex items-end gap-2 text-white">
-                    <span className="text-4xl font-bold">$6</span>
+                    <span className="text-4xl font-bold">₦2000</span>
                     <span className="mb-1 opacity-90">/ student / month</span>
                   </div>
                   <p className="text-sm text-orange-100 mt-2">Most popular choice for growing institutions</p>

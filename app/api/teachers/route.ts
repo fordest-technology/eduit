@@ -6,6 +6,7 @@ import { writeFile } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { mkdir } from "fs/promises";
+import { hash } from "bcryptjs";
 
 interface TeacherData {
   id: string;
@@ -245,35 +246,56 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Function to generate the next employee ID
+async function generateNextEmployeeId(schoolId: string): Promise<string> {
+  // Get the latest teacher in the school
+  const latestTeacher = await prisma.teacher.findFirst({
+    where: {
+      user: {
+        schoolId: schoolId,
+      },
+    },
+    orderBy: {
+      employeeId: "desc",
+    },
+    select: {
+      employeeId: true,
+    },
+  });
+
+  // If no teachers exist yet, start with 1
+  if (!latestTeacher?.employeeId) {
+    return "1";
+  }
+
+  // Extract the number from the latest employee ID
+  const lastNumber = parseInt(latestTeacher.employeeId);
+
+  // Generate the next number
+  const nextNumber = lastNumber + 1;
+
+  // Return the new employee ID
+  return nextNumber.toString();
+}
+
 export async function POST(request: NextRequest) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  const schoolId = session.schoolId;
-  if (!schoolId) {
-    return NextResponse.json({ message: "School not found" }, { status: 404 });
-  }
-
-  // Only admin can create teachers
-  if (
-    session.role !== UserRole.SUPER_ADMIN &&
-    session.role !== UserRole.SCHOOL_ADMIN
-  ) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  }
-
   try {
-    // Test database connection
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (error) {
-      console.error("Database connection error:", error);
-      return NextResponse.json(
-        { message: "Database connection error. Please try again later." },
-        { status: 503 }
-      );
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const schoolId = session.schoolId;
+    if (!schoolId) {
+      return NextResponse.json({ error: "School not found" }, { status: 404 });
+    }
+
+    // Only admin can create teachers
+    if (
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -283,8 +305,37 @@ export async function POST(request: NextRequest) {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
+    // Basic validation
+    if (!name || !email) {
+      return NextResponse.json(
+        { error: "Name and email are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          error: "Email already in use",
+          code: "EMAIL_EXISTS",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Generate employee ID if not provided
+    let employeeId = formData.get("employeeId") as string;
+    if (!employeeId) {
+      employeeId = await generateNextEmployeeId(schoolId);
+    }
+
     // Extract teacher-specific fields
-    const employeeId = formData.get("employeeId") as string;
     const qualifications = formData.get("qualifications") as string;
     const specialization = formData.get("specialization") as string;
     const joiningDate = formData.get("joiningDate") as string;
@@ -296,20 +347,38 @@ export async function POST(request: NextRequest) {
     const state = formData.get("state") as string;
     const city = formData.get("city") as string;
     const country = formData.get("country") as string;
-
-    // Extract relationship fields
     const departmentId = formData.get("departmentId") as string;
 
-    // Check if email already exists
-    const existingUser = await prisma.user.findFirst({
+    // Check if employeeId already exists in the same school
+    const existingTeacher = await prisma.teacher.findFirst({
       where: {
-        email,
+        employeeId,
+        user: {
+          schoolId,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
-    if (existingUser) {
+    if (existingTeacher) {
       return NextResponse.json(
-        { message: "Email already in use" },
+        {
+          error: "Employee ID already exists",
+          code: "EMPLOYEE_ID_EXISTS",
+          details: {
+            existingTeacher: {
+              name: existingTeacher.user.name,
+              email: existingTeacher.user.email,
+            },
+          },
+        },
         { status: 400 }
       );
     }
@@ -342,24 +411,14 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error("Error uploading image:", error);
         return NextResponse.json(
-          { message: "Failed to upload profile image" },
+          { error: "Failed to upload profile image" },
           { status: 500 }
         );
       }
     }
 
-    // Basic validation
-    if (!name || !email) {
-      return NextResponse.json(
-        { message: "Name and email are required" },
-        { status: 400 }
-      );
-    }
-
     // Set a default password if not provided
-    const hashedPassword = password
-      ? "$2a$10$7ORW.G6oMD2ZmKHIBzp8IOq5hLO8/X1BehBGWQYCuGvjwEJdDmRYu" // Simple example (in production use proper hashing)
-      : "$2a$10$7ORW.G6oMD2ZmKHIBzp8IOq5hLO8/X1BehBGWQYCuGvjwEJdDmRYu"; // "password123" hashed
+    const hashedPassword = await hash(password, 10);
 
     // Create teacher with transaction to ensure everything is created together
     const result = await prisma.$transaction(async (tx) => {
@@ -399,11 +458,25 @@ export async function POST(request: NextRequest) {
       return newUser;
     });
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(
+      {
+        message: "Teacher created successfully",
+        teacher: {
+          id: result.id,
+          name: result.name,
+          email: result.email,
+          employeeId: result.teacher?.employeeId,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating teacher:", error);
     return NextResponse.json(
-      { message: "Failed to create teacher" },
+      {
+        error: "Failed to create teacher",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

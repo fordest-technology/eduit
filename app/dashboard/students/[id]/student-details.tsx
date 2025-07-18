@@ -29,7 +29,8 @@ import {
     Bookmark,
     School,
     Building,
-    Hash
+    Hash,
+    GraduationCap
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -364,21 +365,21 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                     </div>
                     <h3 className="text-md font-semibold text-slate-900">Personal Information</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500">Full Name</p>
                         <p className="font-medium text-slate-900">{student.name}</p>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500 flex items-center">
                             <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
                             Date of Birth
                         </p>
-                        <p className="font-medium text-slate-900">{formatDate(student.dateOfBirth)}</p>
+                        <p className="font-medium text-slate-900">{formatDate(student.dateOfBirth ?? null)}</p>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500">Gender</p>
                         <div className="flex items-center">
@@ -390,7 +391,7 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                             )}
                         </div>
                     </div>
-                    
+
                     {student.religion && (
                         <div className="space-y-1.5">
                             <p className="text-sm text-slate-500 flex items-center">
@@ -402,9 +403,9 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                     )}
                 </div>
             </div>
-            
+
             <Separator className="my-6" />
-            
+
             {/* Contact Information Section */}
             <div className="mb-8">
                 <div className="flex items-center mb-5">
@@ -413,13 +414,13 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                     </div>
                     <h3 className="text-md font-semibold text-slate-900">Contact Information</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500">Email Address</p>
                         <p className="font-medium text-slate-900">{student.email}</p>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500 flex items-center">
                             <Phone className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
@@ -429,9 +430,9 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                     </div>
                 </div>
             </div>
-            
+
             <Separator className="my-6" />
-            
+
             {/* Address Information Section */}
             <div className="mb-8">
                 <div className="flex items-center mb-5">
@@ -440,23 +441,23 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                     </div>
                     <h3 className="text-md font-semibold text-slate-900">Address Information</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1.5 md:col-span-2">
                         <p className="text-sm text-slate-500">Address</p>
                         <p className="font-medium text-slate-900">{student.address || "Not available"}</p>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500">City</p>
                         <p className="font-medium text-slate-900">{student.city || "Not available"}</p>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500">State</p>
                         <p className="font-medium text-slate-900">{student.state || "Not available"}</p>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500 flex items-center">
                             <Flag className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
@@ -466,9 +467,9 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                     </div>
                 </div>
             </div>
-            
+
             <Separator className="my-6" />
-            
+
             {/* Academic Information Section */}
             <div>
                 <div className="flex items-center mb-5">
@@ -477,7 +478,7 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                     </div>
                     <h3 className="text-md font-semibold text-slate-900">Academic Information</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500 flex items-center">
@@ -495,7 +496,7 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                             )}
                         </div>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500 flex items-center">
                             <School className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
@@ -503,7 +504,7 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                         </p>
                         <div className="flex items-center">
                             <p className="font-medium text-slate-900">
-                                {currentClass 
+                                {currentClass
                                     ? `${currentClass.name}${currentClass.section ? ` - ${currentClass.section}` : ''}`
                                     : "Not assigned"}
                             </p>
@@ -514,32 +515,28 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                             )}
                         </div>
                     </div>
-                    
-                    {currentClass && currentClass.level && (
-                        <div className="space-y-1.5">
-                            <p className="text-sm text-slate-500 flex items-center">
-                                <GraduationCap className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
-                                Education Level
-                            </p>
-                            <div className="flex items-center">
-                                <p className="font-medium text-slate-900">{currentClass.level.name}</p>
-                                <Badge className="ml-2 bg-blue-100 text-blue-800 hover:bg-blue-200 border-transparent">
-                                    Level {currentClass.level.order}
-                                </Badge>
-                            </div>
+
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <GraduationCap className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Education Level
+                        </p>
+                        <div className="flex items-center">
+                            <p className="font-medium text-slate-900">{currentClass?.levelId || "N/A"}</p>
+                            <Badge className="ml-2 bg-blue-100 text-blue-800 hover:bg-blue-200 border-transparent">
+                                Level
+                            </Badge>
                         </div>
-                    )}
-                    
-                    {currentClass && (
-                        <div className="space-y-1.5">
-                            <p className="text-sm text-slate-500 flex items-center">
-                                <Hash className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
-                                Roll Number
-                            </p>
-                            <p className="font-medium text-slate-900">{currentClass.rollNumber || "Not assigned"}</p>
-                        </div>
-                    )}
-                    
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <p className="text-sm text-slate-500 flex items-center">
+                            <Hash className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
+                            Roll Number
+                        </p>
+                        <p className="font-medium text-slate-900">{"N/A"}</p>
+                    </div>
+
                     <div className="space-y-1.5">
                         <p className="text-sm text-slate-500 flex items-center">
                             <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" aria-hidden="true" />
@@ -547,16 +544,16 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                         </p>
                         <div className="flex items-center">
                             <p className="font-medium text-slate-900">
-                                {currentSession?.name || currentClass?.session?.name || "Not available"}
+                                {currentSession?.name || "Not available"}
                             </p>
-                            {(currentSession?.isCurrent || currentClass?.session?.isCurrent) && (
+                            {currentSession?.isCurrent && (
                                 <Badge className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-200 border-transparent">
                                     Current
                                 </Badge>
                             )}
                         </div>
                     </div>
-                    
+
                     {student.schoolId && (
                         <div className="space-y-1.5">
                             <p className="text-sm text-slate-500">School ID</p>
@@ -568,7 +565,7 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                         </div>
                     )}
                 </div>
-                
+
                 {student.studentClass && student.studentClass.length > 1 && (
                     <div className="mt-6">
                         <div className="flex items-center mb-3">
@@ -586,24 +583,23 @@ export function StudentDetails({ student, currentClass, currentSession }: Studen
                                 </thead>
                                 <tbody className="bg-white divide-y divide-slate-200">
                                     {student.studentClass
-                                        .filter(sc => 
-                                            // Filter out the current class that's already shown above
-                                            !(currentClass && sc.classId === currentClass.id && sc.sessionId === (currentSession?.id || currentClass.session?.id))
+                                        .filter(sc =>
+                                            !(currentClass && sc.classId === currentClass.id && sc.sessionId === (currentSession?.id))
                                         )
                                         .map((sc, index) => (
                                             <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}>
                                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
-                                                    {sc.class.name}
-                                                    {sc.class.section ? ` - ${sc.class.section}` : ''}
+                                                    {sc.class?.name || "N/A"}
+                                                    {sc.class?.section ? ` - ${sc.class.section}` : ''}
                                                 </td>
                                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
-                                                    {sc.class.level?.name || "N/A"}
+                                                    {sc.class?.levelId || "N/A"}
                                                 </td>
                                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
-                                                    {sc.session.name}
-                                                    {sc.session.isCurrent && 
+                                                    {sc.session?.name || "N/A"}
+                                                    {sc.session?.isCurrent && (
                                                         <Badge variant="outline" className="ml-2 text-xs">Current</Badge>
-                                                    }
+                                                    )}
                                                 </td>
                                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-900">
                                                     {sc.rollNumber || "N/A"}

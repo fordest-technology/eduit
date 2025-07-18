@@ -41,7 +41,17 @@ export async function GET(
       },
       include: {
         level: true,
-        department: true,
+        teacher: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                email: true,
+                profileImage: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -109,7 +119,7 @@ export async function GET(
 
     console.log(`Fetching students for session: ${targetSessionId}`);
 
-    // Get all students for this school who are not already in this class for the session
+    // Get all students for this school who are not in any class for the session
     const availableStudents = await prisma.student.findMany({
       where: {
         user: {
@@ -119,7 +129,6 @@ export async function GET(
         NOT: {
           classes: {
             some: {
-              classId,
               sessionId: targetSessionId,
             },
           },
@@ -140,26 +149,6 @@ export async function GET(
             name: true,
           },
         },
-        classes: {
-          where: {
-            sessionId: targetSessionId,
-          },
-          include: {
-            class: {
-              select: {
-                id: true,
-                name: true,
-                section: true,
-                level: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-          take: 1,
-        },
       },
       orderBy: {
         user: {
@@ -168,34 +157,14 @@ export async function GET(
       },
     });
 
-    // Format the student records to include additional info
-    const formattedStudents = availableStudents.map((student) => {
-      // Get current class info if student is in another class for this session
-      const currentClassAssignment = student.classes[0];
-      const currentClass = currentClassAssignment?.class;
-
-      let currentClassInfo = null;
-      if (currentClass) {
-        const fullName = `${currentClass.name}${
-          currentClass.section ? ` - ${currentClass.section}` : ""
-        }${currentClass.level ? ` (${currentClass.level.name})` : ""}`;
-
-        currentClassInfo = {
-          id: currentClass.id,
-          fullName,
-          rollNumber: currentClassAssignment.rollNumber,
-        };
-      }
-
-      return {
-        id: student.id,
-        name: student.user.name,
-        email: student.user.email,
-        profileImage: student.user.profileImage,
-        department: student.department,
-        currentClass: currentClassInfo,
-      };
-    });
+    // Format the student records
+    const formattedStudents = availableStudents.map((student) => ({
+      id: student.id,
+      name: student.user.name,
+      email: student.user.email,
+      profileImage: student.user.profileImage,
+      department: student.department,
+    }));
 
     console.log(`Found ${formattedStudents.length} available students`);
 

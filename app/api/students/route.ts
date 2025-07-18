@@ -263,12 +263,12 @@ export async function POST(req: Request) {
     if (!bloodGroup) {
       validationErrors.bloodGroup = "Blood group is required";
     }
-    if (!classId) {
-      validationErrors.classId = "Class is required";
+    // Only require sessionId if classId is provided
+    if (classId && !sessionId) {
+      validationErrors.sessionId =
+        "Academic session is required if assigning a class";
     }
-    if (!sessionId) {
-      validationErrors.sessionId = "Academic session is required";
-    }
+    // Do NOT require classId
 
     if (Object.keys(validationErrors).length > 0) {
       return NextResponse.json(
@@ -383,7 +383,7 @@ export async function POST(req: Request) {
         },
       });
 
-      // Create class assignment if class is specified
+      // Only create class assignment if classId is specified
       if (classId) {
         await tx.studentClass.create({
           data: {

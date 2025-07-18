@@ -3,7 +3,8 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
 import { useSchoolStore } from "@/store/school-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,7 +31,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loginAttempts, setLoginAttempts] = useState(0)
   const [isSchoolLoading, setIsSchoolLoading] = useState(true)
-  const router = useRouter()
+  const router = useRouter();
+  const { toast } = useToast();
   const { school, setSchool } = useSchoolStore()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -131,6 +133,11 @@ export default function LoginPage() {
       }
 
       // Successful login
+      toast({
+        title: "Login Successful",
+        description: "Welcome back! You are being redirected...",
+      });
+
       const targetRoute = data.user.role === "super_admin" ? "/dashboard" : `/dashboard`;
       await router.push(targetRoute);
 

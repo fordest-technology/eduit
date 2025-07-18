@@ -40,7 +40,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 const formSchema = z.object({
     studentId: z.string().min(1, "Please select a student"),
     sessionId: z.string().min(1, "Please select an academic session"),
-    rollNumber: z.string().optional(),
     forceReassign: z.boolean().default(false),
 })
 
@@ -88,7 +87,6 @@ export function AddStudentClassModal({
         defaultValues: {
             studentId: "",
             sessionId: sessionId || "",
-            rollNumber: "",
             forceReassign: false,
         },
     })
@@ -124,7 +122,7 @@ export function AddStudentClassModal({
             setLoading(true)
             setError(null)
 
-            let targetSessionId = sessionId
+            let targetSessionId = sessionId || ""
 
             // If no sessionId provided, try to get current session
             if (!targetSessionId) {
@@ -213,9 +211,6 @@ export function AddStudentClassModal({
             const formData = new FormData()
             formData.append("studentId", values.studentId)
             formData.append("sessionId", values.sessionId)
-            if (values.rollNumber) {
-                formData.append("rollNumber", values.rollNumber)
-            }
             formData.append("forceReassign", values.forceReassign.toString())
 
             console.log("Submitting to endpoint:", `/api/classes/${classId}/add-student`)
@@ -248,25 +243,21 @@ export function AddStudentClassModal({
             }
 
             if (!response.ok) {
-                // Special handling for the case where student is in another class
-                if (response.status === 409 && data.code === "STUDENT_IN_OTHER_CLASS") {
-                    setConflictInfo(data.details)
-                    return // Don't throw, we'll show a special UI for this
+                if (data.error === "STUDENT_ALREADY_IN_CLASS") {
+                    setConflictInfo(data)
+                    setError("This student is already in this class")
+                } else {
+                    setError(data.error || "Failed to add student to class")
                 }
-
-                throw new Error(
-                    data.error || data.message || `Failed to add student to class (${response.status})`
-                )
+                return
             }
 
-            console.log("Student added to class successfully:", data)
-            toast.success(data.message || "Student added to class successfully")
+            toast.success("Student added to class successfully")
             onSuccess?.()
             onOpenChange(false)
         } catch (error) {
             console.error("Error adding student to class:", error)
-            setError(error instanceof Error ? error.message : "Failed to add student to class")
-            toast.error(error instanceof Error ? error.message : "Failed to add student to class")
+            setError("Failed to add student to class")
         } finally {
             setLoading(false)
         }
@@ -394,20 +385,6 @@ export function AddStudentClassModal({
                                             )}
                                         </SelectContent>
                                     </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="rollNumber"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Roll Number (Optional)</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Enter roll number" {...field} />
-                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}

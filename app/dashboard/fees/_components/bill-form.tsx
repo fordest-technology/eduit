@@ -4,7 +4,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 // Zod schema for bill items with proper validation
 const billItemSchema = z.object({
@@ -135,158 +135,151 @@ export function BillForm({ paymentAccounts, onSubmit }: BillFormProps) {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Bill Name</FormLabel>
-                            <FormControl>
-                                <Input
-                                    placeholder="e.g. Semester 1 Tuition"
-                                    {...field}
-                                    disabled={isSubmitting}
-                                />
-                            </FormControl>
-                            <FormDescription>
-                                Give your bill a descriptive name
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                <div className="grid gap-6">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-base font-semibold">Bill Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Enter bill name" {...field} className="h-10" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Bill Items</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {form.watch("items").map((_, index) => (
-                            <div key={index} className="grid gap-4 md:grid-cols-3">
-                                <FormField
-                                    control={form.control}
-                                    name={`items.${index}.name`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Item Name</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="e.g. Tuition Fee"
-                                                    {...field}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`items.${index}.amount`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Amount</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    placeholder="0.00"
-                                                    {...field}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`items.${index}.description`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Description (Optional)</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="Optional description"
-                                                    {...field}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                {index > 0 && (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="mt-8"
-                                        onClick={() => handleRemoveItem(index)}
-                                        disabled={isSubmitting}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                )}
-                            </div>
-                        ))}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleAddItem}
-                            className="w-full"
-                            disabled={isSubmitting}
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Item
-                        </Button>
-                    </CardContent>
-                </Card>
-
-                <FormField
-                    control={form.control}
-                    name="accountId"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Payment Account</FormLabel>
-                            <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
+                    <Card className="border-dashed">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base font-semibold">Bill Items</CardTitle>
+                            <CardDescription>Add the items that make up this bill.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {form.getValues("items").map((_, index) => (
+                                <div key={index} className="grid gap-4 p-4 border rounded-lg bg-muted/30">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium">Item {index + 1}</span>
+                                        {index > 0 && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRemoveItem(index)}
+                                                className="h-8 px-2 text-destructive"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.name`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-sm">Item Name</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} placeholder="Enter item name" className="h-9" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.amount`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-sm">Amount</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} placeholder="0.00" className="h-9" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.description`}
+                                            render={({ field }) => (
+                                                <FormItem className="md:col-span-2">
+                                                    <FormLabel className="text-sm">Description (Optional)</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} placeholder="Enter item description" className="h-9" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleAddItem}
+                                className="w-full h-9 mt-2"
                                 disabled={isSubmitting}
                             >
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select payment account" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {paymentAccounts.map((account) => (
-                                        <SelectItem key={account.id} value={account.id}>
-                                            {account.name} ({account.bankName})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormDescription>
-                                Select the payment account for this bill
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Another Item
+                            </Button>
+                        </CardContent>
+                    </Card>
 
-                <div className="flex justify-end space-x-4">
+                    <FormField
+                        control={form.control}
+                        name="accountId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-base font-semibold">Payment Account</FormLabel>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                    disabled={isSubmitting}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger className="h-10">
+                                            <SelectValue placeholder="Select payment account" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {paymentAccounts.map((account) => (
+                                            <SelectItem key={account.id} value={account.id}>
+                                                {account.name} ({account.bankName})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription className="text-sm">
+                                    Select the payment account for this bill
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
+                <div className="flex items-center justify-end gap-4 pt-4 border-t">
                     <Button
                         type="button"
                         variant="outline"
                         onClick={() => form.reset()}
                         disabled={isSubmitting}
+                        className="h-9"
                     >
                         Reset
                     </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? "Creating..." : "Create Bill"}
+                    <Button type="submit" disabled={isSubmitting} className="h-9">
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Creating...
+                            </>
+                        ) : (
+                            "Create Bill"
+                        )}
                     </Button>
                 </div>
             </form>

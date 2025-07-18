@@ -114,7 +114,7 @@ const formSchema = z.object({
         required_error: "Please select a blood group.",
     }),
 
-    // StudentClass relationship - now optional
+    // StudentClass relationship - all optional
     levelId: z.string().optional(),
     classId: z.string().optional(),
     sessionId: z.string().optional(),
@@ -266,12 +266,21 @@ export function AddStudentModal({
                     setLevels(levelsData);
                 }
 
-                // Fetch classes
-                const classesResponse = await fetch('/api/classes');
-                if (classesResponse.ok) {
+                // Fetch classes with proper error handling
+                try {
+                    const classesResponse = await fetch('/api/classes');
+                    if (!classesResponse.ok) {
+                        throw new Error(`Failed to fetch classes: ${classesResponse.statusText}`);
+                    }
                     const classesData = await classesResponse.json();
+                    if (!Array.isArray(classesData)) {
+                        throw new Error('Invalid classes data received');
+                    }
                     setClasses(classesData);
                     setFilteredClasses(classesData);
+                } catch (error) {
+                    console.error('Error fetching classes:', error);
+                    toast.error('Failed to load classes. Please try again.');
                 }
 
                 // Fetch academic sessions

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Plus, Download, Eye, CreditCard, Users, MoreHorizontal } from "lucide-react";
+import { Plus, Download, Eye, CreditCard, Users, MoreHorizontal, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -57,11 +57,11 @@ interface BillItem {
 
 interface Bill {
     id: string;
-    items?: BillItem[];
+    name: string;
+    amount: number;
     account: {
         id: string;
         name: string;
-        bankName: string;
     };
     assignments: {
         id: string;
@@ -73,6 +73,15 @@ interface Bill {
             amountPaid: number;
             studentId: string;
         }[];
+        student?: {
+            user: {
+                name: string;
+            };
+        };
+        class?: {
+            name: string;
+            section?: string;
+        };
     }[];
     createdAt: string;
 }
@@ -88,34 +97,20 @@ interface Student {
     id: string;
     user: {
         name: string;
+        email: string;
     };
 }
 
 interface BillsTabProps {
     bills: Bill[];
-    paymentAccounts: Array<{
-        id: string;
-        name: string;
-        bankName: string;
-    }>;
-    students: Array<{
-        id: string;
-        user: {
-            name: string;
-        };
-    }>;
-    classes: Array<{
-        id: string;
-        name: string;
-        students: Array<{
-            id: string;
-        }>;
-    }>;
+    paymentAccounts: any[];
+    students: Student[];
+    classes: Class[];
 }
 
 export function BillsTab({ bills, paymentAccounts, students, classes }: BillsTabProps) {
     const router = useRouter();
-    const [isCreating, setIsCreating] = useState(false);
+    const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
     const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
     const formatCurrency = (amount: number) => {
@@ -125,290 +120,181 @@ export function BillsTab({ bills, paymentAccounts, students, classes }: BillsTab
         }).format(amount);
     };
 
-    const calculateTotalAmount = (bill: Bill) => {
-        if (!bill.items || bill.items.length === 0) return 0;
-        return bill.items.reduce((sum, item) => sum + item.amount, 0);
+    const getBillStatus = (bill: Bill) => {
+        if (bill.assignments.some(a => a.status === "OVERDUE")) {
+            return { label: "Overdue", variant: "destructive" as const };
+        }
+        if (bill.assignments.every(a => a.status === "PAID")) {
+            return { label: "Paid", variant: "default" as const };
+        }
+        if (bill.assignments.some(a => a.status === "PARTIALLY_PAID")) {
+            return { label: "Partially Paid", variant: "secondary" as const };
+        }
+        return { label: "Pending", variant: "outline" as const };
     };
 
-    const handleCreateBill = async (data: any) => {
+    const getTotalPaid = (bill: Bill) => {
+        return bill.assignments.reduce((total, assignment) => {
+            return total + assignment.studentPayments.reduce((sum, payment) => sum + payment.amountPaid, 0);
+        }, 0);
+    };
+
+    const handleDelete = async (billId: string) => {
         try {
-            const response = await fetch("/api/bills", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(data),
+            const response = await fetch(`/api/bills/${billId}`, {
+                method: "DELETE",
             });
 
             if (!response.ok) {
-                throw new Error("Failed to create bill");
+                const data = await response.json();
+                throw new Error(data.error || "Failed to delete bill");
             }
 
+            toast.success("Bill deleted successfully");
             router.refresh();
-            setIsCreating(false);
-            toast.success("Bill created successfully");
         } catch (error) {
-            toast.error("Failed to create bill");
-            console.error(error);
+            console.error("Error deleting bill:", error);
+            toast.error(error instanceof Error ? error.message : "Failed to delete bill");
         }
-    };
-
-    const handleAssignBill = async (data: any) => {
-        try {
-            const response = await fetch("/api/bills/assign", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to assign bill");
-            }
-
-            router.refresh();
-            toast.success("Bill assigned successfully");
-        } catch (error) {
-            toast.error("Failed to assign bill");
-            console.error(error);
-        }
-    };
-
-    const getStatusColor = (status: Bill["assignments"][0]["status"]) => {
-        switch (status) {
-            case "PAID":
-                return "bg-green-500";
-            case "PARTIALLY_PAID":
-                return "bg-yellow-500";
-            case "PENDING":
-                return "bg-blue-500";
-            case "OVERDUE":
-                return "bg-red-500";
-            default:
-                return "bg-gray-500";
-        }
-    };
-
-    const getTotalPaid = (assignment: Bill["assignments"][0]) => {
-        return assignment.studentPayments.reduce(
-            (sum, payment) => sum + payment.amountPaid,
-            0
-        );
-    };
-
-    const getTargetName = (assignment: Bill["assignments"][0]) => {
-        if (assignment.targetType === "STUDENT") {
-            const student = students.find(s => s.id === assignment.targetId);
-            return student?.user.name || "Unknown Student";
-        } else {
-            const cls = classes.find(c => c.id === assignment.targetId);
-            return cls?.name || "Unknown Class";
-        }
-    };
-
-    const getTargetStudents = (assignment: Bill["assignments"][0]) => {
-        if (assignment.targetType === "STUDENT") {
-            return [assignment.targetId];
-        } else {
-            const cls = classes.find(c => c.id === assignment.targetId);
-            return cls?.students.map(s => s.id) || [];
-        }
-    };
-
-    function getBillStatus(bill: Bill) {
-        const statuses = bill.assignments.map((a) => a.status);
-        if (statuses.every((s) => s === "PAID")) return "PAID";
-        if (statuses.some((s) => s === "PARTIALLY_PAID")) return "PARTIALLY_PAID";
-        if (statuses.some((s) => s === "OVERDUE")) return "OVERDUE";
-        return "PENDING";
-    }
-
-    const statusColors = {
-        PAID: "bg-green-500",
-        PARTIALLY_PAID: "bg-yellow-500",
-        PENDING: "bg-blue-500",
-        OVERDUE: "bg-red-500",
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Bills</h2>
                     <p className="text-muted-foreground">
-                        Manage and track student bills and payments
+                        Manage and track fee bills
                     </p>
                 </div>
-                <Dialog open={isCreating} onOpenChange={setIsCreating}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Bill
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[800px]">
-                        <DialogHeader>
-                            <DialogTitle>Create New Bill</DialogTitle>
-                            <DialogDescription>
-                                Create a new bill for your school
-                            </DialogDescription>
-                        </DialogHeader>
-                        <BillForm
-                            paymentAccounts={paymentAccounts}
-                            onSubmit={handleCreateBill}
-                        />
-                    </DialogContent>
-                </Dialog>
+                <div className="flex items-center gap-2">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Bill
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-h-[80vh] overflow-y-auto w-[800px] p-6">
+                            <DialogHeader className="space-y-3 pb-6 border-b">
+                                <DialogTitle className="text-2xl font-semibold tracking-tight">Create New Bill</DialogTitle>
+                                <DialogDescription className="text-base text-muted-foreground">
+                                    Fill in the details below to create a new bill. Add as many items as needed.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="my-6">
+                                <BillForm
+                                    paymentAccounts={paymentAccounts}
+                                    onSubmit={async (data) => {
+                                        try {
+                                            const response = await fetch("/api/bills", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify(data),
+                                            });
+                                            if (!response.ok) {
+                                                const errorData = await response.json();
+                                                throw new Error(errorData.error || "Failed to create bill");
+                                            }
+                                            toast.success("Bill created successfully");
+                                            router.refresh();
+                                        } catch (error) {
+                                            console.error("Error creating bill:", error);
+                                            toast.error(error instanceof Error ? error.message : "Failed to create bill");
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Recent Bills</CardTitle>
-                    <CardDescription>
-                        View and manage all bills for your school
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Bill Items</TableHead>
-                                <TableHead>Total Amount</TableHead>
+                                <TableHead>Name</TableHead>
                                 <TableHead>Account</TableHead>
-                                <TableHead>Assignments</TableHead>
-                                <TableHead>Created</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Paid</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Created</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {bills.map((bill) => {
                                 const status = getBillStatus(bill);
+                                const totalPaid = getTotalPaid(bill);
                                 return (
                                     <TableRow key={bill.id}>
-                                        <TableCell className="font-medium">
-                                            <div className="space-y-1">
-                                                {bill.items && bill.items.length > 0 ? (
-                                                    bill.items.map((item) => (
-                                                        <div key={item.id} className="text-sm">
-                                                            {item.name} - {formatCurrency(item.amount)}
-                                                            {item.description && (
-                                                                <span className="text-muted-foreground ml-2">
-                                                                    ({item.description})
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-sm text-muted-foreground">
-                                                        No items added
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{formatCurrency(calculateTotalAmount(bill))}</TableCell>
+                                        <TableCell className="font-medium">{bill.name}</TableCell>
+                                        <TableCell>{bill.account.name}</TableCell>
+                                        <TableCell>{formatCurrency(bill.amount)}</TableCell>
+                                        <TableCell>{formatCurrency(totalPaid)}</TableCell>
                                         <TableCell>
-                                            <div className="space-y-1">
-                                                <div className="font-medium">{bill.account.name}</div>
-                                                <div className="text-sm text-muted-foreground">
-                                                    {bill.account.bankName}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="space-y-2">
-                                                {bill.assignments.map((assignment) => (
-                                                    <div key={assignment.id} className="space-y-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge
-                                                                className={cn(
-                                                                    getStatusColor(assignment.status),
-                                                                    "text-white"
-                                                                )}
-                                                            >
-                                                                {assignment.status}
-                                                            </Badge>
-                                                            <span className="text-sm">
-                                                                {getTargetName(assignment)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-sm text-muted-foreground">
-                                                            Due: {format(new Date(assignment.dueDate), "PPP")}
-                                                        </div>
-                                                        <div className="text-sm">
-                                                            Paid: {formatCurrency(getTotalPaid(assignment))}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {format(new Date(bill.createdAt), "PPP")}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge className={`${statusColors[status]} text-white`}>
-                                                {status.replace("_", " ")}
+                                            <Badge variant={status.variant}>
+                                                {status.label}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>
+                                            {format(new Date(bill.createdAt), "MMM d, yyyy")}
+                                        </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => {
-                                                                    router.push(`/dashboard/fees/${bill.id}`);
-                                                                }}
-                                                            >
-                                                                <Eye className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>View Details</TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => {
-                                                                    setSelectedBill(bill);
-                                                                }}
-                                                            >
-                                                                <Users className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Manage Assignments</TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={() => router.push(`/dashboard/fees/${bill.id}`)}
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Details
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedBill(bill);
+                                                            setIsAssignDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Users className="mr-2 h-4 w-4" />
+                                                        Assign
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleDelete(bill.id)}
+                                                        className="text-destructive"
+                                                    >
+                                                        <XCircle className="mr-2 h-4 w-4" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 );
                             })}
-                            {bills.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center">
-                                        No bills found. Create your first bill to get started.
-                                    </TableCell>
-                                </TableRow>
-                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
             </Card>
 
-            <AssignBillDialog
-                isOpen={!!selectedBill}
-                onClose={() => setSelectedBill(null)}
-                bill={selectedBill}
-                classes={classes}
-                students={students}
-            />
+            {selectedBill && (
+                <AssignBillDialog
+                    isOpen={isAssignDialogOpen}
+                    onClose={() => {
+                        setIsAssignDialogOpen(false);
+                        setSelectedBill(null);
+                    }}
+                    bill={selectedBill}
+                    classes={classes}
+                    students={students}
+                />
+            )}
         </div>
     );
 } 

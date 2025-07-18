@@ -74,3 +74,85 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { billId: string } }
+) {
+  try {
+    // 1. Authentication & Authorization
+    const session = await getSession(null);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.id },
+      include: { admin: true },
+    });
+
+    if (!user?.admin || !user.schoolId) {
+      return NextResponse.json(
+        { error: "Only school admins can delete bills" },
+        { status: 403 }
+      );
+    }
+
+    // 2. Verify bill exists and belongs to user's school
+    const bill = await prisma.bill.findUnique({
+      where: {
+        id: params.billId,
+        schoolId: user.schoolId,
+      },
+      include: {
+        assignments: {
+          include: {
+            studentPayments: true,
+          },
+        },
+      },
+    });
+
+    if (!bill) {
+      return NextResponse.json({ error: "Bill not found" }, { status: 404 });
+    }
+
+    // 3. Check if bill has any payments
+    const hasPayments = bill.assignments.some(
+      (assignment) => assignment.studentPayments.length > 0
+    );
+
+    if (hasPayments) {
+      return NextResponse.json(
+        { error: "Cannot delete bill with existing payments" },
+        { status: 400 }
+      );
+    }
+
+    // 4. Delete bill and its assignments
+    await prisma.$transaction([
+      // Delete all bill assignments
+      prisma.billAssignment.deleteMany({
+        where: { billId: params.billId },
+      }),
+      // Delete the bill
+      prisma.bill.delete({
+        where: { id: params.billId },
+      }),
+    ]);
+
+    return NextResponse.json({ message: "Bill deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting bill:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Failed to delete bill",
+        ...(process.env.NODE_ENV === "development" && {
+          stack: error instanceof Error ? error.stack : undefined,
+          details: error,
+        }),
+      },
+      { status: 500 }
+    );
+  }
+}

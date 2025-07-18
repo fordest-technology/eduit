@@ -7,6 +7,7 @@ import {
 import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { generateEmailDebugId } from "@/lib/utils";
+import { z } from "zod";
 
 // Define interface for API call tracking
 interface ApiCallRecord {
@@ -20,52 +21,170 @@ interface ApiCallRecord {
   steps: { time: number; msg: string; details?: any; error?: string }[];
 }
 
+// Define email parameter interfaces
+interface BaseEmailParams {
+  name: string;
+  email: string;
+  schoolName: string;
+  schoolUrl: string;
+  password: string;
+  schoolId: string;
+  debugId: string;
+}
+
+interface TeacherEmailParams extends BaseEmailParams {}
+
+interface StudentEmailParams extends BaseEmailParams {
+  studentName: string;
+  studentEmail: string;
+}
+
 // Track API calls in memory for debugging (development only)
 const apiCalls: ApiCallRecord[] = [];
 
+// Zod schema for credentials payload with role validation
+const credentialsSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["teacher", "student"]),
+  schoolName: z.string().min(1, "School name is required"),
+  password: z.string().optional(),
+  schoolId: z.string().min(1, "School ID is required"),
+  schoolUrl: z.string().optional(),
+});
+
 // Endpoint to send credentials via email
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  const requestId = generateEmailDebugId();
+  const steps: ApiCallRecord["steps"] = [];
+
   try {
     const body = await request.json();
-    const { name, email, role, schoolName, password, schoolId, schoolUrl } =
-      body;
+    console.log("Received credentials payload:", body);
 
-    // Input validation
-    if (!name || !email || !role || !schoolName) {
+    // Validate input using Zod
+    const validation = credentialsSchema.safeParse(body);
+    if (!validation.success) {
+      console.error("Validation failed:", validation.error.errors);
+      steps.push({
+        time: Date.now() - startTime,
+        msg: "Validation failed",
+        error: "Missing or invalid required fields",
+        details: validation.error.errors,
+      });
       return NextResponse.json(
-        { error: "Missing required fields" },
+        {
+          error: "Missing or invalid required fields",
+          details: validation.error.errors,
+        },
         { status: 400 }
       );
     }
+
+    const { name, email, role, schoolName, password, schoolId, schoolUrl } =
+      validation.data;
+
+    steps.push({
+      time: Date.now() - startTime,
+      msg: "Request received",
+      details: { name, email, role, schoolName, schoolId },
+    });
 
     // Use the provided password or generate a fallback one
     const userPassword = password || "TestPassword123";
 
     // Generate a debug ID to track this email
     const debugId = generateEmailDebugId();
+    steps.push({
+      time: Date.now() - startTime,
+      msg: "Debug ID generated",
+      details: { debugId },
+    });
 
-    // Send welcome email with credentials
-    const result = await sendWelcomeEmail({
+    // Send email based on role
+    let result;
+    const baseEmailData: BaseEmailParams = {
       name,
       email,
-      role,
       schoolName,
       schoolUrl: schoolUrl || "https://eduit.app",
       password: userPassword,
       schoolId,
       debugId,
+    };
+
+    if (role === "teacher") {
+      const teacherEmailData: TeacherEmailParams = {
+        ...baseEmailData,
+      };
+      result = await sendTeacherCredentialsEmail(teacherEmailData);
+      steps.push({
+        time: Date.now() - startTime,
+        msg: "Teacher credentials email sent",
+        details: { result },
+      });
+    } else if (role === "student") {
+      const studentEmailData: StudentEmailParams = {
+        ...baseEmailData,
+        studentName: name,
+        studentEmail: email,
+      };
+      result = await sendStudentCredentialsEmail(studentEmailData);
+      steps.push({
+        time: Date.now() - startTime,
+        msg: "Student credentials email sent",
+        details: { result },
+      });
+    }
+
+    // Track successful API call
+    apiCalls.push({
+      requestId,
+      timestamp: new Date().toISOString(),
+      email,
+      role,
+      success: true,
+      error: undefined,
+      duration: Date.now() - startTime,
+      steps,
     });
 
     return NextResponse.json({
       success: true,
-      message: "Credentials sent successfully",
+      message: `Credentials sent successfully to ${role}`,
       debugId,
       result,
     });
   } catch (error: any) {
     console.error("Error sending credentials:", error);
+
+    // Add error to steps for debugging
+    steps.push({
+      time: Date.now() - startTime,
+      msg: "Error occurred",
+      error: error.message,
+      details: error,
+    });
+
+    // Track failed API call
+    apiCalls.push({
+      requestId,
+      timestamp: new Date().toISOString(),
+      email: error?.email || "unknown",
+      role: error?.role || "unknown",
+      success: false,
+      error: error.message,
+      duration: Date.now() - startTime,
+      steps,
+    });
+
     return NextResponse.json(
-      { error: "Failed to send credentials", message: error.message },
+      {
+        error: "Failed to send credentials",
+        message: error.message || "An unexpected error occurred",
+        debugId: requestId,
+      },
       { status: 500 }
     );
   }
@@ -78,8 +197,6 @@ export async function GET() {
     const fs = require("fs");
     const path = require("path");
     const emailDebugDir = path.join(process.cwd(), ".email-debug");
-
-    const apiCalls: Array<any> = [];
 
     // Create directory if it doesn't exist
     if (!fs.existsSync(emailDebugDir)) {

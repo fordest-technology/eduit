@@ -7,6 +7,8 @@ import { ColorProvider } from "@/contexts/color-context";
 
 const inter = Inter({ subsets: ["latin"] });
 
+import { Toaster } from "@/components/ui/toaster";
+
 export const metadata: Metadata = {
   title: "EduIT",
   description: "School Management System",
@@ -119,6 +121,7 @@ export default function RootLayout({
             {children}
           </ColorProvider>
         </CustomSessionProvider>
+              <Toaster />
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CreditCard, DollarSign, Clock, Users, CalendarDays, GraduationCap } from "lucide-react"
+import { DashboardHeader } from "@/app/components/dashboard-header"
 
 interface ParentDashboardProps {
     data: {
@@ -28,6 +29,11 @@ export function ParentDashboard({ data }: ParentDashboardProps) {
 
     return (
         <div className="space-y-6">
+            <DashboardHeader
+                heading="Parent Dashboard"
+                text="Monitor your children's academic progress, fees, and school activities"
+                showBanner={true}
+            />
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
