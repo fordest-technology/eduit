@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Pencil, Trash, UserPlus, Search, Loader2, Users, Mail, Phone, School, Shield, Calendar } from "lucide-react";
+import { Pencil, Trash, UserPlus, Search, Loader2, Users, Mail, Phone, School, Shield, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,6 +33,12 @@ interface Parent {
     email: string;
     profileImage?: string | null;
     phone?: string | null;
+    alternatePhone?: string | null;
+    occupation?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
     schoolId?: string | null;
     status?: "active" | "inactive";
     joinDate?: string;
@@ -60,6 +66,12 @@ interface EditParentFormData {
     name: string;
     email: string;
     phone: string;
+    alternatePhone: string;
+    occupation: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
     status: "active" | "inactive";
 }
 
@@ -84,6 +96,12 @@ export default function ParentDetails({
         name: parent.name,
         email: parent.email,
         phone: parent.phone || "",
+        alternatePhone: parent.alternatePhone || "",
+        occupation: parent.occupation || "",
+        address: parent.address || "",
+        city: parent.city || "",
+        state: parent.state || "",
+        country: parent.country || "",
         status: parent.status || "active"
     });
 
@@ -212,6 +230,12 @@ export default function ParentDetails({
                     name: editFormData.name.trim(),
                     email: editFormData.email.trim(),
                     phone: editFormData.phone.trim() || null,
+                    alternatePhone: editFormData.alternatePhone.trim() || null,
+                    occupation: editFormData.occupation.trim() || null,
+                    address: editFormData.address.trim() || null,
+                    city: editFormData.city.trim() || null,
+                    state: editFormData.state.trim() || null,
+                    country: editFormData.country.trim() || null,
                     status: editFormData.status,
                 }),
             });
@@ -234,10 +258,10 @@ export default function ParentDetails({
     return (
         <div className="space-y-6">
             {/* Parent Information Card */}
-            <Card className="border-t-4 border-t-primary shadow-sm hover:shadow transition-shadow">
+            <Card className="shadow-sm hover:shadow transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <div>
-                        <CardTitle className="text-2xl font-bold">Parent Information</CardTitle>
+                        <CardTitle className="text-xl font-bold">Parent Information</CardTitle>
                         <CardDescription>View and manage parent details</CardDescription>
                     </div>
                     {canManage && (
@@ -264,25 +288,26 @@ export default function ParentDetails({
                     )}
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                        <Avatar className="h-24 w-24 border-2 border-primary/20 ring-2 ring-primary/10 ring-offset-2">
-                            <AvatarImage src={parent.profileImage || undefined} alt={parent.name} />
-                            <AvatarFallback className="text-lg bg-primary/10">
-                                {parent.name.split(" ").map((n) => n[0]).join("")}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-3 flex-1">
-                            <div>
+                    <div className="flex flex-col lg:flex-row items-start gap-6">
+                        {/* Profile Section */}
+                        <div className="flex flex-col items-center lg:items-start gap-4">
+                            <Avatar className="h-24 w-24 border-2 border-primary/20 ring-2 ring-primary/10 ring-offset-2">
+                                <AvatarImage src={parent.profileImage || undefined} alt={parent.name} />
+                                <AvatarFallback className="text-lg bg-primary/10">
+                                    {parent.name.split(" ").map((n) => n[0]).join("")}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="text-center lg:text-left">
                                 <h3 className="text-2xl font-semibold">{parent.name}</h3>
                                 <div className="flex flex-col sm:flex-row gap-3 mt-2">
-                                    <div className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                                    <div className="flex items-center justify-center lg:justify-start text-muted-foreground hover:text-foreground transition-colors">
                                         <Mail className="h-4 w-4 mr-2" />
                                         <a href={`mailto:${parent.email}`} className="hover:underline">
                                             {parent.email}
                                         </a>
                                     </div>
                                     {parent.phone && (
-                                        <div className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                                        <div className="flex items-center justify-center lg:justify-start text-muted-foreground hover:text-foreground transition-colors">
                                             <Phone className="h-4 w-4 mr-2" />
                                             <a href={`tel:${parent.phone}`} className="hover:underline">
                                                 {parent.phone}
@@ -291,7 +316,69 @@ export default function ParentDetails({
                                     )}
                                 </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
+                        </div>
+
+                        {/* Details Section */}
+                        <div className="flex-1 space-y-4">
+                            {/* Contact Information */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Contact Information</h4>
+                                    <div className="space-y-2">
+                                        {parent.phone && (
+                                            <div className="flex items-center text-sm">
+                                                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                                                <span className="font-medium">Primary:</span>
+                                                <span className="ml-2">{parent.phone}</span>
+                                            </div>
+                                        )}
+                                        {parent.alternatePhone && (
+                                            <div className="flex items-center text-sm">
+                                                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                                                <span className="font-medium">Alternate:</span>
+                                                <span className="ml-2">{parent.alternatePhone}</span>
+                                            </div>
+                                        )}
+                                        {parent.occupation && (
+                                            <div className="flex items-center text-sm">
+                                                <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                                                <span className="font-medium">Occupation:</span>
+                                                <span className="ml-2">{parent.occupation}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Address Information */}
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Address</h4>
+                                    <div className="space-y-1 text-sm">
+                                        {parent.address && (
+                                            <p className="text-muted-foreground">{parent.address}</p>
+                                        )}
+                                        <div className="flex flex-wrap gap-2">
+                                            {parent.city && (
+                                                <Badge variant="outline" className="text-xs">
+                                                    {parent.city}
+                                                </Badge>
+                                            )}
+                                            {parent.state && (
+                                                <Badge variant="outline" className="text-xs">
+                                                    {parent.state}
+                                                </Badge>
+                                            )}
+                                            {parent.country && (
+                                                <Badge variant="outline" className="text-xs">
+                                                    {parent.country}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Status and Stats */}
+                            <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
                                 <Badge variant={parent.status === "active" ? "default" : "secondary"}>
                                     {parent.status || "Active"}
                                 </Badge>
@@ -547,40 +634,106 @@ export default function ParentDetails({
 
             {/* Edit Parent Dialog */}
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Edit Parent Details</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Name *</Label>
+                                <Input
+                                    id="name"
+                                    value={editFormData.name}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="Enter parent's name"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Email *</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    value={editFormData.email}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                                    placeholder="Enter parent's email"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Primary Phone</Label>
+                                <Input
+                                    id="phone"
+                                    type="tel"
+                                    value={editFormData.phone}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                    placeholder="Enter primary phone number"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="alternatePhone">Alternate Phone</Label>
+                                <Input
+                                    id="alternatePhone"
+                                    type="tel"
+                                    value={editFormData.alternatePhone}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, alternatePhone: e.target.value }))}
+                                    placeholder="Enter alternate phone number"
+                                />
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="name">Name</Label>
+                            <Label htmlFor="occupation">Occupation</Label>
                             <Input
-                                id="name"
-                                value={editFormData.name}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                                placeholder="Enter parent's name"
+                                id="occupation"
+                                value={editFormData.occupation}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, occupation: e.target.value }))}
+                                placeholder="Enter parent's occupation"
                             />
                         </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="address">Address</Label>
                             <Input
-                                id="email"
-                                type="email"
-                                value={editFormData.email}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
-                                placeholder="Enter parent's email"
+                                id="address"
+                                value={editFormData.address}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, address: e.target.value }))}
+                                placeholder="Enter parent's address"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">Phone (Optional)</Label>
-                            <Input
-                                id="phone"
-                                type="tel"
-                                value={editFormData.phone}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                placeholder="Enter parent's phone number"
-                            />
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="city">City</Label>
+                                <Input
+                                    id="city"
+                                    value={editFormData.city}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, city: e.target.value }))}
+                                    placeholder="Enter city"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="state">State</Label>
+                                <Input
+                                    id="state"
+                                    value={editFormData.state}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, state: e.target.value }))}
+                                    placeholder="Enter state"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="country">Country</Label>
+                                <Input
+                                    id="country"
+                                    value={editFormData.country}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, country: e.target.value }))}
+                                    placeholder="Enter country"
+                                />
+                            </div>
                         </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="status">Status</Label>
                             <select
@@ -603,6 +756,12 @@ export default function ParentDetails({
                                     name: parent.name,
                                     email: parent.email,
                                     phone: parent.phone || "",
+                                    alternatePhone: parent.alternatePhone || "",
+                                    occupation: parent.occupation || "",
+                                    address: parent.address || "",
+                                    city: parent.city || "",
+                                    state: parent.state || "",
+                                    country: parent.country || "",
                                     status: parent.status || "active"
                                 });
                             }}

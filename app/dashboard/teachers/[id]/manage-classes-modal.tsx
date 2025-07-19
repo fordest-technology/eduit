@@ -1,34 +1,31 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import { Loader2, School } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { logger } from "@/lib/logger"
 
 interface Class {
-    id: string;
-    name: string;
-    section?: string;
+    id: string
+    name: string
+    section: string | null
+    level: {
+        id: string
+        name: string
+    } | null
 }
 
 interface ManageClassesModalProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    teacherId: string;
-    availableClasses: Class[];
-    teacherClasses: Class[];
-    onSuccess?: () => Promise<void>;
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    teacherId: string
+    availableClasses: Class[]
+    teacherClasses: Class[]
+    onSuccess: () => void
 }
 
 export function ManageClassesModal({
@@ -46,15 +43,18 @@ export function ManageClassesModal({
     // Initialize selected classes when modal opens or teacherClasses change
     useEffect(() => {
         if (open) {
-            console.log('Teacher Classes:', teacherClasses)
+            logger.info("Initializing teacher classes modal", {
+                teacherId,
+                teacherClassesCount: teacherClasses.length
+            })
             const initialSelected = teacherClasses.map(c => c.id)
-            console.log('Initial Selected:', initialSelected)
             setSelectedClasses(initialSelected)
         }
-    }, [open, teacherClasses])
+    }, [open, teacherClasses, teacherId])
 
     async function fetchUpdatedClasses() {
         try {
+            logger.info("Fetching updated teacher classes", { teacherId })
             const response = await fetch(`/api/teachers/${teacherId}/classes`, {
                 credentials: 'include',
             })
@@ -62,10 +62,13 @@ export function ManageClassesModal({
                 throw new Error('Failed to fetch updated classes')
             }
             const data = await response.json()
-            console.log('Fetched Updated Classes:', data.classes)
+            logger.info("Fetched updated classes", {
+                teacherId,
+                classesCount: data.classes?.length || 0
+            })
             return data.classes
         } catch (error) {
-            console.error('Error fetching updated classes:', error)
+            logger.error("Error fetching updated classes", error, { teacherId })
             return null
         }
     }
@@ -73,7 +76,10 @@ export function ManageClassesModal({
     async function onSubmit() {
         try {
             setIsLoading(true)
-            console.log('Submitting classes:', selectedClasses)
+            logger.info("Updating teacher classes", {
+                teacherId,
+                selectedClassesCount: selectedClasses.length
+            })
 
             const response = await fetch(`/api/teachers/${teacherId}/classes`, {
                 method: 'PUT',
@@ -89,9 +95,13 @@ export function ManageClassesModal({
             let data;
             try {
                 data = await response.json();
-                console.log('Response data:', data)
+                logger.info("Teacher classes update response", {
+                    teacherId,
+                    status: response.status,
+                    success: response.ok
+                })
             } catch (e) {
-                console.error('Failed to parse response:', e);
+                logger.error("Failed to parse response", e, { teacherId })
                 toast.error('Server response was invalid. Please try again.');
                 return;
             }
@@ -132,7 +142,7 @@ export function ManageClassesModal({
             }
             onOpenChange(false);
         } catch (error) {
-            console.error('Error:', error);
+            logger.error("Error updating teacher classes", error, { teacherId })
             toast.error("An unexpected error occurred. Please try again.");
         } finally {
             setIsLoading(false);
@@ -144,71 +154,77 @@ export function ManageClassesModal({
             const newSelected = current.includes(classId)
                 ? current.filter(id => id !== classId)
                 : [...current, classId];
-            console.log('Toggled class:', classId, 'New selection:', newSelected);
+            logger.info("Toggled class selection", {
+                teacherId,
+                classId,
+                newSelectionCount: newSelected.length
+            })
             return newSelected;
         })
     }
 
-    // Debug logging for available and selected classes
-    useEffect(() => {
-        console.log('Available Classes:', availableClasses)
-        console.log('Currently Selected Classes:', selectedClasses)
-    }, [availableClasses, selectedClasses])
-
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Manage Classes</DialogTitle>
-                    <DialogDescription>
-                        Select the classes to assign to this teacher
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                    <ScrollArea className="h-[300px] pr-4">
-                        <div className="space-y-4">
-                            {availableClasses.length > 0 ? (
-                                availableClasses.map((cls) => (
-                                    <div key={cls.id} className="flex items-center space-x-3 p-2 rounded hover:bg-accent/50 transition-colors">
-                                        <Checkbox
-                                            id={cls.id}
-                                            checked={selectedClasses.includes(cls.id)}
-                                            onCheckedChange={() => toggleClass(cls.id)}
-                                            disabled={isLoading}
-                                            className="h-5 w-5 border-2 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                                        />
-                                        <Label
-                                            htmlFor={cls.id}
-                                            className="flex-1 cursor-pointer select-none"
-                                        >
-                                            <span className="font-medium">{cls.name}</span>
-                                            {cls.section && (
-                                                <span className="text-muted-foreground ml-2">
-                                                    ({cls.section})
-                                                </span>
-                                            )}
-                                        </Label>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-muted-foreground text-center py-4">
-                                    No classes available
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold">Manage Teacher Classes</h2>
+                <Button
+                    onClick={onSubmit}
+                    disabled={isLoading}
+                    className="ml-auto"
+                >
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Updating...
+                        </>
+                    ) : (
+                        "Save Changes"
+                    )}
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableClasses.map((cls) => (
+                    <Card
+                        key={cls.id}
+                        className={`cursor-pointer transition-all ${selectedClasses.includes(cls.id)
+                                ? "ring-2 ring-primary bg-primary/5"
+                                : "hover:shadow-md"
+                            }`}
+                        onClick={() => toggleClass(cls.id)}
+                    >
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center justify-between">
+                                <span>{cls.name}</span>
+                                {selectedClasses.includes(cls.id) && (
+                                    <Badge variant="default" className="text-xs">
+                                        Selected
+                                    </Badge>
+                                )}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            {cls.section && (
+                                <p className="text-sm text-muted-foreground mb-2">
+                                    Section {cls.section}
                                 </p>
                             )}
-                        </div>
-                    </ScrollArea>
+                            {cls.level && (
+                                <div className="flex items-center text-sm text-muted-foreground">
+                                    <School className="h-3 w-3 mr-1" />
+                                    {cls.level.name}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {availableClasses.length === 0 && (
+                <div className="text-center py-8">
+                    <p className="text-muted-foreground">No classes available to assign</p>
                 </div>
-                <DialogFooter>
-                    <Button
-                        type="submit"
-                        onClick={onSubmit}
-                        disabled={isLoading}
-                        className="w-full sm:w-auto"
-                    >
-                        {isLoading ? "Saving..." : "Save changes"}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            )}
+        </div>
     )
 } 

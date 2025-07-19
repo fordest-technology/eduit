@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
-import { uploadToCloudinary } from "@/lib/cloudinary";
 import { join } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
@@ -18,23 +17,52 @@ export async function GET(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Find the parent with their profile and children
+    // Find the parent with their profile and children - optimized query
     const parent = await prisma.user.findUnique({
       where: {
         id: params.id,
         role: UserRole.PARENT,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profileImage: true,
+        schoolId: true,
+        createdAt: true,
         parent: {
-          include: {
+          select: {
+            id: true,
+            phone: true,
+            alternatePhone: true,
+            occupation: true,
+            address: true,
+            city: true,
+            state: true,
+            country: true,
             children: {
-              include: {
+              select: {
+                id: true,
+                relation: true,
+                isPrimary: true,
                 student: {
-                  include: {
-                    user: true,
+                  select: {
+                    id: true,
+                    user: {
+                      select: {
+                        id: true,
+                        name: true,
+                        profileImage: true,
+                      },
+                    },
                     classes: {
-                      include: {
-                        class: true,
+                      take: 1,
+                      select: {
+                        class: {
+                          select: {
+                            name: true,
+                          },
+                        },
                       },
                     },
                   },
@@ -52,13 +80,13 @@ export async function GET(
 
     // If school_admin, check if the parent belongs to their school
     if (
-      session.role === "school_admin" &&
+      session.role === UserRole.SCHOOL_ADMIN &&
       parent.schoolId !== session.schoolId
     ) {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
-    // Get all students not linked to any parent
+    // Get all students not linked to any parent - optimized query
     const availableStudents = await prisma.user.findMany({
       where: {
         role: UserRole.STUDENT,
@@ -69,22 +97,27 @@ export async function GET(
           },
         },
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        profileImage: true,
         student: {
-          include: {
+          select: {
+            id: true,
             classes: {
-              where: session
-                ? {
-                    sessionId: session.id,
-                  }
-                : undefined,
-              include: {
-                class: true,
+              take: 1,
+              select: {
+                class: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
           },
         },
       },
+      take: 100, // Limit to 100 students for performance
     });
 
     // Format available students
@@ -111,19 +144,42 @@ export async function GET(
           id: relation.student.id,
           name: relation.student.user.name,
           class: relation.student.classes[0]?.class?.name || "Not assigned",
+          profileImage: relation.student.user.profileImage,
         },
+        relation: relation.relation,
+        isPrimary: relation.isPrimary,
       })) || [];
 
-    // Remove password before returning
-    const { password, ...parentWithoutPassword } = parent;
-
-    return NextResponse.json({
-      ...parentWithoutPassword,
+    // Create response with formatted data
+    const response = NextResponse.json({
+      id: parent.id,
+      name: parent.name,
+      email: parent.email,
+      profileImage: parent.profileImage,
+      phone: parent.parent?.phone,
+      alternatePhone: parent.parent?.alternatePhone,
+      occupation: parent.parent?.occupation,
+      address: parent.parent?.address,
+      city: parent.parent?.city,
+      state: parent.parent?.state,
+      country: parent.parent?.country,
+      createdAt: parent.createdAt,
       children,
       availableStudents: formattedAvailableStudents,
     });
+
+    // Add cache headers - short cache time since this data might change
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=30, stale-while-revalidate=60"
+    );
+
+    return response;
   } catch (error) {
-    console.error("[PARENT_GET]", error);
+    // Only log in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PARENT_GET]", error);
+    }
     return new NextResponse("Internal error", { status: 500 });
   }
 }
@@ -136,18 +192,30 @@ export async function PATCH(
   try {
     const session = await getSession();
 
-    if (!session || !["super_admin", "school_admin"].includes(session.role)) {
+    if (
+      !session ||
+      !([UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN] as UserRole[]).includes(
+        session.role
+      )
+    ) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Find the parent with their profile
+    // Find the parent with their profile - optimized query
     const parent = await prisma.user.findUnique({
       where: {
         id: params.id,
         role: UserRole.PARENT,
       },
-      include: {
-        parent: true,
+      select: {
+        id: true,
+        email: true,
+        schoolId: true,
+        parent: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
@@ -157,7 +225,7 @@ export async function PATCH(
 
     // If school_admin, check if the parent belongs to their school
     if (
-      session.role === "school_admin" &&
+      session.role === UserRole.SCHOOL_ADMIN &&
       parent.schoolId !== session.schoolId
     ) {
       return new NextResponse("Forbidden", { status: 403 });
@@ -168,7 +236,13 @@ export async function PATCH(
     // Extract data from form
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
-    const phone = formData.get("phone") as string;
+    const phone = formData.get("phone") as string | null;
+    const alternatePhone = formData.get("alternatePhone") as string | null;
+    const occupation = formData.get("occupation") as string | null;
+    const address = formData.get("address") as string | null;
+    const city = formData.get("city") as string | null;
+    const state = formData.get("state") as string | null;
+    const country = formData.get("country") as string | null;
     const password = formData.get("password") as string | null;
     const profileImageFile = formData.get("profileImage") as File | null;
 
@@ -182,6 +256,9 @@ export async function PATCH(
       const existingUser = await prisma.user.findUnique({
         where: {
           email,
+        },
+        select: {
+          id: true,
         },
       });
 
@@ -226,7 +303,10 @@ export async function PATCH(
         // Store relative path in database
         userUpdateData.profileImage = `/uploads/parents/${filename}`;
       } catch (error) {
-        console.error("[PARENT_UPDATE_IMAGE_UPLOAD]", error);
+        // Only log in development
+        if (process.env.NODE_ENV !== "production") {
+          console.error("[PARENT_UPDATE_IMAGE_UPLOAD]", error);
+        }
         return new NextResponse("Failed to upload profile image", {
           status: 500,
         });
@@ -241,8 +321,18 @@ export async function PATCH(
           id: params.id,
         },
         data: userUpdateData,
-        include: {
-          parent: true,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profileImage: true,
+          role: true,
+          schoolId: true,
+          parent: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
 
@@ -254,6 +344,12 @@ export async function PATCH(
           },
           data: {
             phone: phone || null,
+            alternatePhone: alternatePhone || null,
+            occupation: occupation || null,
+            address: address || null,
+            city: city || null,
+            state: state || null,
+            country: country || null,
           },
         });
       }
@@ -261,12 +357,28 @@ export async function PATCH(
       return updatedUser;
     });
 
-    // Remove password from response
-    const { password: _, ...parentWithoutPassword } = result;
+    // Create response with formatted data
+    const response = NextResponse.json({
+      id: result.id,
+      name: result.name,
+      email: result.email,
+      profileImage: result.profileImage,
+      role: result.role,
+      schoolId: result.schoolId,
+    });
 
-    return NextResponse.json(parentWithoutPassword);
+    // Add cache control headers
+    response.headers.set(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
+
+    return response;
   } catch (error) {
-    console.error("[PARENT_UPDATE]", error);
+    // Only log in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PARENT_UPDATE]", error);
+    }
     return new NextResponse("Internal error", { status: 500 });
   }
 }
@@ -279,15 +391,24 @@ export async function DELETE(
   try {
     const session = await getSession();
 
-    if (!session || !["super_admin", "school_admin"].includes(session.role)) {
+    if (
+      !session ||
+      !([UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN] as UserRole[]).includes(
+        session.role
+      )
+    ) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Find the parent
+    // Find the parent - optimized query
     const parent = await prisma.user.findUnique({
       where: {
         id: params.id,
         role: UserRole.PARENT,
+      },
+      select: {
+        id: true,
+        schoolId: true,
       },
     });
 
@@ -297,7 +418,7 @@ export async function DELETE(
 
     // If school_admin, check if the parent belongs to their school
     if (
-      session.role === "school_admin" &&
+      session.role === UserRole.SCHOOL_ADMIN &&
       parent.schoolId !== session.schoolId
     ) {
       return new NextResponse("Forbidden", { status: 403 });
@@ -317,9 +438,19 @@ export async function DELETE(
       },
     });
 
-    return new NextResponse(null, { status: 204 });
+    // Create response with cache headers
+    const response = new NextResponse(null, { status: 204 });
+    response.headers.set(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
+
+    return response;
   } catch (error) {
-    console.error("[PARENT_DELETE]", error);
+    // Only log in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PARENT_DELETE]", error);
+    }
     return new NextResponse("Internal error", { status: 500 });
   }
 }

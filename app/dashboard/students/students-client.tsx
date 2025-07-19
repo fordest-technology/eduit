@@ -7,7 +7,7 @@ import { Plus, Users, GraduationCap, School, Search, X } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { AddStudentModal } from "./add-student-modal"
+import { AddStudentSheet } from "./add-student-sheet"
 import {
     Table,
     TableBody,
@@ -121,12 +121,10 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                 if (Array.isArray(data)) {
                     setFilteredStudents(data)
                 } else {
-                    console.error('Invalid response format:', data)
                     setError('Invalid response format from server')
                 }
             } catch (err) {
                 setError('Failed to fetch students')
-                console.error('Error fetching students:', err)
             } finally {
                 setIsLoading(false)
             }
@@ -139,12 +137,14 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
         const fetchLevels = async () => {
             try {
                 const response = await fetch('/api/school-levels')
-                if (!response.ok) throw new Error('Failed to fetch school levels')
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to fetch school levels')
+                }
                 const data = await response.json()
                 setLevels(data)
-            } catch (err) {
-                console.error('Error fetching levels:', err)
-                setError('Failed to fetch levels')
+            } catch (err: any) {
+                setError(err.message || 'Failed to fetch levels')
             }
         }
 
@@ -152,12 +152,14 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
         const fetchClasses = async () => {
             try {
                 const response = await fetch('/api/classes')
-                if (!response.ok) throw new Error('Failed to fetch classes')
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to fetch classes')
+                }
                 const data = await response.json()
                 setClasses(data)
-            } catch (err) {
-                console.error('Error fetching classes:', err)
-                setError('Failed to fetch classes')
+            } catch (err: any) {
+                setError(err.message || 'Failed to fetch classes')
             }
         }
 
@@ -197,13 +199,7 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
         setFilteredStudents(filtered)
     }, [searchQuery, filterLevel, filterClass, initialStudents])
 
-    useEffect(() => {
-        initialStudents.forEach(student => {
-            if (student.schoolId) {
-                console.log('School ID for student', student.id, ':', student.schoolId);
-            }
-        });
-    }, [initialStudents]);
+    // Remove debug logging - this was causing performance issues
 
     const handleSuccess = async () => {
         try {
@@ -231,7 +227,6 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
             // Show success message
             toast.success("Student created successfully");
         } catch (error) {
-            console.error('Error refreshing students:', error);
             toast.error('Failed to refresh student list');
         }
     }
@@ -538,7 +533,7 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                 </CardContent>
             </Card>
 
-            <AddStudentModal
+            <AddStudentSheet
                 open={isAddModalOpen}
                 onOpenChange={setIsAddModalOpen}
                 onSuccess={handleSuccess}

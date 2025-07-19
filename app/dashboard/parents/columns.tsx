@@ -19,10 +19,16 @@ export interface ParentColumn {
     email: string
     profileImage?: string | null
     phone?: string | null
+    alternatePhone?: string | null
+    occupation?: string | null
     childrenCount: number
 }
 
-export const columns: ColumnDef<ParentColumn>[] = [
+interface ColumnOptions {
+    onEdit?: (parent: ParentColumn) => void;
+}
+
+export const columns = (options?: ColumnOptions): ColumnDef<ParentColumn>[] => [
     {
         accessorKey: "name",
         header: "Name",
@@ -48,6 +54,11 @@ export const columns: ColumnDef<ParentColumn>[] = [
         accessorKey: "phone",
         header: "Phone",
         cell: ({ row }) => row.original.phone || "Not provided"
+    },
+    {
+        accessorKey: "occupation",
+        header: "Occupation",
+        cell: ({ row }) => row.original.occupation || "Not provided"
     },
     {
         accessorKey: "childrenCount",
@@ -81,12 +92,19 @@ export const columns: ColumnDef<ParentColumn>[] = [
                                 View Details
                             </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/parents/${parent.id}/edit`} className="flex items-center">
+                        {options?.onEdit ? (
+                            <DropdownMenuItem onClick={() => options.onEdit?.(parent)}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit Parent
-                            </Link>
-                        </DropdownMenuItem>
+                            </DropdownMenuItem>
+                        ) : (
+                            <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/parents/${parent.id}/edit`} className="flex items-center">
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit Parent
+                                </Link>
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem asChild>
                             <Link href={`/dashboard/parents/${parent.id}`} className="flex items-center">
                                 <UserPlus className="mr-2 h-4 w-4" />

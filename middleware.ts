@@ -1,10 +1,7 @@
-// Create a new middleware file to handle authentication redirects
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSchoolIdFromSubdomain } from "./lib/subdomain";
 import { verifyJwt } from "./lib/auth";
-import { getSession } from "@/lib/auth";
-import prisma from "@/lib/db";
 
 // Define which paths require authentication
 const authRequiredPaths = ["/dashboard"];

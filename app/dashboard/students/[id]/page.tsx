@@ -259,24 +259,20 @@ export default function StudentDetailsPage() {
             setLoading(true)
             try {
                 // Fetch student data with detailed error handling
-                console.log("Fetching student with ID:", params.id);
                 const studentRes = await fetch(`/api/students/${params.id}`);
 
                 if (!studentRes.ok) {
                     const errorData = await studentRes.json().catch(() => ({}));
-                    console.error("API Error Response:", errorData);
                     throw new Error(errorData.message || `Failed to fetch student: ${studentRes.status} ${studentRes.statusText}`);
                 }
 
                 const responseData = await studentRes.json();
-                console.log("API Response:", responseData);
 
                 // The API returns data in { student: {...}, availableDepartments: [...], ... } format
                 const studentData = responseData.student;
                 const activeSession = responseData.currentSession;
 
                 if (!studentData) {
-                    console.error("No student data in response:", responseData);
                     throw new Error('Student data not found in response');
                 }
 
@@ -345,7 +341,6 @@ export default function StudentDetailsPage() {
                 }
 
             } catch (error) {
-                console.error('Error fetching data:', error)
                 setError(error instanceof Error ? error.message : 'Failed to load student data')
                 toast.error('Error loading student details: ' + (error instanceof Error ? error.message : 'Unknown error'))
             } finally {
@@ -403,14 +398,12 @@ export default function StudentDetailsPage() {
                 }
             })
             .catch(err => {
-                console.error('Error refreshing data:', err);
                 toast.error('Failed to refresh student data');
             })
             .finally(() => setLoading(false));
     };
 
     const handleAddToClass = () => {
-        console.log("Opening add to class modal");
         setShowClassModal(true);
         setStudentClassConflict(null);
         setIsAddingToClass(false);

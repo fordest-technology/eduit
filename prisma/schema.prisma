@@ -65,6 +65,8 @@ model Teacher {
   subjects         SubjectTeacher[]
   department       Department?      @relation(fields: [departmentId], references: [id])
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId])
 }
 
 model Student {
@@ -165,6 +167,11 @@ model Class {
   teacher   Teacher?       @relation("ClassTeacher", fields: [teacherId], references: [id])
   subjects  ClassSubject[]
   students  StudentClass[]
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([levelId])
+  @@index([schoolId, name])
 }
 
 model Subject {
@@ -184,6 +191,10 @@ model Subject {
   level        SchoolLevel?     @relation(fields: [levelId], references: [id])
   school       School           @relation(fields: [schoolId], references: [id])
   teachers     SubjectTeacher[]
+
+  @@index([schoolId])
+  @@index([departmentId])
+  @@index([levelId])
 }
 
 model AcademicSession {
@@ -200,6 +211,9 @@ model AcademicSession {
   results              Result[]
   resultConfigurations ResultConfiguration[]
   studentClasses       StudentClass[]
+
+  @@index([schoolId])
+  @@index([schoolId, isCurrent])
 }
 
 model StudentClass {
@@ -216,6 +230,11 @@ model StudentClass {
   student    Student          @relation(fields: [studentId], references: [id])
 
   @@unique([studentId, classId, sessionId])
+  @@index([classId])
+  @@index([sessionId])
+  @@index([studentId])
+  @@index([classId, sessionId])
+  @@index([classId, sessionId, status])
 }
 
 model StudentParent {
@@ -254,6 +273,8 @@ model ClassSubject {
   subject   Subject  @relation(fields: [subjectId], references: [id])
 
   @@unique([classId, subjectId])
+  @@index([classId])
+  @@index([subjectId])
 }
 
 model Attendance {

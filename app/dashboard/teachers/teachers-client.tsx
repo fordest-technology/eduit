@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { columns, Teacher } from "./columns"
+import { Teacher, columns } from "./columns"
 import { Button } from "@/components/ui/button"
 import { Plus, Users, GraduationCap, BookOpen, MoreHorizontal, Search, X, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,47 +37,11 @@ import Link from "next/link"
 import { TeacherSubjectsModal } from "./teacher-subjects-modal"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Teacher, User, Department } from "@prisma/client"
+// Remove TeacherStats import if it's causing issues, or define it locally if needed
+// import { TeacherStats } from "./page";
 
-interface TeacherData {
-    id: string;
-    name: string;
-    email: string;
-    profileImage: string | null;
-    phone: string | null;
-    employeeId: string | null;
-    qualifications: string | null;
-    specialization: string | null;
-    joiningDate: Date | null;
-    departmentId: string | null;
-    address: string | null;
-    city: string | null;
-    state: string | null;
-    country: string | null;
-    dateOfBirth: Date | null;
-    gender: string | null;
-    emergencyContact: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    user: User;
-    department?: Department;
-    stats: {
-        totalClasses: number;
-        totalStudents: number;
-        totalSubjects: number;
-    };
-    subjects: Array<{
-        id: string;
-        name: string;
-    }>;
-    classes: Array<{
-        id: string;
-        name: string;
-        studentCount: number;
-    }>;
-}
-
-interface TeacherStats {
+// Define TeacherStats locally if it's not exported from page.tsx
+export interface TeacherStats {
     total: number;
     subjects: number;
     departments: number;
@@ -87,16 +51,16 @@ interface TeacherStats {
 }
 
 export interface TeachersClientProps {
-    teachers: TeacherData[];
+    teachers: Teacher[];
     stats: TeacherStats;
     error?: string;
 }
 
-export function TeachersClient({ teachers, stats, error }: TeachersClientProps) {
+export function TeachersClient({ teachers: initialTeachers, stats, error }: TeachersClientProps) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [isSubjectsModalOpen, setIsSubjectsModalOpen] = useState(false)
-    const [selectedTeacher, setSelectedTeacher] = useState<TeacherData | null>(null)
-    const [filteredTeachers, setFilteredTeachers] = useState<TeacherData[]>([])
+    const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
+    const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>(initialTeachers)
     const [searchQuery, setSearchQuery] = useState("")
     const [filterDepartment, setFilterDepartment] = useState("all")
     const [departments, setDepartments] = useState<{ id: string, name: string }[]>([])
@@ -104,6 +68,11 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
     const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const router = useRouter()
+
+    // Always use the state for the list of teachers
+    useEffect(() => {
+        setFilteredTeachers(initialTeachers)
+    }, [initialTeachers])
 
     useEffect(() => {
         const fetchDepartments = async () => {
@@ -125,14 +94,7 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
     }, [])
 
     useEffect(() => {
-        if (teachers.length > 0) {
-            setFilteredTeachers(teachers)
-            setIsLoading(false)
-        }
-    }, [teachers])
-
-    useEffect(() => {
-        let filtered = [...teachers]
+        let filtered = [...initialTeachers]
 
         // Filter by search query
         if (searchQuery) {
@@ -150,22 +112,19 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
         }
 
         setFilteredTeachers(filtered)
-    }, [searchQuery, filterDepartment, teachers])
+    }, [searchQuery, filterDepartment, initialTeachers])
 
     const fetchTeachers = async () => {
         try {
+            setIsLoading(true);
             const response = await fetch("/api/teachers")
             if (!response.ok) {
                 throw new Error("Failed to fetch teachers")
             }
             const data = await response.json()
-            if (Array.isArray(data)) {
-                const formattedData = data.map((teacher) => ({
-                    ...teacher,
-                    name: teacher.user.name,
-                    email: teacher.user.email,
-                }))
-                setFilteredTeachers(formattedData)
+            // IMPORTANT: Update the state with the newly fetched data
+            if (data && Array.isArray(data.teachers)) {
+                setFilteredTeachers(data.teachers as Teacher[]); // Cast to Teacher[]
             } else {
                 console.error("Invalid data format received:", data)
                 toast.error("Received invalid data format. Please refresh.")
@@ -193,9 +152,14 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
         }
     }
 
-    const handleManageSubjects = (teacher: TeacherData) => {
+    const handleManageSubjects = (teacher: Teacher) => {
         setSelectedTeacher(teacher)
         setIsSubjectsModalOpen(true)
+    }
+
+    const handleAddOrEdit = (teacher: Teacher | null) => {
+        setSelectedTeacher(teacher)
+        setIsAddModalOpen(true)
     }
 
     const resetFilters = () => {
@@ -401,7 +365,7 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                                 )}
 
                                 <Button
-                                    onClick={() => setIsAddModalOpen(true)}
+                                    onClick={() => handleAddOrEdit(null)}
                                     className="ml-auto"
                                     disabled={isLoading || isRefreshing}
                                 >
@@ -503,10 +467,7 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                                                                 </span>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onClick={() => {
-                                                                setSelectedTeacher(teacher)
-                                                                setIsAddModalOpen(true)
-                                                            }}>
+                                                            <DropdownMenuItem onClick={() => handleAddOrEdit(teacher)}>
                                                                 <span className="flex items-center">
                                                                     <span className="mr-2">✏️</span>
                                                                     Edit Teacher
@@ -534,7 +495,7 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-10 w-10 text-muted-foreground/50" />
                                         <p>No teachers found</p>
-                                        <Button onClick={() => setIsAddModalOpen(true)}>
+                                        <Button onClick={() => handleAddOrEdit(null)}>
                                             <Plus className="mr-2 h-4 w-4" />
                                             Add Your First Teacher
                                         </Button>
@@ -549,7 +510,7 @@ export function TeachersClient({ teachers, stats, error }: TeachersClientProps) 
             <AddTeacherModal
                 open={isAddModalOpen}
                 onOpenChange={setIsAddModalOpen}
-                onSuccess={handleSuccess}
+                onSuccess={fetchTeachers}
                 teacherToEdit={selectedTeacher}
             />
 

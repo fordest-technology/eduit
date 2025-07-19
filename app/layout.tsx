@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { CustomSessionProvider } from "@/providers/session-provider";
 import { ColorProvider } from "@/contexts/color-context";
+import { ColorLoader } from "@/components/ui/color-loader";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -118,10 +119,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <CustomSessionProvider>
           <ColorProvider>
-            {children}
+            <ColorLoader>
+              {children}
+            </ColorLoader>
           </ColorProvider>
         </CustomSessionProvider>
-              <Toaster />
+        <Toaster />
       </body>
     </html>
   );

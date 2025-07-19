@@ -7,11 +7,12 @@ import { redirect } from "next/navigation"
 import { format } from "date-fns"
 import { Result, Event } from "@prisma/client"
 import { cn } from "@/lib/utils"
-import AdminDashboardClient from "./admin-client"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ParentDashboard } from "./parent/_components/parent-dashboard"
-import { UpcomingEvents } from "./upcoming-events"
+import dynamic from "next/dynamic"
+
+const AdminDashboardClient = dynamic(() => import("./admin-client"))
+const ParentDashboard = dynamic(() => import("./parent/_components/parent-dashboard"))
+const UpcomingEvents = dynamic(() => import("./upcoming-events").then(mod => mod.UpcomingEvents))
+
 
 // Define interface for dashboard stats
 interface DashboardStats {
@@ -62,33 +63,18 @@ export default async function DashboardPage() {
   try {
     // Fetch comprehensive dashboard stats using Prisma
     const dashboardStats = await prisma.$transaction(async (prisma) => {
-      // Fetch total students (unique by id)
-      const studentIds = await prisma.student.findMany({
-        where: { user: { schoolId: session.schoolId } },
-        select: { id: true }
+      const totalStudents = await prisma.student.count({
+        where: { user: { schoolId: session.schoolId } }
       })
-      const totalStudents = new Set(studentIds.map(s => s.id)).size
-
-      // Fetch total teachers (unique by id)
-      const teacherIds = await prisma.teacher.findMany({
-        where: { user: { schoolId: session.schoolId } },
-        select: { id: true }
+      const totalTeachers = await prisma.teacher.count({
+        where: { user: { schoolId: session.schoolId } }
       })
-      const totalTeachers = new Set(teacherIds.map(t => t.id)).size
-
-      // Fetch total classes (unique by id)
-      const classIds = await prisma.class.findMany({
-        where: { schoolId: session.schoolId },
-        select: { id: true }
+      const totalClasses = await prisma.class.count({
+        where: { schoolId: session.schoolId }
       })
-      const totalClasses = new Set(classIds.map(c => c.id)).size
-
-      // Fetch total subjects (unique by id)
-      const subjectIds = await prisma.subject.findMany({
-        where: { schoolId: session.schoolId },
-        select: { id: true }
+      const totalSubjects = await prisma.subject.count({
+        where: { schoolId: session.schoolId }
       })
-      const totalSubjects = new Set(subjectIds.map(s => s.id)).size
 
       // Calculate attendance rate
       const totalAttendanceRecords = await prisma.attendance.count({

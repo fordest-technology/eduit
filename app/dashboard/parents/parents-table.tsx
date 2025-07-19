@@ -36,9 +36,11 @@ interface Parent {
     id: string
     name: string
     email: string
+    profileImage?: string | null
     phone?: string | null
+    alternatePhone?: string | null
+    occupation?: string | null
     childrenCount: number
-    createdAt: string
 }
 
 interface ParentsTableProps {
@@ -68,12 +70,12 @@ export function ParentsTable({ parents }: ParentsTableProps) {
             toast.success("Parent deleted successfully")
             router.refresh()
         } catch (error) {
-            console.error("Failed to delete parent:", error)
-            if (error instanceof Error) {
-                toast.error(error.message)
-            } else {
-                toast.error("An unexpected error occurred")
+            // Only log in development
+            if (process.env.NODE_ENV !== "production" && error instanceof Error) {
+                console.error("Failed to delete parent:", error.message)
             }
+
+            toast.error(error instanceof Error ? error.message : "An unexpected error occurred")
         } finally {
             setShowDeleteDialog(false)
             setParentToDelete(null)
@@ -96,6 +98,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                         <TableRow>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
+                            <TableHead>Occupation</TableHead>
                             <TableHead>Phone</TableHead>
                             <TableHead>Children</TableHead>
                             <TableHead className="w-[100px]">Actions</TableHead>
@@ -107,7 +110,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                                 <TableCell>
                                     <div className="flex items-center gap-2">
                                         <Avatar className="h-8 w-8">
-                                            <AvatarImage src={`https://avatar.vercel.sh/${parent.email}`} />
+                                            <AvatarImage src={parent.profileImage || ""} alt={parent.name} />
                                             <AvatarFallback>
                                                 {parent.name
                                                     .split(" ")
@@ -120,6 +123,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                                     </div>
                                 </TableCell>
                                 <TableCell>{parent.email}</TableCell>
+                                <TableCell>{parent.occupation || "-"}</TableCell>
                                 <TableCell>{parent.phone || "-"}</TableCell>
                                 <TableCell>{parent.childrenCount}</TableCell>
                                 <TableCell>
@@ -192,6 +196,9 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                     if (!open) setParentToEdit(null)
                 }}
                 parentToEdit={parentToEdit}
+                onSuccess={() => {
+                    router.refresh()
+                }}
             />
         </div>
     )

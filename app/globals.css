@@ -89,3 +89,32 @@
 .hover\:bg-secondary-custom:hover {
   background-color: var(--secondary-color);
 }
+
+/* Custom switch styles for better visibility */
+[data-state="unchecked"] {
+  background-color: #9ca3af !important;
+  /* gray-400 - more visible */
+}
+
+[data-state="checked"] {
+  background-color: var(--primary-color) !important;
+}
+
+/* Make switch thumb more visible */
+[data-state="unchecked"] .bg-background {
+  background-color: #ffffff !important;
+}
+
+[data-state="checked"] .bg-background {
+  background-color: #ffffff !important;
+}
+
+/* Override default switch styles for better visibility */
+.peer[data-state="unchecked"] {
+  background-color: #9ca3af !important;
+  /* gray-400 */
+}
+
+.peer[data-state="checked"] {
+  background-color: var(--primary-color) !important;
+}

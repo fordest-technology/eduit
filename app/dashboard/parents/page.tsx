@@ -1,32 +1,17 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Users, Mail, UserPlus, BookOpen, Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { DashboardHeader } from "@/app/components/dashboard-header"
-import { ParentsTable } from "@/app/dashboard/parents/parents-table"
-import { UserRole } from "@prisma/client"
 import { Suspense } from "react"
+import { getSession } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { DashboardHeader } from "@/app/components/dashboard-header"
+import { Card, CardContent } from "@/components/ui/card"
+import { Users, Mail, UserPlus, BookOpen } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ParentsClient } from "./parents-client"
+import { prisma } from "@/lib/prisma"
 
-interface UserSession {
-    id: string
-    role: UserRole
-    schoolId: string
-    email: string
-    name: string
-}
-
-interface Parent {
-    id: string
-    name: string
-    email: string
-    phone?: string | null
-    childrenCount: number
-    createdAt: string
+// Define types
+interface SchoolColors {
+    primaryColor: string
+    secondaryColor: string
 }
 
 interface ParentStats {
@@ -36,16 +21,7 @@ interface ParentStats {
     activeChildren: number
 }
 
-interface SchoolColors {
-    primaryColor: string
-    secondaryColor: string
-}
-
-const defaultColors: SchoolColors = {
-    primaryColor: "#3b82f6",
-    secondaryColor: "#1f2937"
-}
-
+// Skeleton loaders
 function StatsSkeleton() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -66,98 +42,111 @@ function StatsSkeleton() {
     )
 }
 
-export default function ParentsPage() {
-    const router = useRouter()
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [parents, setParents] = useState<Parent[]>([])
-    const [stats, setStats] = useState<ParentStats>({
-        total: 0,
-        withChildren: 0,
-        totalChildren: 0,
-        activeChildren: 0
-    })
-    const [schoolColors, setSchoolColors] = useState<SchoolColors>(defaultColors)
+// Enable caching for this page
+export const revalidate = 60; // Revalidate every 60 seconds
 
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                // Get session
-                const sessionRes = await fetch('/api/auth/session')
-                if (!sessionRes.ok) {
-                    throw new Error('Failed to fetch session')
-                }
+// Server component to fetch data
+export default async function ParentsPage() {
+    const session = await getSession();
 
-                const session = await sessionRes.json()
-                if (!session) {
-                    router.push("/login")
-                    return
-                }
+    // Auth check
+    if (!session) {
+        redirect("/login");
+    }
 
-                // Only SUPER_ADMIN and SCHOOL_ADMIN can access this page
-                if (![UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN].includes(session.role)) {
-                    router.push("/dashboard")
-                    return
-                }
+    // Role check
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(session.role)) {
+        redirect("/dashboard");
+    }
 
-                // Fetch parents data
-                const parentsRes = await fetch('/api/parents')
-                if (!parentsRes.ok) {
-                    throw new Error('Failed to fetch parents')
-                }
+    // Fetch parents data
+    const parents = await prisma.user.findMany({
+        where: {
+            role: "PARENT",
+            schoolId: session.role === "SCHOOL_ADMIN" ? session.schoolId : undefined,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            profileImage: true,
+            parent: {
+                select: {
+                    phone: true,
+                    alternatePhone: true,
+                    occupation: true,
+                    _count: {
+                        select: {
+                            children: true,
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: {
+            name: "asc",
+        },
+    });
 
-                const data = await parentsRes.json()
-                setParents(data.parents || [])
-                setStats(data.stats || {
-                    total: 0,
-                    withChildren: 0,
-                    totalChildren: 0,
-                    activeChildren: 0
-                })
-                if (data.schoolColors?.primaryColor && data.schoolColors?.secondaryColor) {
-                    setSchoolColors({
-                        primaryColor: data.schoolColors.primaryColor,
-                        secondaryColor: data.schoolColors.secondaryColor
-                    })
+    // Get school colors
+    const defaultColors = {
+        primaryColor: "#3b82f6",
+        secondaryColor: "#1f2937",
+    };
+
+    let schoolColors = defaultColors;
+
+    if (session.schoolId) {
+        const school = await prisma.school.findUnique({
+            where: { id: session.schoolId },
+            select: {
+                primaryColor: true,
+                secondaryColor: true,
+            },
+        });
+
+        if (school?.primaryColor && school?.secondaryColor) {
+            schoolColors = {
+                primaryColor: school.primaryColor,
+                secondaryColor: school.secondaryColor,
+            };
+        }
+    }
+
+    // Calculate stats
+    const withChildren = parents.filter(p => (p.parent?._count?.children || 0) > 0).length;
+    const totalChildren = parents.reduce((acc, p) => acc + (p.parent?._count?.children || 0), 0);
+
+    // Get active children count
+    const activeChildrenCount = await prisma.studentClass.count({
+        where: {
+            status: "ACTIVE",
+            student: {
+                user: {
+                    schoolId: session.role === "SCHOOL_ADMIN" ? session.schoolId : undefined,
                 }
-            } catch (error) {
-                console.error("Error:", error)
-                setError(error instanceof Error ? error.message : "An unexpected error occurred")
-                toast.error("Error loading parents data")
-            } finally {
-                setLoading(false)
             }
         }
+    });
 
-        fetchData()
-    }, [router])
+    // Format data for client component
+    const formattedParents = parents.map(parent => ({
+        id: parent.id,
+        name: parent.name,
+        email: parent.email,
+        profileImage: parent.profileImage,
+        phone: parent.parent?.phone,
+        alternatePhone: parent.parent?.alternatePhone,
+        occupation: parent.parent?.occupation,
+        childrenCount: parent.parent?._count?.children || 0,
+    }));
 
-    if (loading) {
-        return (
-            <div className="space-y-6">
-                <DashboardHeader
-                    heading="Parents"
-                    text="Manage parent accounts and their connections with students"
-                    showBanner={true}
-                />
-                <StatsSkeleton />
-                <div className="border rounded-lg overflow-hidden p-6 bg-white">
-                    <Skeleton className="h-[400px] w-full" />
-                </div>
-            </div>
-        )
-    }
-
-    if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-                <p className="text-red-500">{error}</p>
-                <Button onClick={() => router.push("/dashboard")}>
-                    Back to Dashboard
-                </Button>
-            </div>
-        )
-    }
+    const stats: ParentStats = {
+        total: parents.length,
+        withChildren,
+        totalChildren,
+        activeChildren: activeChildrenCount,
+    };
 
     return (
         <div className="space-y-6">
@@ -219,8 +208,8 @@ export default function ParentsPage() {
 
             {/* Parents Table */}
             <div className="border rounded-lg overflow-hidden p-6 bg-white">
-                <ParentsTable parents={parents} />
+                <ParentsClient parents={formattedParents} stats={stats} />
             </div>
         </div>
-    )
+    );
 } 

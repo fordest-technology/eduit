@@ -62,7 +62,7 @@ export async function GET(
 
     // Check if user has permission to view this student
     if (
-      session.role === "school_admin" &&
+      session.role === UserRole.SCHOOL_ADMIN &&
       session.schoolId !== studentData.user.schoolId
     ) {
       return NextResponse.json(
@@ -221,9 +221,9 @@ export async function PATCH(
 
     // Check permission to update student
     if (
-      session.role !== "super_admin" &&
-      session.role !== "school_admin" &&
-      session.role !== "teacher"
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN &&
+      session.role !== UserRole.TEACHER
     ) {
       return new NextResponse("Forbidden", { status: 403 });
     }

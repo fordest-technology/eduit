@@ -2,14 +2,32 @@ import { getSession } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { ClassesTable } from "./classes-table"
-import { BookOpen, Users } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { BookOpen, Users, GraduationCap } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DashboardHeader } from "@/app/components/dashboard-header"
+import { logger } from "@/lib/logger"
 
 async function getData(schoolId: string) {
+    const startTime = Date.now()
+
     try {
-        const [teachers, subjects, classes, school] = await Promise.all([
+        logger.info("Fetching classes data", { schoolId })
+
+        // Get current academic session first
+        const currentSession = await prisma.academicSession.findFirst({
+            where: {
+                schoolId,
+                isCurrent: true,
+            },
+            select: {
+                id: true,
+            },
+        })
+
+        // Optimized parallel queries with minimal data selection
+        const [teachersData, subjects, classes, school] = await Promise.all([
             prisma.teacher.findMany({
                 where: {
                     user: {
@@ -48,39 +66,59 @@ async function getData(schoolId: string) {
                 where: {
                     schoolId,
                 },
-                include: {
+                select: {
+                    id: true,
+                    name: true,
+                    section: true,
                     _count: {
                         select: {
-                            students: true,
+                            students: {
+                                where: {
+                                    sessionId: currentSession?.id,
+                                    status: "ACTIVE",
+                                },
+                            },
                             subjects: true,
                         }
                     }
-                }
+                },
+                orderBy: {
+                    name: "asc",
+                },
             }),
             prisma.school.findUnique({
-                where: {
-                    id: schoolId,
-                },
+                where: { id: schoolId },
                 select: {
-                    name: true,
                     primaryColor: true,
                     secondaryColor: true,
-                },
+                }
             })
         ])
+
+        // Transform teachers data to match component interface
+        const teachers = teachersData.map(teacher => ({
+            id: teacher.id,
+            name: teacher.user.name,
+            profileImage: teacher.user.profileImage
+        }))
+
+        const duration = Date.now() - startTime
+        logger.query("Classes data fetch", duration, {
+            schoolId,
+            teachersCount: teachers.length,
+            subjectsCount: subjects.length,
+            classesCount: classes.length
+        })
 
         return {
             teachers,
             subjects,
             classes,
-            schoolColors: {
-                primaryColor: school?.primaryColor || "#3b82f6",
-                secondaryColor: school?.secondaryColor || "#1f2937",
-            }
+            schoolColors: school || { primaryColor: "#3b82f6", secondaryColor: "#1d4ed8" }
         }
     } catch (error) {
-        console.error("Error fetching data:", error)
-        throw new Error("Failed to load data")
+        logger.error("Error fetching classes data", error, { schoolId })
+        throw error
     }
 }
 
@@ -89,13 +127,11 @@ function StatsSkeleton() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {[1, 2, 3].map((i) => (
                 <Card key={i}>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center">
-                            <Skeleton className="h-12 w-12 rounded-full mr-4" />
-                            <div className="space-y-2">
-                                <Skeleton className="h-4 w-24" />
-                                <Skeleton className="h-8 w-16" />
-                            </div>
+                    <CardContent className="pt-6 flex items-center">
+                        <Skeleton className="h-12 w-12 rounded-full mr-4" />
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-8 w-16" />
                         </div>
                     </CardContent>
                 </Card>
@@ -122,74 +158,72 @@ export default async function ClassesPage() {
     const totalSubjects = classes.reduce((acc, cls) => acc + cls._count.subjects, 0)
 
     return (
-        <div className="container py-6">
-            {/* Hero section */}
-            <div
-                className="w-full p-8 mb-6 rounded-lg relative overflow-hidden"
-                style={{
-                    background: `linear-gradient(45deg, ${schoolColors.primaryColor}, ${schoolColors.secondaryColor})`,
-                }}
-            >
-                <div className="absolute inset-0 bg-grid-white/15 [mask-image:linear-gradient(0deg,rgba(255,255,255,0.1),rgba(255,255,255,0.5))]"></div>
-                <div className="relative z-10">
-                    <h1 className="text-3xl font-bold text-white mb-2">Class Management</h1>
-                    <p className="text-white text-opacity-90 max-w-2xl">
-                        {session.role === "TEACHER"
-                            ? "View your assigned classes and manage enrolled students"
-                            : "Create classes, assign teachers, and manage students in each class"}
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-6">
+            <DashboardHeader
+                heading="Class Management"
+                text={session.role === "TEACHER"
+                    ? "View your assigned classes and manage enrolled students"
+                    : "Create classes, assign teachers, and manage students in each class"}
+                showBanner={true}
+                icon={<GraduationCap className="h-6 w-6" />}
+            />
 
             {/* Stats Cards */}
             <Suspense fallback={<StatsSkeleton />}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <Card>
-                        <CardContent className="pt-6 flex items-center">
-                            <div className="rounded-full p-3 bg-blue-100 mr-4">
-                                <BookOpen className="h-6 w-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Classes</p>
-                                <h3 className="text-2xl font-bold">{classes.length}</h3>
-                            </div>
+                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-blue-700">
+                                <GraduationCap className="mr-2 h-5 w-5" />
+                                Total Classes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-blue-800">{classes.length}</p>
+                            <p className="text-sm text-blue-600 mt-1">Classes across all levels</p>
                         </CardContent>
                     </Card>
-                    <Card>
-                        <CardContent className="pt-6 flex items-center">
-                            <div className="rounded-full p-3 bg-amber-100 mr-4">
-                                <BookOpen className="h-6 w-6 text-amber-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Subjects Assigned</p>
-                                <h3 className="text-2xl font-bold">{totalSubjects}</h3>
-                            </div>
+
+                    <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
+                                <BookOpen className="mr-2 h-5 w-5" />
+                                Subjects Assigned
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-emerald-800">{totalSubjects}</p>
+                            <p className="text-sm text-emerald-600 mt-1">Subjects taught in classes</p>
                         </CardContent>
                     </Card>
-                    <Card>
-                        <CardContent className="pt-6 flex items-center">
-                            <div className="rounded-full p-3 bg-green-100 mr-4">
-                                <Users className="h-6 w-6 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Enrolled Students</p>
-                                <h3 className="text-2xl font-bold">{totalStudents}</h3>
-                            </div>
+
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-medium flex items-center text-purple-700">
+                                <Users className="mr-2 h-5 w-5" />
+                                Enrolled Students
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-3xl font-bold text-purple-800">{totalStudents}</p>
+                            <p className="text-sm text-purple-600 mt-1">Students across all classes</p>
                         </CardContent>
                     </Card>
                 </div>
             </Suspense>
 
             {/* Classes Table */}
-            <div className="border rounded-lg overflow-hidden p-6 bg-white">
-                <ClassesTable
-                    userRole={session.role}
-                    userId={session.id}
-                    schoolId={session.schoolId}
-                    teachers={teachers}
-                    subjects={subjects}
-                />
-            </div>
+            <Card>
+                <CardContent className="p-6">
+                    <ClassesTable
+                        userRole={session.role}
+                        userId={session.id}
+                        schoolId={session.schoolId}
+                        teachers={teachers}
+                        subjects={subjects}
+                    />
+                </CardContent>
+            </Card>
         </div>
     )
 } 

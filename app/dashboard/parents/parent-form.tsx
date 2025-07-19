@@ -18,15 +18,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AlertCircle, Mail, Loader2, CheckCircle } from "lucide-react";
+import { AlertCircle, Mail, Loader2, CheckCircle, RefreshCw, Copy } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { generatePassword } from "@/lib/utils";
 import { type ParentFormData } from "./types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Define form schema
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
     phone: z.string().optional(),
+    alternatePhone: z.string().optional(),
+    occupation: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
     password: z.string().min(6, "Password must be at least 6 characters").optional(),
     profileImage: z.instanceof(File).optional(),
 });
@@ -36,9 +44,10 @@ type FormValues = z.infer<typeof formSchema>;
 interface ParentFormProps {
     parent?: ParentFormData;
     onSuccess?: () => void;
+    className?: string;
 }
 
-export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
+export default function ParentForm({ parent, onSuccess, className = "" }: ParentFormProps) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(
@@ -46,6 +55,7 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
     );
     const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
     const [emailError, setEmailError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<string>("basic");
 
     // Initialize form with default values or existing parent data
     const form = useForm<FormValues>({
@@ -54,7 +64,13 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
             name: parent?.name || "",
             email: parent?.email || "",
             phone: parent?.phone || "",
-            password: parent ? undefined : "",
+            alternatePhone: parent?.alternatePhone || "",
+            occupation: parent?.occupation || "",
+            address: parent?.address || "",
+            city: parent?.city || "",
+            state: parent?.state || "",
+            country: parent?.country || "",
+            password: parent ? undefined : generatePassword(),
         },
     });
 
@@ -68,6 +84,19 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
         }
     };
 
+    const handleGeneratePassword = () => {
+        const newPassword = generatePassword();
+        form.setValue("password", newPassword);
+    };
+
+    const handleCopyPassword = () => {
+        const password = form.getValues("password");
+        if (password) {
+            navigator.clipboard.writeText(password);
+            toast.success("Password copied to clipboard");
+        }
+    };
+
     // Handle form submission
     const onSubmit = async (data: FormValues) => {
         setIsLoading(true);
@@ -78,6 +107,12 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
             formData.append("name", data.name);
             formData.append("email", data.email);
             if (data.phone) formData.append("phone", data.phone);
+            if (data.alternatePhone) formData.append("alternatePhone", data.alternatePhone);
+            if (data.occupation) formData.append("occupation", data.occupation);
+            if (data.address) formData.append("address", data.address);
+            if (data.city) formData.append("city", data.city);
+            if (data.state) formData.append("state", data.state);
+            if (data.country) formData.append("country", data.country);
             if (data.password) formData.append("password", data.password);
             if (data.profileImage) formData.append("profileImage", data.profileImage);
 
@@ -185,14 +220,14 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 ${className}`}>
             {!parent && (
                 <Alert className="bg-blue-50">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Automatic credential generation</AlertTitle>
                     <AlertDescription>
-                        When you create a new parent, the system will automatically generate a secure password and send the
-                        login credentials to the parent's email address if you don't provide a password.
+                        When you create a new parent, the system will automatically send the
+                        login credentials to the parent's email address.
                     </AlertDescription>
                 </Alert>
             )}
@@ -200,7 +235,7 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
             <Form {...form}>
                 <form
                     onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-4"
+                    className="space-y-6"
                 >
                     <div className="flex flex-col items-center mb-6">
                         <Avatar className="w-24 h-24 mb-2">
@@ -224,76 +259,193 @@ export default function ParentForm({ parent, onSuccess }: ParentFormProps) {
                         />
                     </div>
 
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Full name" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                            <TabsTrigger value="contact">Contact & Address</TabsTrigger>
+                        </TabsList>
 
-                    <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        type="email"
-                                        placeholder="Email address"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="phone"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Phone (Optional)</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Phone number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>
-                                    {parent ? "New Password (leave blank to keep current)" : "Password (Optional)"}
-                                </FormLabel>
-                                <FormControl>
-                                    <Input
-                                        type="password"
-                                        placeholder={parent ? "New password" : "Leave blank to auto-generate"}
-                                        {...field}
-                                    />
-                                </FormControl>
-                                {!parent && (
-                                    <FormDescription>
-                                        If left blank, a secure password will be generated and sent to the parent's email.
-                                    </FormDescription>
+                        <TabsContent value="basic" className="space-y-4 mt-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Full name" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
                                 )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="email"
+                                                placeholder="Email address"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="occupation"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Occupation (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Doctor, Teacher, etc." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>
+                                            {parent ? "New Password (leave blank to keep current)" : "Password"}
+                                        </FormLabel>
+                                        <div className="flex space-x-2">
+                                            <FormControl>
+                                                <Input
+                                                    type="text"
+                                                    placeholder={parent ? "New password" : "Password"}
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="outline"
+                                                onClick={handleGeneratePassword}
+                                                title="Generate new password"
+                                            >
+                                                <RefreshCw className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="outline"
+                                                onClick={handleCopyPassword}
+                                                title="Copy password"
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        {!parent && (
+                                            <FormDescription>
+                                                A secure password will be generated and sent to the parent's email.
+                                            </FormDescription>
+                                        )}
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="contact" className="space-y-4 mt-4">
+                            <FormField
+                                control={form.control}
+                                name="phone"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Phone (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Phone number" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="alternatePhone"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Alternate Phone (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., +1 234 567 890" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="address"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Address (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., 123 Main St" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="city"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>City (Optional)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., New York" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="state"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>State/Province (Optional)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., NY" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <FormField
+                                control={form.control}
+                                name="country"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Country (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., United States" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </TabsContent>
+                    </Tabs>
 
                     <div className="bg-muted/50 p-3 rounded-md">
                         <div className="flex items-center text-sm">

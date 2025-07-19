@@ -9,6 +9,8 @@ import { cookies } from "next/headers";
 import db from "@/lib/db";
 import { uploadImage } from "@/lib/cloudinary";
 import { generatePassword } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+import { sendStudentCredentialsEmail } from "@/lib/email";
 
 // Helper function to convert BigInt values to numbers for serialization
 function serializeBigInts(data: any): any {
@@ -36,17 +38,20 @@ function serializeBigInts(data: any): any {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const classId = searchParams.get("classId");
-  const departmentId = searchParams.get("departmentId");
-  const notInClassId = searchParams.get("notInClassId");
+  const startTime = Date.now();
 
   try {
+    const session = await getSession();
+    if (!session) {
+      logger.warn("Unauthorized access attempt to students API");
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const classId = searchParams.get("classId");
+    const departmentId = searchParams.get("departmentId");
+    const notInClassId = searchParams.get("notInClassId");
+
     const schoolId = session.schoolId;
     if (!schoolId) {
       return NextResponse.json(
@@ -201,9 +206,16 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    const totalTime = Date.now() - startTime;
+    logger.api("Students API GET", totalTime, {
+      studentCount: transformedStudents.length,
+      schoolId: session.schoolId,
+    });
+
     return NextResponse.json(transformedStudents);
   } catch (error) {
-    console.error("Error fetching students:", error);
+    const totalTime = Date.now() - startTime;
+    logger.error("Error fetching students", error, { totalTime });
     return NextResponse.json(
       { message: "Failed to fetch students" },
       { status: 500 }
@@ -242,6 +254,8 @@ export async function POST(req: Request) {
     const city = formData.get("city") as string;
     const state = formData.get("state") as string;
     const country = formData.get("country") as string;
+    const sendCredentials = formData.get("sendCredentials") === "true";
+    const sendWelcomeEmail = formData.get("sendWelcomeEmail") === "true";
 
     // Validate required fields
     const validationErrors: Record<string, string> = {};
@@ -345,7 +359,7 @@ export async function POST(req: Request) {
 
         profileImageUrl = await uploadImage(dataUrl);
       } catch (error) {
-        console.error("Failed to upload profile image:", error);
+        logger.error("Failed to upload profile image", error);
         return NextResponse.json(
           { message: "Failed to upload profile image" },
           { status: 500 }
@@ -396,7 +410,7 @@ export async function POST(req: Request) {
       }
 
       // Return complete student data
-      return await tx.student.findUnique({
+      const completeStudent = await tx.student.findUnique({
         where: { id: student.id },
         include: {
           user: {
@@ -420,11 +434,48 @@ export async function POST(req: Request) {
           department: true,
         },
       });
+
+      return completeStudent;
     });
+
+    // Send credentials email if requested
+    if (sendCredentials) {
+      try {
+        // Get school information for email
+        const school = await db.school.findUnique({
+          where: { id: session.schoolId },
+          select: { name: true, subdomain: true },
+        });
+
+        await sendStudentCredentialsEmail({
+          studentName: name,
+          studentEmail: email,
+          password: password || generatePassword(),
+          schoolName: school?.name || "Your School",
+          schoolUrl: `${
+            process.env.NEXT_PUBLIC_APP_URL || "https://eduit.app"
+          }/${school?.subdomain || ""}`,
+          schoolId: session.schoolId,
+        });
+
+        logger.info("Student credentials email sent successfully", {
+          studentId: result.id,
+          email,
+          schoolId: session.schoolId,
+        });
+      } catch (emailError) {
+        logger.error("Failed to send student credentials email", emailError, {
+          studentId: result.id,
+          email,
+          schoolId: session.schoolId,
+        });
+        // Don't fail the entire request if email fails
+      }
+    }
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error("[STUDENTS_POST]", err);
+    logger.error("Failed to create student", err);
 
     // Handle specific Prisma errors
     if (err && typeof err === "object" && "code" in err) {

@@ -26,14 +26,20 @@ export async function POST(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get the parent
+    // Get the parent - optimized query with only necessary fields
     const parent = await prisma.user.findUnique({
       where: {
         id: params.id,
         role: UserRole.PARENT,
       },
-      include: {
-        parent: true,
+      select: {
+        id: true,
+        schoolId: true,
+        parent: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
@@ -53,14 +59,20 @@ export async function POST(
     const body = await request.json();
     const validatedData = linkStudentSchema.parse(body);
 
-    // Check if student exists and belongs to the same school
+    // Check if student exists and belongs to the same school - optimized query
     const student = await prisma.user.findUnique({
       where: {
         id: validatedData.studentId,
         role: UserRole.STUDENT,
       },
-      include: {
-        student: true,
+      select: {
+        id: true,
+        schoolId: true,
+        student: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
@@ -75,12 +87,15 @@ export async function POST(
       );
     }
 
-    // Check if student is already linked to this or another parent
+    // Check if student is already linked to this or another parent - optimized query
     const existingLink = await prisma.studentParent.findFirst({
       where: {
         student: {
           userId: student.id,
         },
+      },
+      select: {
+        id: true,
       },
     });
 
@@ -101,10 +116,20 @@ export async function POST(
       include: {
         student: {
           include: {
-            user: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
             classes: {
+              take: 1,
               include: {
-                class: true,
+                class: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -117,13 +142,23 @@ export async function POST(
     const currentClass =
       studentClasses.length > 0 ? studentClasses[0].class.name : "Not assigned";
 
-    return NextResponse.json({
+    // Create response with cache headers
+    const response = NextResponse.json({
       id: result.student.user.id,
       name: result.student.user.name,
       class: currentClass,
       relation: result.relation,
       linkId: result.id,
+      isPrimary: result.isPrimary,
     });
+
+    // Add cache headers
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
+    );
+
+    return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -131,7 +166,12 @@ export async function POST(
         { status: 400 }
       );
     }
-    console.error("[PARENT_LINK_STUDENT]", error);
+
+    // Only log in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PARENT_LINK_STUDENT]", error);
+    }
+
     return new NextResponse("Internal error", { status: 500 });
   }
 }
@@ -158,13 +198,18 @@ export async function DELETE(
       return new NextResponse("Link ID is required", { status: 400 });
     }
 
-    // Get the relationship to check permissions
+    // Get the relationship to check permissions - optimized query
     const relationship = await prisma.studentParent.findUnique({
       where: { id: linkId },
-      include: {
+      select: {
+        id: true,
         parent: {
-          include: {
-            user: true,
+          select: {
+            user: {
+              select: {
+                schoolId: true,
+              },
+            },
           },
         },
       },
@@ -187,9 +232,20 @@ export async function DELETE(
       where: { id: linkId },
     });
 
-    return new NextResponse(null, { status: 204 });
+    // Create response with cache headers
+    const response = new NextResponse(null, { status: 204 });
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
+    );
+
+    return response;
   } catch (error) {
-    console.error("[PARENT_UNLINK_STUDENT]", error);
+    // Only log in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PARENT_UNLINK_STUDENT]", error);
+    }
+
     return new NextResponse("Internal error", { status: 500 });
   }
 }

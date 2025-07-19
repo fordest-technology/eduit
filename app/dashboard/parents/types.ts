@@ -4,6 +4,14 @@ export interface Parent {
   email: string;
   profileImage?: string | null;
   phone?: string | null;
+  alternatePhone?: string | null;
+  occupation?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   parent?: {
     id: string;
     phone?: string | null;
@@ -30,8 +38,16 @@ export interface ParentFormData {
   name: string;
   email: string;
   phone?: string | null;
+  alternatePhone?: string | null;
+  occupation?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   profileImage?: string | null;
   schoolId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface StudentData {

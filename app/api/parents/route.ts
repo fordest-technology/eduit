@@ -10,6 +10,7 @@ import { generatePassword, hashPassword } from "@/lib/auth/password";
 import { sendEmail, sendWelcomeEmail } from "@/lib/email";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import * as z from "zod";
 
 const ALLOWED_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"] as const;
 type AllowedRole = (typeof ALLOWED_ROLES)[number];
@@ -18,6 +19,22 @@ type AllowedRole = (typeof ALLOWED_ROLES)[number];
 function isAllowedRole(role: string | undefined): role is AllowedRole {
   return ALLOWED_ROLES.includes(role as AllowedRole);
 }
+
+// Zod schema for parent creation
+const parentFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  alternatePhone: z.string().optional(),
+  occupation: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  password: z
+    .string()
+    .min(6, "Password is required and must be at least 6 characters"),
+});
 
 export async function GET() {
   try {
@@ -32,7 +49,7 @@ export async function GET() {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
-    // Fetch parents based on role
+    // Fetch parents based on role - optimized query with only necessary fields
     const parents = await prisma.user.findMany({
       where: {
         role: "PARENT",
@@ -47,6 +64,8 @@ export async function GET() {
         parent: {
           select: {
             phone: true,
+            alternatePhone: true,
+            occupation: true,
             _count: {
               select: {
                 children: true,
@@ -60,7 +79,7 @@ export async function GET() {
       },
     });
 
-    // Get school colors if school admin
+    // Get school colors if school admin - use a single query for efficiency
     let schoolColors = {
       primaryColor: "#3b82f6",
       secondaryColor: "#1f2937",
@@ -84,19 +103,36 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({
-      parents: parents.map((parent) => ({
-        id: parent.id,
-        name: parent.name,
-        email: parent.email,
-        profileImage: parent.profileImage,
-        phone: parent.parent?.phone,
-        childrenCount: parent.parent?._count?.children || 0,
-      })),
+    // Transform data for response
+    const formattedParents = parents.map((parent) => ({
+      id: parent.id,
+      name: parent.name,
+      email: parent.email,
+      profileImage: parent.profileImage,
+      phone: parent.parent?.phone,
+      alternatePhone: parent.parent?.alternatePhone,
+      occupation: parent.parent?.occupation,
+      childrenCount: parent.parent?._count?.children || 0,
+    }));
+
+    // Add cache headers for better performance
+    const response = NextResponse.json({
+      parents: formattedParents,
       schoolColors,
     });
+
+    // Cache for 60 seconds - adjust based on how frequently data changes
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300"
+    );
+
+    return response;
   } catch (error) {
-    console.error("[PARENTS_GET]", error);
+    // Remove console logging in production
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PARENTS_GET]", error);
+    }
     return new NextResponse("Internal error", { status: 500 });
   }
 }
@@ -115,20 +151,36 @@ export async function POST(req: Request) {
     }
 
     const formData = await req.formData();
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const phone = formData.get("phone") as string | null;
-    const providedPassword = formData.get("password") as string | null;
     const profileImage = formData.get("profileImage") as File | null;
 
-    if (!name || !email) {
-      return new NextResponse(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    // Extract and validate data using Zod
+    const validatedData = parentFormSchema.parse({
+      name: formData.get("name"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+      alternatePhone: formData.get("alternatePhone"),
+      occupation: formData.get("occupation"),
+      address: formData.get("address"),
+      city: formData.get("city"),
+      state: formData.get("state"),
+      country: formData.get("country"),
+      password: formData.get("password"),
+    });
 
-    // Check if email already exists
+    const {
+      name,
+      email,
+      phone,
+      alternatePhone,
+      occupation,
+      address,
+      city,
+      state,
+      country,
+      password: providedPassword,
+    } = validatedData;
+
+    // Check if email already exists - optimize with select
     const existingUser = await prisma.user.findUnique({
       where: { email },
       select: { id: true },
@@ -150,11 +202,11 @@ export async function POST(req: Request) {
     // Generate or use provided password
     const password = providedPassword || generatePassword();
 
-    // Get school information for the welcome email
+    // Get school information for the welcome email - optimize with select
     const school = session.schoolId
       ? await prisma.school.findUnique({
           where: { id: session.schoolId },
-          select: { name: true },
+          select: { name: true, subdomain: true },
         })
       : null;
 
@@ -171,11 +223,17 @@ export async function POST(req: Request) {
         },
       });
 
-      // Create the parent profile
+      // Create the parent profile with additional fields from form data
       await tx.parent.create({
         data: {
           userId: user.id,
           phone: phone || undefined,
+          alternatePhone: alternatePhone || undefined,
+          occupation: occupation || undefined,
+          address: address || undefined,
+          city: city || undefined,
+          state: state || undefined,
+          country: country || undefined,
         },
       });
 
@@ -191,17 +249,24 @@ export async function POST(req: Request) {
     // Send welcome email with credentials
     let emailSent = false;
     try {
+      const schoolUrl = school?.subdomain
+        ? `https://${school.subdomain}.eduit.app`
+        : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
       await sendWelcomeEmail({
         email,
         name,
         password,
         role: "parent",
         schoolName: school?.name || "School",
-        schoolUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        schoolUrl,
       });
       emailSent = true;
     } catch (error) {
-      console.error("[WELCOME_EMAIL]", error);
+      // Only log in development
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[WELCOME_EMAIL]", error);
+      }
     }
 
     return NextResponse.json({
@@ -214,7 +279,18 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("[PARENTS_POST]", error);
+    // Only log in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PARENTS_POST]", error);
+    }
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return new NextResponse(JSON.stringify({ errors: error.errors }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Handle Prisma unique constraint violation
     if (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 // Define validation schema
 const createClassSchema = z.object({
@@ -11,12 +12,15 @@ const createClassSchema = z.object({
   levelId: z.string().optional().nullable(),
 });
 
-// GET all classes
+// GET all classes - Optimized for performance
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const auth = await requireAuth(req);
 
     if (!auth.authenticated || !auth.user) {
+      logger.warn("Unauthorized access attempt to classes API");
       return NextResponse.json(
         { error: "You must be logged in to access this resource" },
         { status: 401 }
@@ -25,8 +29,16 @@ export async function GET(req: NextRequest) {
 
     const { user } = auth;
     if (!user.schoolId) {
+      logger.warn("User without schoolId attempted to access classes", {
+        userId: user.id,
+      });
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
+
+    logger.info("Fetching classes", {
+      schoolId: user.schoolId,
+      userId: user.id,
+    });
 
     // Get current academic session
     const currentSession = await prisma.academicSession.findFirst({
@@ -34,21 +46,37 @@ export async function GET(req: NextRequest) {
         schoolId: user.schoolId,
         isCurrent: true,
       },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+      },
     });
 
-    // Get all classes for the school
+    // Get query parameters
     const { searchParams } = new URL(req.url);
     const levelId = searchParams.get("levelId");
 
+    // Optimized query with minimal includes and efficient counting
     const classes = await prisma.class.findMany({
       where: {
         schoolId: user.schoolId,
         ...(levelId ? { levelId } : {}),
       },
-      include: {
-        level: true,
+      select: {
+        id: true,
+        name: true,
+        section: true,
+        level: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         teacher: {
-          include: {
+          select: {
+            id: true,
             user: {
               select: {
                 name: true,
@@ -62,53 +90,17 @@ export async function GET(req: NextRequest) {
                 name: true,
               },
             },
-          },
-        },
-        subjects: {
-          include: {
-            subject: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-                department: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        students: {
-          where: {
-            sessionId: currentSession?.id,
-            status: "ACTIVE",
-          },
-          include: {
-            student: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                    profileImage: true,
-                  },
-                },
-                department: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
+            specialization: true,
           },
         },
         _count: {
           select: {
-            students: true,
+            students: {
+              where: {
+                sessionId: currentSession?.id,
+                status: "ACTIVE",
+              },
+            },
             subjects: true,
           },
         },
@@ -118,54 +110,71 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Get subjects for all classes in a single query (if needed)
+    const classIds = classes.map((c) => c.id);
+    const classSubjects =
+      classIds.length > 0
+        ? await prisma.classSubject.findMany({
+            where: {
+              classId: { in: classIds },
+            },
+            select: {
+              classId: true,
+              subject: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  department: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+        : [];
+
+    // Group subjects by class
+    const subjectsByClass = classSubjects.reduce((acc, cs) => {
+      if (!acc[cs.classId]) {
+        acc[cs.classId] = [];
+      }
+      acc[cs.classId].push({
+        id: cs.classId + "-" + cs.subject.id, // Create a unique ID
+        subject: cs.subject,
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
+
     // Format the response
     const formattedClasses = classes.map((classItem) => ({
       id: classItem.id,
       name: classItem.name,
       section: classItem.section,
       level: classItem.level,
-      teacher: classItem.teacher
-        ? {
-            id: classItem.teacher.id,
-            user: {
-              name: classItem.teacher.user.name,
-              email: classItem.teacher.user.email,
-              profileImage: classItem.teacher.user.profileImage,
-            },
-            department: classItem.teacher.department,
-            specialization: classItem.teacher.specialization,
-          }
-        : null,
-      subjects: classItem.subjects.map((s) => ({
-        id: s.id,
-        subject: s.subject,
-      })),
-      students: classItem.students.map((s) => ({
-        id: s.id,
-        student: {
-          id: s.student.id,
-          user: s.student.user,
-          department: s.student.department,
-        },
-        rollNumber: s.rollNumber,
-      })),
+      teacher: classItem.teacher,
+      subjects: subjectsByClass[classItem.id] || [],
       _count: {
         students: classItem._count.students,
         subjects: classItem._count.subjects,
       },
-      currentSession: currentSession
-        ? {
-            id: currentSession.id,
-            name: currentSession.name,
-            startDate: currentSession.startDate,
-            endDate: currentSession.endDate,
-          }
-        : null,
+      currentSession: currentSession,
     }));
+
+    const duration = Date.now() - startTime;
+    logger.api("GET /api/classes", duration, {
+      schoolId: user.schoolId,
+      count: formattedClasses.length,
+      levelId: levelId || null,
+    });
 
     return NextResponse.json(formattedClasses);
   } catch (error) {
-    console.error("[CLASSES_GET] Error:", error);
+    const duration = Date.now() - startTime;
+    logger.error("Error in GET /api/classes", error, { duration });
     return NextResponse.json(
       { error: "Failed to load class data" },
       { status: 500 }
@@ -175,10 +184,16 @@ export async function GET(req: NextRequest) {
 
 // POST to create a new class
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const auth = await requireAuth(req, ["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     if (!auth.authenticated || !auth.authorized || !auth.user) {
+      logger.warn("Unauthorized attempt to create class", {
+        userId: auth.user?.id,
+        role: auth.user?.role,
+      });
       return NextResponse.json(
         { error: "You are not authorized to perform this action" },
         { status: 403 }
@@ -189,75 +204,61 @@ export async function POST(req: NextRequest) {
     const schoolId = user.schoolId;
 
     if (!schoolId) {
+      logger.warn("User without schoolId attempted to create class", {
+        userId: user.id,
+      });
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
     // Parse and validate request body
     const body = await req.json();
-    console.log("API received body:", body); // Debug log
+    logger.info("Creating new class", { schoolId, body });
 
     // Validate input
     const validationResult = createClassSchema.safeParse(body);
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map((err) => ({
-        field: err.path.join("."),
-        message: err.message,
-      }));
-      return NextResponse.json({ errors }, { status: 400 });
+      logger.warn("Invalid class creation data", {
+        errors: validationResult.error.errors,
+        schoolId,
+      });
+      return NextResponse.json(
+        {
+          error: "Invalid input data",
+          details: validationResult.error.errors,
+        },
+        { status: 400 }
+      );
     }
 
     const { name, section, teacherId, levelId } = validationResult.data;
 
-    // Verify teacher if provided
-    if (teacherId) {
-      console.log("Verifying teacher:", teacherId); // Debug log
-      const teacher = await prisma.teacher.findUnique({
-        where: { id: teacherId },
-        include: { user: true },
+    // Check if class name already exists in the school
+    const existingClass = await prisma.class.findFirst({
+      where: {
+        schoolId,
+        name: name.trim(),
+        ...(section ? { section: section.trim() } : { section: null }),
+      },
+    });
+
+    if (existingClass) {
+      logger.warn("Attempted to create duplicate class", {
+        schoolId,
+        name,
+        section,
+        existingClassId: existingClass.id,
       });
-
-      if (!teacher) {
-        return NextResponse.json(
-          { error: "Teacher not found" },
-          { status: 404 }
-        );
-      }
-
-      if (teacher.user.schoolId !== schoolId) {
-        return NextResponse.json(
-          { error: "Teacher does not belong to the specified school" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Verify level if provided
-    if (levelId) {
-      console.log("Verifying level:", levelId); // Debug log
-      const level = await prisma.schoolLevel.findUnique({
-        where: { id: levelId },
-      });
-
-      if (!level) {
-        return NextResponse.json(
-          { error: "School level not found" },
-          { status: 404 }
-        );
-      }
-
-      if (level.schoolId !== schoolId) {
-        return NextResponse.json(
-          { error: "School level does not belong to the specified school" },
-          { status: 400 }
-        );
-      }
+      return NextResponse.json(
+        { error: "A class with this name and section already exists" },
+        { status: 409 }
+      );
     }
 
     // Create the class
     const newClass = await prisma.class.create({
       data: {
-        name,
-        section: section || null,
+        name: name.trim(),
+        section: section?.trim() || null,
         teacherId: teacherId || null,
         levelId: levelId || null,
         schoolId,
@@ -275,27 +276,20 @@ export async function POST(req: NextRequest) {
             },
           },
         },
-        subjects: true,
-        students: {
-          include: {
-            student: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
       },
     });
 
-    console.log("Created class:", newClass); // Debug log
-    return NextResponse.json(newClass);
+    const duration = Date.now() - startTime;
+    logger.api("POST /api/classes", duration, {
+      schoolId,
+      classId: newClass.id,
+      className: newClass.name,
+    });
+
+    return NextResponse.json(newClass, { status: 201 });
   } catch (error) {
-    console.error("[CLASSES_POST] Error:", error);
+    const duration = Date.now() - startTime;
+    logger.error("Error in POST /api/classes", error, { duration });
     return NextResponse.json(
       { error: "Failed to create class" },
       { status: 500 }

@@ -62,11 +62,9 @@ const createTransporter = () => {
   // For development, return a mock transporter that logs instead of sending
   return {
     sendMail: async (mailOptions: nodemailer.SendMailOptions) => {
-      console.log(
-        "DEV MODE: Would send email with these options:",
-        mailOptions
-      );
-      return { messageId: `dev-${Date.now()}` };
+      console.log("DEV MODE: Mock email sent with these options:", mailOptions);
+      // Immediately resolve to simulate a fast, successful email send in dev
+      return Promise.resolve({ messageId: `dev-${Date.now()}` });
     },
   };
 };
@@ -89,7 +87,7 @@ interface SendEmailOptions {
 }
 
 /**
- * Sends an email using the configured SMTP server
+ * Sends an email using the configured SMTP server or a mock for development
  * @param options Email options including recipient, subject, and content
  */
 export async function sendEmail(
@@ -104,87 +102,73 @@ export async function sendEmail(
     attachments = [],
   } = options;
 
-  // In development mode, just log the email rather than sending it
+  // In development mode, use the mock transporter which is fast
   if (process.env.NODE_ENV !== "production") {
-    console.log(
-      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    );
-    console.log(`📧 DEV MODE EMAIL: Would send to ${to}`);
-    console.log(`📧 Subject: ${subject}`);
-    console.log(`📧 From: ${from}`);
-    console.log("📧 Content: [HTML content omitted for clarity]");
-    console.log(
-      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    );
-
-    // Log to file in development for inspection
     try {
-      const fs = require("fs");
-      const path = require("path");
-      const debugDir = path.join(process.cwd(), ".debug-emails");
-
-      if (!fs.existsSync(debugDir)) {
-        fs.mkdirSync(debugDir, { recursive: true });
-      }
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = path.join(debugDir, `email-${timestamp}.html`);
-      fs.writeFileSync(filename, html);
-      console.log(`📧 Debug email saved to ${filename}`);
-    } catch (err) {
-      console.warn("Could not save debug email to file", err);
-    }
-
-    return { success: true };
-  }
-
-  try {
-    // Configure Nodemailer transport
-    const transporter = createTransporter();
-
-    // Add retry mechanism
-    let retries = 3;
-    let lastError: any = null;
-
-    while (retries > 0) {
+      const transporter = createTransporter();
+      await transporter.sendMail({ from, to, subject, html, attachments });
+      console.log(`DEV MODE: Mock email for ${to} processed.`);
+      // Log to file in development for inspection
       try {
-        // Send the email
-        await transporter.sendMail({
-          from,
-          to,
-          replyTo,
-          subject,
-          html,
-          attachments,
-        });
-
-        console.log(`Email sent successfully to ${to}`);
-        return { success: true };
-      } catch (error) {
-        lastError = error;
-        retries--;
-        if (retries > 0) {
-          console.log(
-            `Email sending failed, retrying (${retries} retries left)...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+        const fs = require("fs");
+        const path = require("path");
+        const debugDir = path.join(process.cwd(), ".debug-emails");
+        if (!fs.existsSync(debugDir)) {
+          fs.mkdirSync(debugDir, { recursive: true });
         }
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const filename = path.join(debugDir, `email-${timestamp}.html`);
+        fs.writeFileSync(filename, html);
+        console.log(`📧 Debug email saved to ${filename}`);
+      } catch (err) {
+        console.warn("Could not save debug email to file", err);
+      }
+      return { success: true };
+    } catch (err) {
+      console.error("Error with mock email transporter:", err);
+      return { success: false, error: "Mock email sending failed" };
+    }
+  }
+
+  // Production logic: attempt to send a real email with retries
+  const transporter = createTransporter();
+  let lastError: any;
+
+  // Add retry mechanism
+  let retries = 3;
+
+  while (retries > 0) {
+    try {
+      // Send the email
+      await transporter.sendMail({
+        from,
+        to,
+        replyTo,
+        subject,
+        html,
+        attachments,
+      });
+
+      console.log(`Email sent successfully to ${to}`);
+      return { success: true };
+    } catch (error) {
+      lastError = error;
+      retries--;
+      if (retries > 0) {
+        console.warn(
+          `Email sending failed, retrying (${retries} retries left)...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retrying
       }
     }
-
-    // All retries failed
-    console.error("Error sending email after multiple retries:", lastError);
-    return {
-      success: false,
-      error: lastError?.message || "Unknown email error",
-    };
-  } catch (error: any) {
-    console.error("Error sending email:", error);
-    return {
-      success: false,
-      error: error?.message || "Unknown email error",
-    };
   }
+
+  // All retries failed
+  console.error("Error sending email after multiple retries:", lastError);
+  return {
+    success: false,
+    error: lastError?.message || "Unknown email error",
+  };
 }
 
 interface WelcomeEmailParams {

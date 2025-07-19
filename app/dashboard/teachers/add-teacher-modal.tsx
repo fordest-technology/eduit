@@ -161,17 +161,23 @@ export function AddTeacherModal({
         }
     }
 
-    const handleCopyPassword = async () => {
+    const handleResendCredentials = async () => {
+        if (!teacherToEdit) return;
+
         try {
-            await navigator.clipboard.writeText(form.getValues("password"));
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 1500);
-        } catch {
-            setCopySuccess(false);
+            setIsLoading(true);
+            const password = generatePassword(); // Generate a new temporary password
+            await sendLoginCredentials(teacherToEdit.name, teacherToEdit.email, password);
+            toast.success("Login credentials have been resent.");
+        } catch (error) {
+            console.error("Failed to resend credentials:", error);
+            toast.error("Failed to resend credentials. Please try again later.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    async function sendLoginCredentials(result: any, userPassword: string) {
+    async function sendLoginCredentials(teacherName: string, teacherEmail: string, userPassword: string) {
         try {
             setEmailStatus('sending');
             setEmailError(null);
@@ -199,8 +205,8 @@ export function AddTeacherModal({
 
             // Ensure all required fields are included
             const emailPayload = {
-                name: result.name,
-                email: result.email,
+                name: teacherName,
+                email: teacherEmail,
                 password: userPassword,
                 role: "teacher",
                 schoolName: schoolName,
@@ -208,7 +214,7 @@ export function AddTeacherModal({
                 schoolUrl: schoolUrl,
             };
 
-            console.log("Sending credentials payload:", emailPayload);
+            console.info("Sending credentials payload:", emailPayload);
 
             const emailResponse = await fetch("/api/send-credentials", {
                 method: "POST",
@@ -219,7 +225,7 @@ export function AddTeacherModal({
             });
 
             const responseData = await emailResponse.json();
-            console.log("Send credentials response:", responseData);
+            console.info("Send credentials response:", responseData);
 
             if (!emailResponse.ok) {
                 throw new Error(responseData.error || "Failed to send login credentials");
@@ -297,16 +303,20 @@ export function AddTeacherModal({
 
             // Send email credentials if it's a new teacher
             if (!isEditMode) {
-                const emailSent = await sendLoginCredentials(result, values.password);
-                if (!emailSent) {
+                const emailSent = await sendLoginCredentials(values.name, values.email, values.password);
+                if (emailSent) {
+                    toast.success("Login credentials sent successfully.");
+                } else {
                     toast.warning("Teacher created but failed to send login credentials. Please try sending them again.");
                 }
             }
 
             toast.success(`Teacher ${isEditMode ? 'updated' : 'created'} successfully!`);
 
-            // Refresh the page data
-            router.refresh();
+            // Call onSuccess callback to trigger a data refetch in the parent component
+            if (onSuccess) {
+                onSuccess();
+            }
 
             // Reset form if not in edit mode
             if (!isEditMode) {
@@ -327,14 +337,6 @@ export function AddTeacherModal({
 
             // Close the modal
             onOpenChange(false);
-
-            // Call onSuccess callback if provided
-            if (onSuccess) {
-                onSuccess();
-            }
-
-            // Force an immediate refresh of the teachers list
-            router.push('/dashboard/teachers');
 
         } catch (error) {
             console.error("Failed to save teacher:", error);
@@ -636,11 +638,8 @@ export function AddTeacherModal({
                                                     onClick={() => {
                                                         setEmailRetryCount(prev => prev + 1);
                                                         sendLoginCredentials(
-                                                            {
-                                                                name: form.getValues("name"),
-                                                                email: form.getValues("email"),
-                                                                schoolId: session?.schoolId
-                                                            },
+                                                            form.getValues("name"),
+                                                            form.getValues("email"),
                                                             form.getValues("password")
                                                         );
                                                     }}

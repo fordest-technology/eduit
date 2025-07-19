@@ -1,188 +1,199 @@
-"use client"
-
-import { useEffect, useState } from "react"
+import { getSession } from "@/lib/auth"
+import prisma from "@/lib/db"
+import { redirect } from "next/navigation"
 import { StudentsClient } from "./students-client"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/app/components/dashboard-header"
+import { logger } from "@/lib/logger"
+import { PerformanceMonitor } from "@/components/ui/performance-monitor"
 
-interface Student {
-    id: string;
-    name: string;
-    email: string;
-    profileImage: string | null;
-    rollNumber: string;
-    classes: Array<{
-        id: string;
-        class: {
-            id: string;
-            name: string;
-            section?: string;
-            level: {
-                id: string;
-                name: string;
-            };
-        };
-        status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
-        rollNumber?: string;
-    }>;
-    currentClass?: {
-        id: string;
-        name: string;
-        section?: string;
-        level?: {
-            id: string;
-            name: string;
-        };
-        rollNumber?: string;
-        status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
-    };
-    hasParents: boolean;
-    parentNames: string;
+export const metadata = {
+    title: "Students | EduIT",
+    description: "Manage student profiles and track academic progress",
 }
 
-async function fetchClassById(classId: string) {
-    console.log(`Fetching class with ID: ${classId}`);
-    const res = await fetch(`/api/classes/${classId}`);
+export default async function StudentsPage() {
+    const startTime = Date.now()
 
-    if (!res.ok) {
-        console.error(`Failed to fetch class ${classId}. Status: ${res.status}`);
-        return null;
-    }
+    try {
+        logger.info("Starting students page data fetch")
 
-    const data = await res.json();
-    console.log(`Class data received for ${classId}:`, data);
-    return data;
-}
+        const session = await getSession()
 
-export default function StudentsPage() {
-    const router = useRouter()
-    const [session, setSession] = useState<any>(null)
-    const [students, setStudents] = useState<any[]>([])
-    const [stats, setStats] = useState({
-        total: 0,
-        classes: 0,
-        withParents: 0,
-        levels: 0,
-        active: 0
-    })
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-
-    useEffect(() => {
-        async function fetchSessionAndData() {
-            try {
-                setLoading(true);
-                setError(null);
-
-                // First fetch the session
-                const sessionRes = await fetch('/api/auth/session');
-                if (!sessionRes.ok) {
-                    throw new Error('Failed to fetch session');
-                }
-
-                const sessionData = await sessionRes.json();
-                if (!sessionData) {
-                    router.push('/auth/signin');
-                    return;
-                }
-
-                // Check if user has required role
-                const allowedRoles = ['super_admin', 'school_admin', 'teacher'];
-                const userRole = sessionData.role?.toLowerCase();
-                if (!userRole || !allowedRoles.includes(userRole)) {
-                    throw new Error('You do not have permission to access this page');
-                }
-
-                setSession(sessionData);
-
-                // Fetch students data with proper error handling
-                const studentsRes = await fetch('/api/students', {
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache',
-                    },
-                });
-
-                if (!studentsRes.ok) {
-                    const errorData = await studentsRes.json();
-                    throw new Error(errorData.message || "Failed to fetch students");
-                }
-
-                const studentsData = await studentsRes.json() as Student[];
-                console.log('Raw students data from API:', studentsData);
-
-                // Calculate stats from the transformed data
-                const stats = {
-                    total: studentsData.length,
-                    classes: studentsData.filter((s: Student) =>
-                        s.currentClass && s.currentClass.status === 'ACTIVE'
-                    ).length,
-                    withParents: studentsData.filter((s: Student) => s.hasParents).length,
-                    levels: new Set(studentsData
-                        .filter((s: Student) => s.currentClass?.level?.id && s.currentClass.status === 'ACTIVE')
-                        .map((s: Student) => s.currentClass!.level!.id)
-                    ).size,
-                    active: studentsData.filter((s: Student) =>
-                        s.currentClass?.status === 'ACTIVE'
-                    ).length,
-                };
-
-                console.log('Calculated stats:', stats);
-
-                setStudents(studentsData);
-                setStats(stats);
-
-            } catch (error) {
-                console.error("Error:", error);
-                if (error instanceof Error) {
-                    setError(error.message);
-                } else {
-                    setError("An unexpected error occurred");
-                }
-                toast.error("Error loading students data");
-            } finally {
-                setLoading(false);
-            }
+        if (!session) {
+            logger.warn("No session found, redirecting to login")
+            redirect("/login")
         }
 
-        fetchSessionAndData();
-    }, []);
+        // Check if user has required role
+        const allowedRoles = ['super_admin', 'school_admin', 'teacher']
+        const userRole = session.role?.toLowerCase()
+        if (!userRole || !allowedRoles.includes(userRole)) {
+            logger.warn("Unauthorized access attempt", { userRole, userId: session.id })
+            redirect("/dashboard")
+        }
 
-    if (loading) {
+        logger.info("Fetching students data", { schoolId: session.schoolId, userRole })
+
+        // Find the current academic session
+        const currentSession = await prisma.academicSession.findFirst({
+            where: {
+                schoolId: session.schoolId,
+                isCurrent: true,
+            },
+        })
+
+        if (!currentSession) {
+            logger.error("No current academic session found", { schoolId: session.schoolId })
+            throw new Error("No current academic session found")
+        }
+
+        // Fetch students with optimized query
+        const students = await prisma.student.findMany({
+            where: {
+                user: {
+                    schoolId: session.schoolId,
+                },
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        profileImage: true,
+                    },
+                },
+                classes: {
+                    where: {
+                        sessionId: currentSession.id,
+                        status: "ACTIVE",
+                    },
+                    include: {
+                        class: {
+                            select: {
+                                id: true,
+                                name: true,
+                                section: true,
+                                level: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                parents: {
+                    select: {
+                        parent: {
+                            select: {
+                                user: {
+                                    select: {
+                                        name: true,
+                                        email: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                user: {
+                    name: "asc",
+                },
+            },
+        })
+
+        const queryTime = Date.now() - startTime
+        logger.query("Students data fetch", queryTime, {
+            studentCount: students.length,
+            schoolId: session.schoolId
+        })
+
+        // Transform the data to include current class information
+        const transformedStudents = students.map((student) => {
+            const currentClass = student.classes.find((c) => c.status === "ACTIVE")
+
+            return {
+                id: student.id,
+                name: student.user.name,
+                email: student.user.email,
+                profileImage: student.user.profileImage,
+                rollNumber: currentClass?.rollNumber || "",
+                classes: student.classes.map((sc) => ({
+                    id: sc.id,
+                    class: {
+                        id: sc.class.id,
+                        name: sc.class.name,
+                        section: sc.class.section || undefined,
+                        level: sc.class.level || { id: "", name: "" }
+                    }
+                })),
+                currentClass: currentClass
+                    ? {
+                        id: currentClass.class.id,
+                        name: currentClass.class.name,
+                        level: currentClass.class.level || { id: "", name: "" }
+                    }
+                    : undefined,
+                hasParents: student.parents.length > 0,
+                parentNames: student.parents.map((p) => p.parent.user.name).join(", "),
+                schoolId: session.schoolId,
+            }
+        })
+
+        // Calculate stats efficiently
+        const stats = {
+            total: transformedStudents.length,
+            classes: transformedStudents.filter((s) => s.currentClass).length,
+            withParents: transformedStudents.filter((s) => s.hasParents).length,
+            levels: new Set(
+                transformedStudents
+                    .filter((s) => s.currentClass?.level?.id)
+                    .map((s) => s.currentClass!.level!.id)
+            ).size,
+            active: transformedStudents.filter((s) => s.currentClass).length,
+        }
+
+        const totalTime = Date.now() - startTime
+        logger.api("Students page load", totalTime, {
+            studentCount: students.length,
+            stats,
+            userRole
+        })
+
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        )
-    }
+            <PerformanceMonitor pageName="Students">
+                <div className="space-y-6">
+                    <DashboardHeader
+                        heading="Students"
+                        text="Manage student profiles and track academic progress"
+                        showBanner={true}
+                    />
 
-    if (error || !session) {
+                    <StudentsClient
+                        students={transformedStudents}
+                        stats={stats}
+                        error={undefined}
+                    />
+                </div>
+            </PerformanceMonitor>
+        )
+    } catch (error) {
+        const totalTime = Date.now() - startTime
+        logger.error("Error loading students page", error, { totalTime })
+
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-                <p className="text-destructive">{error || "Not authorized"}</p>
-                <Button onClick={() => router.push("/dashboard")}>
+                <p className="text-destructive">
+                    {error instanceof Error ? error.message : "An unexpected error occurred"}
+                </p>
+                <a href="/dashboard" className="text-blue-600 hover:underline">
                     Back to Dashboard
-                </Button>
+                </a>
             </div>
         )
     }
-
-    return (
-        <div className="space-y-6">
-            <DashboardHeader
-                heading="Students"
-                text="Manage student profiles and track academic progress"
-                showBanner={true}
-            />
-
-            <StudentsClient
-                students={students}
-                stats={stats}
-                error={undefined}
-            />
-        </div>
-    )
 } 

@@ -46,7 +46,7 @@ const apiCalls: ApiCallRecord[] = [];
 const credentialsSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  role: z.enum(["teacher", "student"]),
+  role: z.enum(["teacher", "student", "parent"]),
   schoolName: z.string().min(1, "School name is required"),
   password: z.string().optional(),
   schoolId: z.string().min(1, "School ID is required"),
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    console.log("Received credentials payload:", body);
+    console.log({ body }, "Received credentials payload");
 
     // Validate input using Zod
     const validation = credentialsSchema.safeParse(body);
@@ -134,6 +134,23 @@ export async function POST(request: Request) {
       steps.push({
         time: Date.now() - startTime,
         msg: "Student credentials email sent",
+        details: { result },
+      });
+    } else if (role === "parent") {
+      const parentEmailData: BaseEmailParams = {
+        ...baseEmailData,
+      };
+      result = await sendWelcomeEmail({
+        email: parentEmailData.email,
+        name: parentEmailData.name,
+        password: parentEmailData.password,
+        role: "parent",
+        schoolName: parentEmailData.schoolName,
+        schoolUrl: parentEmailData.schoolUrl,
+      });
+      steps.push({
+        time: Date.now() - startTime,
+        msg: "Parent credentials email sent",
         details: { result },
       });
     }
