@@ -470,7 +470,7 @@ export async function PUT(
 
     // Check permission to update student
     if (
-      session.role === "school_admin" &&
+      session.role === UserRole.SCHOOL_ADMIN &&
       session.schoolId !== existingStudent.user.schoolId
     ) {
       return NextResponse.json(
