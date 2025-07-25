@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSchoolIdFromSubdomain } from "./lib/subdomain";
-import { verifyJwt } from "./lib/auth";
+import { verifyJwt } from "./lib/auth-server";
 
 // Define which paths require authentication
 const authRequiredPaths = ["/dashboard"];

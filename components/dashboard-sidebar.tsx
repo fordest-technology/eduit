@@ -488,8 +488,8 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         <div className="border-t p-4 flex-shrink-0">
           <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "gap-3")}>
             <Avatar className={cn(collapsed && "h-8 w-8")}>
-              <AvatarImage src={user.profileImage || undefined} />
-              <AvatarFallback>{user.name[0]}</AvatarFallback>
+              <AvatarImage src={user?.profileImage || undefined} />
+              <AvatarFallback>{(user?.name || 'U')[0].toUpperCase()}</AvatarFallback>
             </Avatar>
             {!collapsed && (
               <div className="flex-1 min-w-0">

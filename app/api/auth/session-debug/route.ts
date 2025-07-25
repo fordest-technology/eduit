@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyJwt } from "@/lib/auth";
+import { verifyJwt } from "@/lib/auth-server";
 
 export async function GET(request: NextRequest) {
   try {
     // Get the session cookie
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("session");
+    const allCookies = Array.from(cookieStore.getAll());
 
     // Check if we have a cookie
-    if (!sessionCookie || !sessionCookie.value) {
+    if (!sessionCookie?.value) {
       return NextResponse.json(
         {
           error: "No session cookie found",
           cookie_exists: false,
-          cookies_available: cookieStore.getAll().map((c) => c.name),
+          cookies_available: allCookies.map((c) => c.name),
         },
         { status: 200 }
       );

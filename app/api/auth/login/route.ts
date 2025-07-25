@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSession, setSessionCookie } from "@/lib/auth";
+import { createSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
 import { UserRole } from "@prisma/client";
@@ -37,21 +37,32 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create session token
-    const token = await createSession(user.id);
+    // Create session token and set cookie
+    const session = await createSession({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      // Include additional user data in the session
+      ...(user.schoolId && { schoolId: user.schoolId })
+    });
 
-    // Create response
+    // Get the response with cookie set
     const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
+        schoolId: user.schoolId || null,
+        profileImage: user.profileImage || null,
       },
     });
 
-    // Set session cookie
-    await setSessionCookie(response, token);
+    // Copy the Set-Cookie header from the session response
+    const cookieHeader = session.headers.get('Set-Cookie');
+    if (cookieHeader) {
+      response.headers.set('Set-Cookie', cookieHeader);
+    }
 
     return response;
   } catch (error) {

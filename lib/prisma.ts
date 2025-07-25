@@ -25,6 +25,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export { prisma };
+export { prisma as db };
 
 // Error handling wrapper function
 export async function withErrorHandling<T>(

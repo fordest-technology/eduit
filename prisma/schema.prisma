@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
 model User {
   id                String            @id @default(cuid())
   name              String
@@ -567,14 +575,6 @@ model ComponentScore {
   updatedAt   DateTime            @updatedAt
   component   AssessmentComponent @relation(fields: [componentId], references: [id])
   result      Result              @relation(fields: [resultId], references: [id])
-}
-
-enum UserRole {
-  SUPER_ADMIN
-  SCHOOL_ADMIN
-  TEACHER
-  STUDENT
-  PARENT
 }
 
 enum AdminType {
