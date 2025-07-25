@@ -27,6 +27,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://eduit.com",
+  "https://eduit.fordestech.com",
   // Add your production domains here
 ];
 
