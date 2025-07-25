@@ -1,0 +1,8 @@
+   ▲ Next.js 15.2.4
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     ✓ webpackBuildWorker
+     ✓ parallelServerCompiles
+     ✓ parallelServerBuildTraces
+
+   Creating an optimized production build ...
