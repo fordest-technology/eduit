@@ -2,7 +2,8 @@ import { prisma, withErrorHandling } from "@/lib/prisma";
 import { ResultsConfigurationForm } from "./results-configuration-form";
 import { ResultConfiguration } from "../types";
 import { ClassTabs } from "./class-tabs";
-import { getSession } from "@/lib/auth";
+// import { getSession } from "@/lib/auth";
+import { getSession } from "@/lib/auth-client";
 
 // Define interfaces based on DB schema
 interface ResultPeriodType {
