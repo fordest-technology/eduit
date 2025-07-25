@@ -20,7 +20,8 @@ import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/db/prisma.ts"
+// import { UserRole } from "@prisma/client"
 
 interface Department {
     id: string
