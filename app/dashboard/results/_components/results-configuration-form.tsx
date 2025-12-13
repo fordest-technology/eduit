@@ -63,6 +63,37 @@ const configurationSchema = z.object({
 
 type ConfigurationForm = z.infer<typeof configurationSchema>;
 
+// Nigerian Educational Standards Grading Presets
+const NIGERIAN_GRADING_PRESETS = {
+    primary: [
+        { minScore: 80, maxScore: 100, grade: "A", remark: "Excellent" },
+        { minScore: 70, maxScore: 79, grade: "B", remark: "Very Good" },
+        { minScore: 60, maxScore: 69, grade: "C", remark: "Good" },
+        { minScore: 50, maxScore: 59, grade: "D", remark: "Pass" },
+        { minScore: 40, maxScore: 49, grade: "E", remark: "Fair" },
+        { minScore: 0, maxScore: 39, grade: "F", remark: "Fail" },
+    ],
+    secondary_waec: [
+        { minScore: 75, maxScore: 100, grade: "A1", remark: "Excellent" },
+        { minScore: 70, maxScore: 74, grade: "B2", remark: "Very Good" },
+        { minScore: 65, maxScore: 69, grade: "B3", remark: "Good" },
+        { minScore: 60, maxScore: 64, grade: "C4", remark: "Credit" },
+        { minScore: 55, maxScore: 59, grade: "C5", remark: "Credit" },
+        { minScore: 50, maxScore: 54, grade: "C6", remark: "Credit" },
+        { minScore: 45, maxScore: 49, grade: "D7", remark: "Pass" },
+        { minScore: 40, maxScore: 44, grade: "E8", remark: "Pass" },
+        { minScore: 0, maxScore: 39, grade: "F9", remark: "Fail" },
+    ],
+    secondary: [
+        { minScore: 80, maxScore: 100, grade: "A", remark: "Excellent/Distinction" },
+        { minScore: 70, maxScore: 79, grade: "B", remark: "Very Good" },
+        { minScore: 60, maxScore: 69, grade: "C", remark: "Good/Credit" },
+        { minScore: 50, maxScore: 59, grade: "D", remark: "Pass" },
+        { minScore: 40, maxScore: 49, grade: "E", remark: "Fair" },
+        { minScore: 0, maxScore: 39, grade: "F", remark: "Fail" },
+    ],
+};
+
 interface ResultsConfigurationFormProps {
     initialData?: ResultConfiguration;
     selectedClassId?: string | null;
@@ -508,27 +539,50 @@ export function ResultsConfigurationForm({
                         </AccordionTrigger>
                         <AccordionContent>
                             <div className="space-y-4">
-                                <div className="flex items-center justify-between">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <p className="text-sm text-muted-foreground">
                                         Define the grading scale for student results
                                     </p>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={isReadOnly}
-                                        onClick={() =>
-                                            appendGrade({
-                                                minScore: 0,
-                                                maxScore: 0,
-                                                grade: "",
-                                                remark: "",
-                                            })
-                                        }
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Add Grade
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Select
+                                            disabled={isReadOnly}
+                                            onValueChange={(preset) => {
+                                                if (preset === 'primary') {
+                                                    form.setValue('gradingScale', NIGERIAN_GRADING_PRESETS.primary);
+                                                } else if (preset === 'secondary') {
+                                                    form.setValue('gradingScale', NIGERIAN_GRADING_PRESETS.secondary);
+                                                } else if (preset === 'secondary_waec') {
+                                                    form.setValue('gradingScale', NIGERIAN_GRADING_PRESETS.secondary_waec);
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-[200px]">
+                                                <SelectValue placeholder="Load Preset" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="primary">Nigerian Primary</SelectItem>
+                                                <SelectItem value="secondary">Nigerian Secondary</SelectItem>
+                                                <SelectItem value="secondary_waec">Nigerian WAEC</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={isReadOnly}
+                                            onClick={() =>
+                                                appendGrade({
+                                                    minScore: 0,
+                                                    maxScore: 0,
+                                                    grade: "",
+                                                    remark: "",
+                                                })
+                                            }
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Grade
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 {gradeFields.map((field, index) => (

@@ -81,7 +81,7 @@ export async function POST(
       );
     }
 
-    // Calculate cumulative average
+    // Calculate cumulative average using period weights
     const previousResults = await prisma.result.findMany({
       where: {
         studentId: validatedData.studentId,
@@ -91,14 +91,48 @@ export async function POST(
           periodId: validatedData.periodId,
         },
       },
+      include: {
+        period: {
+          select: {
+            weight: true,
+          },
+        },
+      },
     });
 
-    const cumulativeAverage =
-      previousResults.length > 0
-        ? (previousResults.reduce((sum, result) => sum + result.total, 0) +
-            total) /
-          (previousResults.length + 1)
-        : total;
+    let cumulativeAverage = total;
+
+    if (previousResults.length > 0 && period?.configuration?.cumulativeEnabled) {
+      const currentPeriod = period;
+
+      if (period.configuration.cumulativeMethod === "weighted_average") {
+        // Weighted average calculation
+        const totalWeightedScore =
+          previousResults.reduce(
+            (sum, result) => sum + result.total * (result.period.weight || 1),
+            0
+          ) +
+          total * (currentPeriod.weight || 1);
+
+        const totalWeight =
+          previousResults.reduce(
+            (sum, result) => sum + (result.period.weight || 1),
+            0
+          ) + (currentPeriod.weight || 1);
+
+        cumulativeAverage = totalWeightedScore / totalWeight;
+      } else if (period.configuration.cumulativeMethod === "progressive_average") {
+        // Progressive average (Nigerian standard: Term1 30%, Term2 30%, Term3 40%)
+        cumulativeAverage =
+          (previousResults.reduce((sum, result) => sum + result.total, 0) + total) /
+          (previousResults.length + 1);
+      } else {
+        // Simple average
+        cumulativeAverage =
+          (previousResults.reduce((sum, result) => sum + result.total, 0) + total) /
+          (previousResults.length + 1);
+      }
+    }
 
     const result = await prisma.result.create({
       data: {
@@ -228,7 +262,7 @@ export async function PUT(
       );
     }
 
-    // Recalculate cumulative average
+    // Recalculate cumulative average using period weights
     const otherResults = await prisma.result.findMany({
       where: {
         studentId: validatedData.studentId,
@@ -239,14 +273,48 @@ export async function PUT(
           periodId: validatedData.periodId,
         },
       },
+      include: {
+        period: {
+          select: {
+            weight: true,
+          },
+        },
+      },
     });
 
-    const cumulativeAverage =
-      otherResults.length > 0
-        ? (otherResults.reduce((sum, result) => sum + result.total, 0) +
-            total) /
-          (otherResults.length + 1)
-        : total;
+    let cumulativeAverage = total;
+
+    if (otherResults.length > 0 && period?.configuration?.cumulativeEnabled) {
+      const currentPeriod = period;
+
+      if (period.configuration.cumulativeMethod === "weighted_average") {
+        // Weighted average calculation
+        const totalWeightedScore =
+          otherResults.reduce(
+            (sum, result) => sum + result.total * (result.period.weight || 1),
+            0
+          ) +
+          total * (currentPeriod.weight || 1);
+
+        const totalWeight =
+          otherResults.reduce(
+            (sum, result) => sum + (result.period.weight || 1),
+            0
+          ) + (currentPeriod.weight || 1);
+
+        cumulativeAverage = totalWeightedScore / totalWeight;
+      } else if (period.configuration.cumulativeMethod === "progressive_average") {
+        // Progressive average
+        cumulativeAverage =
+          (otherResults.reduce((sum, result) => sum + result.total, 0) + total) /
+          (otherResults.length + 1);
+      } else {
+        // Simple average
+        cumulativeAverage =
+          (otherResults.reduce((sum, result) => sum + result.total, 0) + total) /
+          (otherResults.length + 1);
+      }
+    }
 
     const result = await prisma.result.update({
       where: { id },

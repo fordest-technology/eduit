@@ -189,6 +189,39 @@ export async function POST(
         },
       });
 
+      // Calculate total from component scores
+      const total = result.componentScores.reduce(
+        (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
+        0
+      );
+
+      // Get grading configuration to calculate proper grade
+      const period = await prisma.resultPeriod.findUnique({
+        where: { id: result.periodId },
+        include: {
+          configuration: {
+            include: {
+              gradingScale: true,
+            },
+          },
+        },
+      });
+
+      // Calculate grade and remark based on grading scale
+      let grade = "N/A";
+      let remark = "No grade applicable";
+
+      if (period?.configuration?.gradingScale) {
+        const gradeScale = period.configuration.gradingScale.find(
+          (scale: any) => total >= scale.minScore && total <= scale.maxScore
+        );
+
+        if (gradeScale) {
+          grade = gradeScale.grade;
+          remark = gradeScale.remark;
+        }
+      }
+
       if (existingResult) {
         // Update existing result and component scores
         const updatedResult = await prisma.result.update({
@@ -196,25 +229,19 @@ export async function POST(
           data: {
             // Update main result fields
             updatedAt: new Date(),
-            // Add required fields
-            total: result.componentScores.reduce(
-              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
-              0
-            ),
-            grade: result.grade || existingResult.grade || "N/A", // Use existing if available
-            remark: result.remark || existingResult.remark || "Pending", // Use existing if available
+            total,
+            grade,
+            remark,
 
             // Update component scores
             componentScores: {
               // Delete existing scores
               deleteMany: {},
-              // Create new scores
-              createMany: {
-                data: result.componentScores.map((cs: any) => ({
-                  componentKey: cs.componentKey,
-                  score: cs.score,
-                })),
-              },
+              // Create new scores with correct field name (componentId, not componentKey)
+              create: result.componentScores.map((cs: any) => ({
+                componentId: cs.componentId,
+                score: parseFloat(cs.score) || 0,
+              })),
             },
           },
         });
@@ -228,20 +255,14 @@ export async function POST(
             subjectId: result.subjectId,
             periodId: result.periodId,
             sessionId: result.sessionId,
-            // Add required fields
-            total: result.componentScores.reduce(
-              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
-              0
-            ),
-            grade: result.grade || "N/A", // Default grade or from input
-            remark: result.remark || "Pending", // Default remark
+            total,
+            grade,
+            remark,
             componentScores: {
-              createMany: {
-                data: result.componentScores.map((cs: any) => ({
-                  componentKey: cs.componentKey,
-                  score: cs.score,
-                })),
-              },
+              create: result.componentScores.map((cs: any) => ({
+                componentId: cs.componentId,
+                score: parseFloat(cs.score) || 0,
+              })),
             },
           },
         });
