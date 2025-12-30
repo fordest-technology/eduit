@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { AddTeacherModal } from "./add-teacher-modal"
+import { cn } from "@/lib/utils"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 import {
     Table,
     TableBody,
@@ -221,95 +223,90 @@ export function TeachersClient({ teachers: initialTeachers, stats, error }: Teac
     )
 
     return (
-        <div className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {isLoading ? (
-                    <>
-                        {renderStatCardSkeleton()}
-                        {renderStatCardSkeleton()}
-                        {renderStatCardSkeleton()}
-                    </>
-                ) : (
-                    <>
-                        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                                    <Users className="mr-2 h-5 w-5" />
-                                    Total Teachers
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-3xl font-bold text-blue-800">{stats.total}</p>
-                                <p className="text-sm text-blue-600 mt-1">Teaching staff</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                                    <GraduationCap className="mr-2 h-5 w-5" />
-                                    Departments
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-3xl font-bold text-purple-800">{stats.departments}</p>
-                                <p className="text-sm text-purple-600 mt-1">With assigned teachers</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
-                                    <BookOpen className="mr-2 h-5 w-5" />
-                                    Class Teachers
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-3xl font-bold text-emerald-800">{stats.withClasses}</p>
-                                <p className="text-sm text-emerald-600 mt-1">Actively teaching classes</p>
-                            </CardContent>
-                        </Card>
-                    </>
-                )}
-            </div>
+        <div className="space-y-8 animate-in fade-in duration-700 font-poppins pb-10">
+            {/* Stats Cards Section */}
+            <DashboardStatsGrid columns={3}>
+                <DashboardStatsCard
+                    title="Total Teachers"
+                    value={isLoading ? "..." : stats.total}
+                    icon={Users}
+                    color="blue"
+                    description="Teaching staff"
+                />
+                <DashboardStatsCard
+                    title="Departments"
+                    value={isLoading ? "..." : stats.departments}
+                    icon={GraduationCap}
+                    color="purple"
+                    description="With assigned teachers"
+                />
+                <DashboardStatsCard
+                    title="Class Teachers"
+                    value={isLoading ? "..." : stats.withClasses}
+                    icon={BookOpen}
+                    color="emerald"
+                    description="Actively teaching classes"
+                />
+            </DashboardStatsGrid>
 
             {/* Error display */}
             {error && (
-                <div className="rounded-lg border bg-card p-8 text-card-foreground shadow-sm mb-6">
+                <Card className="border-none shadow-xl shadow-red-500/10 rounded-[2.5rem] bg-white overflow-hidden p-8 border-l-4 border-red-500">
                     <div className="flex flex-col items-center justify-center space-y-4">
-                        <h2 className="text-xl font-bold text-red-500">Error</h2>
-                        <p className="text-center text-muted-foreground">
+                        <div className="p-4 bg-red-50 rounded-full">
+                            <X className="h-8 w-8 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-red-600 font-sora">Something went wrong</h2>
+                        <p className="text-center text-slate-500 font-medium max-w-md">
                             {error}
                         </p>
                         <Button
                             onClick={() => window.location.reload()}
-                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                            className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-8 h-12"
                         >
-                            Retry
+                            Retry Connection
                         </Button>
                     </div>
-                </div>
+                </Card>
             )}
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div>
-                        <CardTitle>Teachers</CardTitle>
-                        <CardDescription>
-                            Manage teacher profiles and assignments
-                        </CardDescription>
+            <Card className="border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden">
+                <CardHeader className="px-8 pt-8 pb-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <CardTitle className="text-2xl font-bold font-sora text-slate-800">Teacher Directory</CardTitle>
+                            <CardDescription className="font-medium text-slate-500">Manage academic staff and department assignments</CardDescription>
+                        </div>
+
+                        <Button
+                            onClick={() => handleAddOrEdit(null)}
+                            disabled={isLoading || isRefreshing}
+                            style={{ backgroundColor: "#4f46e5" }}
+                            className="text-white rounded-2xl px-6 h-12 shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:scale-105"
+                        >
+                            {isRefreshing ? (
+                                <>
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    Updating...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus className="mr-2 h-5 w-5" />
+                                    Add New teacher
+                                </>
+                            )}
+                        </Button>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <CardContent className="px-8 pb-8 pt-4">
+                    <div className="space-y-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100">
                             <div className="relative flex-1 w-full sm:w-auto">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                                 <Input
                                     type="search"
-                                    placeholder="Search teachers..."
-                                    className="pl-9 w-full"
+                                    placeholder="Search teachers by name or email..."
+                                    className="pl-12 h-12 w-full bg-white border-slate-200 rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     disabled={isLoading || isRefreshing}
@@ -318,7 +315,7 @@ export function TeachersClient({ teachers: initialTeachers, stats, error }: Teac
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="absolute right-1 top-1 h-7 w-7"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:bg-slate-100 rounded-lg"
                                         onClick={() => setSearchQuery("")}
                                         disabled={isLoading || isRefreshing}
                                     >
@@ -327,23 +324,23 @@ export function TeachersClient({ teachers: initialTeachers, stats, error }: Teac
                                 )}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <Select
                                     value={filterDepartment}
                                     onValueChange={setFilterDepartment}
                                     disabled={isDepartmentsLoading || isLoading || isRefreshing}
                                 >
-                                    <SelectTrigger className="w-full sm:w-[180px]">
+                                    <SelectTrigger className="h-12 w-full sm:w-[220px] bg-white border-slate-200 rounded-2xl">
                                         {isDepartmentsLoading ? (
                                             <div className="flex items-center">
-                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin text-indigo-500" />
                                                 Loading...
                                             </div>
                                         ) : (
-                                            <SelectValue placeholder="Filter by department" />
+                                            <SelectValue placeholder="Department Filter" />
                                         )}
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="rounded-2xl border-slate-200 shadow-xl shadow-black/5">
                                         <SelectItem value="all">All Departments</SelectItem>
                                         <SelectItem value="none">No Department</SelectItem>
                                         {departments.map(dept => (
@@ -354,124 +351,108 @@ export function TeachersClient({ teachers: initialTeachers, stats, error }: Teac
 
                                 {(searchQuery || filterDepartment !== "all") && (
                                     <Button
-                                        variant="outline"
+                                        variant="ghost"
                                         onClick={resetFilters}
-                                        size="sm"
-                                        className="mt-1 sm:mt-0"
+                                        className="h-12 px-4 text-slate-500 hover:text-indigo-600 font-bold"
                                         disabled={isLoading || isRefreshing}
                                     >
-                                        Clear Filters
+                                        Clear
                                     </Button>
                                 )}
-
-                                <Button
-                                    onClick={() => handleAddOrEdit(null)}
-                                    className="ml-auto"
-                                    disabled={isLoading || isRefreshing}
-                                >
-                                    {isRefreshing ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Updating...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Add Teacher
-                                        </>
-                                    )}
-                                </Button>
                             </div>
                         </div>
 
                         {isLoading ? (
                             renderTableSkeleton()
                         ) : filteredTeachers.length > 0 ? (
-                            <div className="rounded-md border">
+                            <div className="rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Teacher</TableHead>
-                                            <TableHead>Phone</TableHead>
-                                            <TableHead>Department</TableHead>
-                                            <TableHead>Classes</TableHead>
-                                            <TableHead>Subjects</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                    <TableHeader className="bg-slate-50/50">
+                                        <TableRow className="border-slate-100 hover:bg-transparent">
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Staff Member</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Contact Info</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Department</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Classes</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Subjects</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredTeachers.map((teacher) => (
-                                            <TableRow key={teacher.id} className="hover:bg-primary/5">
-                                                <TableCell>
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-9 w-9">
-                                                            <AvatarImage src={teacher.profileImage || undefined} />
-                                                            <AvatarFallback>{teacher.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                            <TableRow key={teacher.id} className="border-slate-100 hover:bg-slate-50/50 transition-colors group">
+                                                <TableCell className="px-6 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <Avatar className="h-12 w-12 rounded-2xl shadow-sm border border-white group-hover:scale-110 transition-transform duration-300">
+                                                            <AvatarImage src={teacher.profileImage || undefined} className="object-cover" />
+                                                            <AvatarFallback className="bg-slate-100 text-slate-700 font-bold">
+                                                                {teacher.name.charAt(0).toUpperCase()}
+                                                            </AvatarFallback>
                                                         </Avatar>
                                                         <div className="flex flex-col">
-                                                            <span className="font-medium">{teacher.name}</span>
-                                                            <span className="text-xs text-muted-foreground">{teacher.email}</span>
+                                                            <span className="font-bold text-slate-800 font-sora leading-tight">{teacher.name}</span>
+                                                            <span className="text-xs text-slate-400 font-medium">{teacher.email}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>{teacher.phone || "-"}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="px-6 py-5 font-medium text-slate-600">
+                                                    {teacher.phone || <span className="text-slate-300">—</span>}
+                                                </TableCell>
+                                                <TableCell className="px-6 py-5">
                                                     {teacher.department && teacher.department !== "No Department" ? (
-                                                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                                        <Badge className="rounded-full px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-none font-bold text-[10px] uppercase tracking-wider">
                                                             {teacher.department}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-muted-foreground text-xs">Not Assigned</span>
+                                                        <span className="text-slate-400 text-xs font-medium">Not Assigned</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell>
-                                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-600">
+                                                <TableCell className="px-6 py-5">
+                                                    <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-blue-50 text-blue-600 font-black text-xs border border-blue-100">
                                                         {teacher.classes.length}
-                                                    </span>
+                                                    </div>
                                                 </TableCell>
-                                                <TableCell>
-                                                    <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs font-medium text-secondary">
+                                                <TableCell className="px-6 py-5">
+                                                    <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-purple-50 text-purple-600 font-black text-xs border border-purple-100">
                                                         {teacher.subjects.length}
-                                                    </span>
+                                                    </div>
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="px-6 py-5 text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Open menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-100">
+                                                                <MoreHorizontal className="h-5 w-5" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={`/dashboard/teachers/${teacher.id}`}>
-                                                                    <span className="flex items-center">
-                                                                        <span className="mr-2">👁️</span>
-                                                                        View Details
-                                                                    </span>
+                                                        <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 shadow-xl shadow-black/5 p-2 min-w-[200px]">
+                                                            <DropdownMenuLabel className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Management</DropdownMenuLabel>
+                                                            <DropdownMenuItem asChild className="rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-indigo-50 focus:text-indigo-600">
+                                                                <Link href={`/dashboard/teachers/${teacher.id}`} className="flex items-center">
+                                                                    <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3 group-hover:bg-white">
+                                                                        <span className="text-sm">👁️</span>
+                                                                    </div>
+                                                                    <span className="font-bold text-sm">View Profile</span>
                                                                 </Link>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={`/dashboard/teachers/${teacher.id}?tab=classes`}>
-                                                                    <span className="flex items-center">
-                                                                        <span className="mr-2">🎓</span>
-                                                                        Manage Classes
-                                                                    </span>
+                                                            <DropdownMenuItem asChild className="rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-indigo-50 focus:text-indigo-600">
+                                                                <Link href={`/dashboard/teachers/${teacher.id}?tab=classes`} className="flex items-center">
+                                                                    <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3">
+                                                                        <span className="text-sm">🎓</span>
+                                                                    </div>
+                                                                    <span className="font-bold text-sm">Academic Load</span>
                                                                 </Link>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleManageSubjects(teacher)}>
-                                                                <span className="flex items-center">
-                                                                    <span className="mr-2">📚</span>
-                                                                    Manage Subjects
-                                                                </span>
+                                                            <DropdownMenuItem onClick={() => handleManageSubjects(teacher)} className="rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-indigo-50 focus:text-indigo-600">
+                                                                <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3">
+                                                                    <span className="text-sm">📚</span>
+                                                                </div>
+                                                                <span className="font-bold text-sm">Subject Matrix</span>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onClick={() => handleAddOrEdit(teacher)}>
-                                                                <span className="flex items-center">
-                                                                    <span className="mr-2">✏️</span>
-                                                                    Edit Teacher
-                                                                </span>
+                                                            <DropdownMenuSeparator className="my-2 bg-slate-100" />
+                                                            <DropdownMenuItem onClick={() => handleAddOrEdit(teacher)} className="rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-amber-50 focus:text-amber-600">
+                                                                <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3">
+                                                                    <span className="text-sm">✏️</span>
+                                                                </div>
+                                                                <span className="font-bold text-sm">Edit Details</span>
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
@@ -482,21 +463,31 @@ export function TeachersClient({ teachers: initialTeachers, stats, error }: Teac
                                 </Table>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-10">
+                            <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-200">
                                 {searchQuery || filterDepartment !== "all" ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Users className="h-10 w-10 text-muted-foreground/50" />
-                                        <p>No teachers match your search criteria</p>
-                                        <Button variant="outline" size="sm" onClick={resetFilters}>
-                                            Clear Filters
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="p-5 bg-white rounded-3xl shadow-sm border border-slate-100">
+                                            <Search className="h-10 w-10 text-slate-300" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-slate-800 font-sora">No results found</p>
+                                            <p className="text-sm text-slate-500 font-medium mt-1">Try adjusting your filters or search terms</p>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={resetFilters} className="rounded-xl px-6 h-10 border-slate-200 font-bold hover:bg-white">
+                                            Clear All Filters
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Users className="h-10 w-10 text-muted-foreground/50" />
-                                        <p>No teachers found</p>
-                                        <Button onClick={() => handleAddOrEdit(null)}>
-                                            <Plus className="mr-2 h-4 w-4" />
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="p-5 bg-white rounded-3xl shadow-sm border border-slate-100">
+                                            <Users className="h-10 w-10 text-slate-300" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-slate-800 font-sora">Teacher pool is empty</p>
+                                            <p className="text-sm text-slate-500 font-medium mt-1">Start by adding your first academic staff member</p>
+                                        </div>
+                                        <Button onClick={() => handleAddOrEdit(null)} className="rounded-[1.25rem] px-8 h-12 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25">
+                                            <Plus className="mr-2 h-5 w-5" />
                                             Add Your First Teacher
                                         </Button>
                                     </div>

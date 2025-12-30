@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react"
 import { columns } from "./columns"
 import { Button } from "@/components/ui/button"
-import { Plus, Users, GraduationCap, School, Search, X } from "lucide-react"
+import { Plus, Users, GraduationCap, School, Search, X, MoreHorizontal } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { AddStudentSheet } from "./add-student-sheet"
+import { cn } from "@/lib/utils"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 import {
     Table,
     TableBody,
@@ -238,97 +240,90 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
     }
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <Users className="mr-2 h-5 w-5" />
-                            Students
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{stats.total}</p>
-                        <p className="text-sm text-blue-600 mt-1">Total students</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                            <GraduationCap className="mr-2 h-5 w-5" />
-                            Classes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-purple-800">{stats.classes}</p>
-                        <p className="text-sm text-purple-600 mt-1">With assigned students</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-green-700">
-                            <School className="mr-2 h-5 w-5" />
-                            Levels
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-green-800">{stats.levels || 0}</p>
-                        <p className="text-sm text-green-600 mt-1">School levels represented</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
-                            <Users className="mr-2 h-5 w-5" />
-                            Parents
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-emerald-800">{stats.withParents}</p>
-                        <p className="text-sm text-emerald-600 mt-1">Students with parent accounts</p>
-                    </CardContent>
-                </Card>
-            </div>
+        <div className="space-y-8 animate-in fade-in duration-700 font-poppins pb-10">
+            {/* Stats Cards Section */}
+            <DashboardStatsGrid columns={4}>
+                <DashboardStatsCard
+                    title="Total Students"
+                    value={isLoading ? "..." : stats.total}
+                    icon={Users}
+                    color="blue"
+                    description="Active enrollments"
+                />
+                <DashboardStatsCard
+                    title="Classes"
+                    value={isLoading ? "..." : stats.classes}
+                    icon={GraduationCap}
+                    color="purple"
+                    description="With assigned students"
+                />
+                <DashboardStatsCard
+                    title="Levels"
+                    value={isLoading ? "..." : (stats.levels || 0)}
+                    icon={School}
+                    color="emerald"
+                    description="School levels represented"
+                />
+                <DashboardStatsCard
+                    title="Parents"
+                    value={isLoading ? "..." : stats.withParents}
+                    icon={Users}
+                    color="rose"
+                    description="With parent accounts"
+                />
+            </DashboardStatsGrid>
 
             {/* Error display */}
             {error && (
-                <div className="rounded-lg border bg-card p-8 text-card-foreground shadow-sm mb-6">
+                <Card className="border-none shadow-xl shadow-red-500/10 rounded-[2.5rem] bg-white overflow-hidden p-8 border-l-4 border-red-500">
                     <div className="flex flex-col items-center justify-center space-y-4">
-                        <h2 className="text-xl font-bold text-red-500">Error</h2>
-                        <p className="text-center text-muted-foreground">
+                        <div className="p-4 bg-red-50 rounded-full">
+                            <X className="h-8 w-8 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-red-600 font-sora">Student Database Error</h2>
+                        <p className="text-center text-slate-500 font-medium max-w-md">
                             {error}
                         </p>
                         <Button
                             onClick={() => window.location.reload()}
-                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                            className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-8 h-12"
                         >
-                            Retry
+                            Retry Loading
                         </Button>
                     </div>
-                </div>
+                </Card>
             )}
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div>
-                        <CardTitle>Students</CardTitle>
-                        <CardDescription>
-                            Manage student profiles and track academic progress
-                        </CardDescription>
+            <Card className="border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden">
+                <CardHeader className="px-8 pt-8 pb-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <CardTitle className="text-2xl font-bold font-sora text-slate-800">Student Directory</CardTitle>
+                            <CardDescription className="font-medium text-slate-500">Manage student profiles, academic progress and records</CardDescription>
+                        </div>
+
+                        <Button
+                            onClick={() => {
+                                setSelectedStudent(null)
+                                setIsAddModalOpen(true)
+                            }}
+                            style={{ backgroundColor: "#4f46e5" }}
+                            className="text-white rounded-2xl px-6 h-12 shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:scale-105"
+                        >
+                            <Plus className="mr-2 h-5 w-5" />
+                            Add Student
+                        </Button>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="relative flex-1 w-full sm:w-auto">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <CardContent className="px-8 pb-8 pt-4">
+                    <div className="space-y-6">
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                            <div className="relative flex-1 w-full">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                                 <Input
                                     type="search"
-                                    placeholder="Search students..."
-                                    className="pl-9 w-full"
+                                    placeholder="Search students by name, email or class..."
+                                    className="pl-12 h-12 w-full bg-white border-slate-200 rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -336,7 +331,7 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="absolute right-1 top-1 h-7 w-7"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:bg-slate-100 rounded-lg"
                                         onClick={() => setSearchQuery("")}
                                     >
                                         <X className="h-4 w-4" />
@@ -344,12 +339,12 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                                 )}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                                 <Select value={filterLevel} onValueChange={setFilterLevel}>
-                                    <SelectTrigger className="w-full sm:w-[180px]">
-                                        <SelectValue placeholder="Filter by level" />
+                                    <SelectTrigger className="h-12 w-full sm:w-[160px] bg-white border-slate-200 rounded-2xl">
+                                        <SelectValue placeholder="Level Filter" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="rounded-2xl border-slate-200 shadow-xl shadow-black/5">
                                         <SelectItem value="all">All Levels</SelectItem>
                                         <SelectItem value="none">No Level</SelectItem>
                                         {levels.map(level => (
@@ -359,10 +354,10 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                                 </Select>
 
                                 <Select value={filterClass} onValueChange={setFilterClass}>
-                                    <SelectTrigger className="w-full sm:w-[180px]">
-                                        <SelectValue placeholder="Filter by class" />
+                                    <SelectTrigger className="h-12 w-full sm:w-[160px] bg-white border-slate-200 rounded-2xl">
+                                        <SelectValue placeholder="Class Filter" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="rounded-2xl border-slate-200 shadow-xl shadow-black/5">
                                         <SelectItem value="all">All Classes</SelectItem>
                                         <SelectItem value="none">No Class</SelectItem>
                                         {classes.map(cls => (
@@ -372,130 +367,119 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                                 </Select>
 
                                 {(searchQuery || filterLevel !== "all" || filterClass !== "all") && (
-                                    <Button variant="outline" onClick={resetFilters} size="sm" className="mt-1 sm:mt-0">
-                                        Clear Filters
+                                    <Button
+                                        variant="ghost"
+                                        onClick={resetFilters}
+                                        className="h-12 px-4 text-slate-500 hover:text-indigo-600 font-bold"
+                                    >
+                                        Clear
                                     </Button>
                                 )}
-
-                                <Button onClick={() => {
-                                    setSelectedStudent(null)
-                                    setIsAddModalOpen(true)
-                                }} className="ml-auto">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Student
-                                </Button>
                             </div>
                         </div>
 
-                        {filteredStudents.length > 0 ? (
-                            <div className="rounded-md border">
+                        {isLoading ? (
+                            <div className="space-y-4">
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                    <div key={i} className="flex items-center gap-4 p-4 bg-slate-50/50 rounded-3xl">
+                                        <Skeleton className="h-12 w-12 rounded-2xl" />
+                                        <div className="flex-1 space-y-2">
+                                            <Skeleton className="h-4 w-1/4" />
+                                            <Skeleton className="h-3 w-1/3" />
+                                        </div>
+                                        <Skeleton className="h-5 w-24 rounded-full" />
+                                        <Skeleton className="h-8 w-8 rounded-xl" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : filteredStudents.length > 0 ? (
+                            <div className="rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student</TableHead>
-                                            <TableHead>Class</TableHead>
-                                            <TableHead>Level</TableHead>
-                                            <TableHead>Roll Number</TableHead>
-                                            <TableHead>Parents</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                    <TableHeader className="bg-slate-50/50">
+                                        <TableRow className="border-slate-100 hover:bg-transparent">
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Student Identity</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Academic Path</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Ref Code</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Kinship</TableHead>
+                                            <TableHead className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredStudents.map((student) => (
-                                            <TableRow key={student.id} className="hover:bg-primary/5">
-                                                <TableCell>
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-8 w-8">
-                                                            <AvatarImage
-                                                                src={student.profileImage || ""}
-                                                                alt={student.name || "Student"}
-                                                            />
-                                                            <AvatarFallback>
+                                            <TableRow key={student.id} className="border-slate-100 hover:bg-slate-50/50 transition-colors group">
+                                                <TableCell className="px-6 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <Avatar className="h-12 w-12 rounded-2xl shadow-sm border border-white group-hover:scale-110 transition-transform duration-300">
+                                                            <AvatarImage src={student.profileImage || ""} className="object-cover" />
+                                                            <AvatarFallback className="bg-slate-100 text-slate-700 font-bold">
                                                                 {(student.name || "S").charAt(0).toUpperCase()}
                                                             </AvatarFallback>
                                                         </Avatar>
-                                                        <div>
-                                                            {student.name ? (
-                                                                <p className="font-medium">{student.name}</p>
-                                                            ) : (
-                                                                <Skeleton className="h-4 w-24" />
-                                                            )}
-                                                            {student.email ? (
-                                                                <p className="text-sm text-muted-foreground">{student.email}</p>
-                                                            ) : (
-                                                                <Skeleton className="h-3 w-32" />
-                                                            )}
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-800 font-sora leading-tight">{student.name}</span>
+                                                            <span className="text-xs text-slate-400 font-medium">{student.email}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="px-6 py-5">
                                                     {student.currentClass ? (
-                                                        <div className="flex flex-col gap-1">
-                                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <Badge className="rounded-full px-3 py-1 bg-blue-50 text-blue-600 border border-blue-100 shadow-none font-bold text-[10px] uppercase tracking-wider w-fit">
                                                                 {student.currentClass.name}
                                                             </Badge>
                                                             {student.classes.length > 1 && (
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    +{student.classes.length - 1} more classes
+                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight ml-1">
+                                                                    +{student.classes.length - 1} Multiple Tracks
                                                                 </span>
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-muted-foreground text-xs">Not Assigned</span>
+                                                        <span className="text-slate-400 text-xs font-medium">No Path Assigned</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell>
-                                                    {student.currentClass?.level ? (
-                                                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                                            {student.currentClass.level.name}
-                                                        </Badge>
-                                                    ) : (
-                                                        <span className="text-muted-foreground text-xs">Not Assigned</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
+                                                <TableCell className="px-6 py-5">
                                                     {student.rollNumber ? (
-                                                        <span className="font-mono text-xs">{student.rollNumber}</span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground text-xs">-</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {student.hasParents ? (
-                                                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                                                            {student.parentNames}
+                                                        <span className="font-mono text-[11px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">
+                                                            {student.rollNumber}
                                                         </span>
                                                     ) : (
-                                                        <span className="text-muted-foreground text-xs">No Parents</span>
+                                                        <span className="text-slate-300">—</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="px-6 py-5">
+                                                    {student.hasParents ? (
+                                                        <Badge className="rounded-full px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-none font-bold text-[10px] uppercase tracking-wider">
+                                                            Joined: {student.parentNames}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-slate-400 text-xs font-medium">No Parent Linked</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="px-6 py-5 text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Open menu</span>
-                                                                <span className="text-xl">⋯</span>
+                                                            <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-100">
+                                                                <MoreHorizontal className="h-5 w-5" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            <DropdownMenuItem onClick={() => router.push(`/dashboard/students/${student.id}`)}>
-                                                                <span className="flex items-center">
-                                                                    <span className="mr-2">👁️</span>
-                                                                    View Details
-                                                                </span>
+                                                        <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 shadow-xl shadow-black/5 p-2 min-w-[200px]">
+                                                            <DropdownMenuLabel className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Management</DropdownMenuLabel>
+                                                            <DropdownMenuItem onClick={() => router.push(`/dashboard/students/${student.id}`)} className="rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-indigo-50 focus:text-indigo-600 font-bold text-sm">
+                                                                <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3 group-hover:bg-white">
+                                                                    <span>👁️</span>
+                                                                </div>
+                                                                View Student Record
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuSeparator className="my-2 bg-slate-100" />
                                                             <DropdownMenuItem onClick={() => {
                                                                 setSelectedStudent(student)
                                                                 setIsAddModalOpen(true)
-                                                            }}>
-                                                                <span className="flex items-center">
-                                                                    <span className="mr-2">✏️</span>
-                                                                    Edit Student
-                                                                </span>
+                                                            }} className="rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-amber-50 focus:text-amber-600 font-bold text-sm">
+                                                                <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3">
+                                                                    <span>✏️</span>
+                                                                </div>
+                                                                Modify Profile
                                                             </DropdownMenuItem>
-
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </TableCell>
@@ -505,25 +489,35 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                                 </Table>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-10">
+                            <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-200">
                                 {searchQuery || filterLevel !== "all" || filterClass !== "all" ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Users className="h-10 w-10 text-muted-foreground/50" />
-                                        <p>No students match your search criteria</p>
-                                        <Button variant="outline" size="sm" onClick={resetFilters}>
-                                            Clear Filters
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="p-5 bg-white rounded-3xl shadow-sm border border-slate-100">
+                                            <Search className="h-10 w-10 text-slate-300" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-slate-800 font-sora">No scholars found</p>
+                                            <p className="text-sm text-slate-500 font-medium mt-1">Refine your criteria and try searching again</p>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={resetFilters} className="rounded-xl px-6 h-10 border-slate-200 font-bold hover:bg-white">
+                                            Reset Filter Layout
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Users className="h-10 w-10 text-muted-foreground/50" />
-                                        <p>No students found</p>
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="p-5 bg-white rounded-3xl shadow-sm border border-slate-100">
+                                            <Users className="h-10 w-10 text-slate-300" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-slate-800 font-sora">Student database is empty</p>
+                                            <p className="text-sm text-slate-500 font-medium mt-1">Enroll your first student to begin tracking their journey</p>
+                                        </div>
                                         <Button onClick={() => {
                                             setSelectedStudent(null)
                                             setIsAddModalOpen(true)
-                                        }}>
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Add Your First Student
+                                        }} className="rounded-[1.25rem] px-8 h-12 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25">
+                                            <Plus className="mr-2 h-5 w-5" />
+                                            Admit First Student
                                         </Button>
                                     </div>
                                 )}

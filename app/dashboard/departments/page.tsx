@@ -2,9 +2,9 @@ import { redirect } from "next/navigation"
 import { getSession } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { DepartmentsTable } from "./departments-table"
-import { UserRole } from "@prisma/client"
 import { Card, CardContent } from "@/components/ui/card"
 import { BookOpen, Users, GraduationCap, Building2 } from "lucide-react"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 
 export default async function DepartmentsPage() {
     const session = await getSession()
@@ -15,7 +15,7 @@ export default async function DepartmentsPage() {
     }
 
     // Only SUPER_ADMIN and SCHOOL_ADMIN should have access
-    if (session.role !== UserRole.SUPER_ADMIN && session.role !== UserRole.SCHOOL_ADMIN) {
+    if (session.role !== "SUPER_ADMIN" && session.role !== "SCHOOL_ADMIN") {
         redirect("/dashboard")
     }
 
@@ -52,9 +52,9 @@ export default async function DepartmentsPage() {
         })
 
         // Calculate summary statistics
-        const totalSubjects = departments.reduce((sum, dept) => sum + (dept._count?.subjects || 0), 0)
-        const totalTeachers = departments.reduce((sum, dept) => sum + (dept._count?.teachers || 0), 0)
-        const totalStudents = departments.reduce((sum, dept) => sum + (dept._count?.students || 0), 0)
+        const totalSubjects = departments.reduce((sum: number, dept: any) => sum + (dept._count?.subjects || 0), 0)
+        const totalTeachers = departments.reduce((sum: number, dept: any) => sum + (dept._count?.teachers || 0), 0)
+        const totalStudents = departments.reduce((sum: number, dept: any) => sum + (dept._count?.students || 0), 0)
 
         const schoolColors = {
             primaryColor: school?.primaryColor || "#3b82f6",
@@ -79,61 +79,37 @@ export default async function DepartmentsPage() {
                     </div>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-2 bg-purple-100 rounded-full">
-                                    <Building2 className="h-6 w-6 text-purple-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Total Departments</p>
-                                    <h3 className="text-2xl font-bold text-purple-600">{departments.length}</h3>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-2 bg-blue-100 rounded-full">
-                                    <Users className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Total Students</p>
-                                    <h3 className="text-2xl font-bold text-blue-600">{totalStudents}</h3>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-2 bg-green-100 rounded-full">
-                                    <GraduationCap className="h-6 w-6 text-green-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Total Teachers</p>
-                                    <h3 className="text-2xl font-bold text-green-600">{totalTeachers}</h3>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-2 bg-amber-100 rounded-full">
-                                    <BookOpen className="h-6 w-6 text-amber-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Total Subjects</p>
-                                    <h3 className="text-2xl font-bold text-amber-600">{totalSubjects}</h3>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                {/* Stats Cards Section */}
+                <DashboardStatsGrid columns={4} className="mb-8">
+                    <DashboardStatsCard
+                        title="Departments"
+                        value={departments.length}
+                        icon={Building2}
+                        color="purple"
+                        description="Academic divisions"
+                    />
+                    <DashboardStatsCard
+                        title="Students"
+                        value={totalStudents}
+                        icon={Users}
+                        color="blue"
+                        description="Enrolled learners"
+                    />
+                    <DashboardStatsCard
+                        title="Teachers"
+                        value={totalTeachers}
+                        icon={GraduationCap}
+                        color="emerald"
+                        description="Faculty members"
+                    />
+                    <DashboardStatsCard
+                        title="Subjects"
+                        value={totalSubjects}
+                        icon={BookOpen}
+                        color="amber"
+                        description="Curriculum courses"
+                    />
+                </DashboardStatsGrid>
 
                 {/* Display the departments table */}
                 <div className="border rounded-lg overflow-hidden bg-white">

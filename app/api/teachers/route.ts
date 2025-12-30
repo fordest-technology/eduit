@@ -458,6 +458,36 @@ export async function POST(request: NextRequest) {
       return newUser;
     });
 
+    // Send welcome email with credentials to the teacher
+    try {
+      const { sendTeacherCredentialsEmail } = await import("@/lib/email");
+
+      // Get school information for the email
+      const school = await prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { name: true, domain: true }
+      });
+
+      const schoolUrl = school?.domain
+        ? `https://${school.domain}`
+        : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+      await sendTeacherCredentialsEmail({
+        name,
+        email,
+        password, // Send the plain text password (before hashing)
+        schoolName: school?.name || "EduIT",
+        schoolUrl,
+        schoolId
+      });
+
+      console.log(`Welcome email sent to teacher: ${email}`);
+    } catch (emailError) {
+      // Log the error but don't fail the teacher creation
+      console.error("Failed to send welcome email to teacher:", emailError);
+      // Continue with success response even if email fails
+    }
+
     return NextResponse.json(
       {
         message: "Teacher created successfully",

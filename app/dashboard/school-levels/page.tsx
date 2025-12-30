@@ -9,6 +9,7 @@ import { SchoolLevelTable } from "./school-level-table"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { DashboardHeader } from "@/app/components/dashboard-header"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 
 interface SchoolLevel {
     id: string;
@@ -144,50 +145,29 @@ export default function SchoolLevelsPage() {
                 showBanner={true}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <School className="mr-2 h-5 w-5" />
-                            Total Levels
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{levels.length}</p>
-                        <p className="text-sm text-blue-600 mt-1">Academic progression paths</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                            <GraduationCap className="mr-2 h-5 w-5" />
-                            Classes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-purple-800">
-                            {levels.reduce((sum, level) => sum + (level._count?.classes || 0), 0)}
-                        </p>
-                        <p className="text-sm text-purple-600 mt-1">Total classes across all levels</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
-                            <BookOpen className="mr-2 h-5 w-5" />
-                            Subjects
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-emerald-800">
-                            {levels.reduce((sum, level) => sum + (level._count?.subjects || 0), 0)}
-                        </p>
-                        <p className="text-sm text-emerald-600 mt-1">Total subjects across all levels</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <DashboardStatsGrid columns={3} className="mb-6">
+                <DashboardStatsCard
+                    title="Total Levels"
+                    value={levels.length}
+                    icon={School}
+                    color="blue"
+                    description="Academic progression paths"
+                />
+                <DashboardStatsCard
+                    title="Classes"
+                    value={levels.reduce((sum: number, level: any) => sum + (level._count?.classes || 0), 0)}
+                    icon={GraduationCap}
+                    color="purple"
+                    description="Total classes across all levels"
+                />
+                <DashboardStatsCard
+                    title="Subjects"
+                    value={levels.reduce((sum: number, level: any) => sum + (level._count?.subjects || 0), 0)}
+                    icon={BookOpen}
+                    color="emerald"
+                    description="Total subjects across all levels"
+                />
+            </DashboardStatsGrid>
 
             <Card className="border-primary/10 shadow-md">
                 <CardHeader className="bg-primary/5 border-b border-primary/10">

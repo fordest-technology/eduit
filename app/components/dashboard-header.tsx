@@ -23,42 +23,60 @@ export function DashboardHeader({
     const { colors } = useColors()
 
     return (
-        <div className="flex flex-col gap-2 mb-8 z-0">
+        <div className="flex flex-col gap-2 mb-8 z-0 relative font-poppins">
             {showBanner && (
                 <div
-                    className="w-full rounded-lg p-6 py-8 mb-6 shadow-md relative overflow-hidden"
+                    className="w-full rounded-[2rem] p-8 py-10 mb-6 shadow-2xl relative overflow-hidden border border-white/20 group"
                     style={{
-                        background: `linear-gradient(120deg, ${colors.primaryColor}88 0%, ${colors.secondaryColor}88 100%)`,
-                        borderLeft: `4px solid ${colors.primaryColor}`,
+                        background: `linear-gradient(135deg, ${colors.primaryColor || '#4f46e5'} 0%, ${colors.secondaryColor || '#7c3aed'} 100%)`,
                     }}
                 >
-                    <div className="absolute top-0 left-0 w-full h-full opacity-10"
+                    {/* Background decorative elements */}
+                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700" />
+                    <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-black/10 rounded-full blur-3xl group-hover:bg-black/20 transition-all duration-700" />
+
+                    <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none"
                         style={{
-                            backgroundImage: `radial-gradient(circle at 25px 25px, ${colors.secondaryColor} 2%, transparent 0%), radial-gradient(circle at 75px 75px, ${colors.primaryColor} 2%, transparent 0%)`,
-                            backgroundSize: "100px 100px",
+                            backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                            backgroundSize: "32px 32px",
                         }}
                     />
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            {icon && <span className="mr-2">{icon}</span>}
-                            <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-sm">{heading}</h1>
+
+                    <div className="relative z-10">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                {icon && (
+                                    <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 shadow-inner">
+                                        {icon}
+                                    </div>
+                                )}
+                                <div>
+                                    <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-md font-sora">
+                                        {heading}
+                                    </h1>
+                                    {text && <p className="text-white/80 max-w-2xl mt-2 text-lg font-medium leading-relaxed">{text}</p>}
+                                </div>
+                            </div>
+                            {action && <div className="flex-shrink-0">{action}</div>}
                         </div>
-                        {action && <div>{action}</div>}
                     </div>
-                    {text && <p className="text-white/90 max-w-2xl mt-2">{text}</p>}
                 </div>
             )}
 
             {!showBanner && (
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                        {icon && <span className="mr-2">{icon}</span>}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/60 backdrop-blur-sm p-6 rounded-[1.5rem] border border-slate-200/50 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        {icon && (
+                            <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600">
+                                {icon}
+                            </div>
+                        )}
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight">{heading}</h1>
-                            {text && <p className="text-muted-foreground">{text}</p>}
+                            <h1 className="text-2xl font-bold font-sora tracking-tight text-slate-800">{heading}</h1>
+                            {text && <p className="text-slate-500 font-medium text-sm mt-0.5">{text}</p>}
                         </div>
                     </div>
-                    {action && <div>{action}</div>}
+                    {action && <div className="flex-shrink-0">{action}</div>}
                 </div>
             )}
 
@@ -69,4 +87,4 @@ export function DashboardHeader({
             )}
         </div>
     )
-} 
+}

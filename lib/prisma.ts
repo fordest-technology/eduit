@@ -5,14 +5,21 @@ declare global {
 }
 
 const prismaClientSingleton = () => {
+  const url = process.env.DATABASE_URL;
+
+  if (!url) {
+    console.error("❌ DATABASE_URL is not defined in environment variables.");
+  } else {
+    // Log masked URL to verify loading
+    const masked = url.replace(/:([^@]+)@/, ":****@");
+    console.log(`[Database] Initializing with: ${masked.substring(0, 40)}...`);
+  }
+
   return new PrismaClient({
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: url,
       },
     },
   });

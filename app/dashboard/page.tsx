@@ -1,4 +1,4 @@
-import { CreditCard, GraduationCap, Bell, Users, Calendar, BookOpen, UserCheck, BookText } from "lucide-react"
+import { CreditCard, GraduationCap, Bell, LayoutDashboard, Layers, Users, Calendar, BookOpen, UserCheck, BookText } from "lucide-react"
 import { DashboardHeader } from "../components/dashboard-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { getSession } from "@/lib/auth"
@@ -260,102 +260,118 @@ export default async function DashboardPage() {
 
   // Default dashboard for other roles
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-700 font-poppins pb-10">
       <DashboardHeader
         heading={roleTitle}
         text={roleDescription}
         showBanner={true}
+        icon={<LayoutDashboard className="h-8 w-8 text-white" />}
       />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-              <Users className="mr-2 h-5 w-5" />
-              Students
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-blue-800">{stats.totalStudents}</p>
-            <p className="text-sm text-blue-600 mt-1">Active students in your school</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-              <GraduationCap className="mr-2 h-5 w-5" />
-              Classes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-purple-800">{stats.totalClasses}</p>
-            <p className="text-sm text-purple-600 mt-1">Total classes across all levels</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
-              <BookOpen className="mr-2 h-5 w-5" />
-              Subjects
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-emerald-800">{stats.totalSubjects}</p>
-            <p className="text-sm text-emerald-600 mt-1">Subjects taught in your school</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium flex items-center text-pink-700">
-              <UserCheck className="mr-2 h-5 w-5" />
-              Teachers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-pink-800">{stats.totalTeachers}</p>
-            <p className="text-sm text-pink-600 mt-1">Teachers registered in your school</p>
-          </CardContent>
-        </Card>
+      {/* Stats Cards Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          {
+            title: "Students",
+            value: stats.totalStudents,
+            icon: Users,
+            color: "blue",
+            desc: "Active enrollments"
+          },
+          {
+            title: "Classes",
+            value: stats.totalClasses,
+            icon: GraduationCap,
+            color: "purple",
+            desc: "Total sections"
+          },
+          {
+            title: "Subjects",
+            value: stats.totalSubjects,
+            icon: BookOpen,
+            color: "emerald",
+            desc: "Course offerings"
+          },
+          {
+            title: "Teachers",
+            value: stats.totalTeachers,
+            icon: UserCheck,
+            color: "rose",
+            desc: "Active educators"
+          }
+        ].map((stat, i) => (
+          <Card key={i} className="group overflow-hidden border-none shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-black/10 transition-all duration-500 rounded-[2rem] bg-white relative">
+            <div className={cn(
+              "absolute top-0 right-0 w-24 h-24 blur-[60px] opacity-10 rounded-full transition-all duration-500 group-hover:scale-150 group-hover:opacity-20",
+              `bg-${stat.color}-500`
+            )} />
+            <CardHeader className="pb-2 relative z-10">
+              <div className="flex items-center justify-between">
+                <div className={cn(
+                  "p-3 rounded-2xl shadow-inner",
+                  stat.color === 'blue' ? "bg-blue-50 text-blue-600" :
+                    stat.color === 'purple' ? "bg-purple-50 text-purple-600" :
+                      stat.color === 'emerald' ? "bg-emerald-50 text-emerald-600" :
+                        "bg-rose-50 text-rose-600"
+                )}>
+                  <stat.icon className="h-6 w-6" />
+                </div>
+              </div>
+              <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-4">
+                {stat.title}
+              </CardDescription>
+              <CardTitle className="text-4xl font-black font-sora text-slate-800 tracking-tight">
+                {stat.value}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="flex items-center text-xs font-semibold text-slate-500">
+                <span>{stat.desc}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Admin Dashboard or Regular Stats */}
-      {/* {(session.role === "SUPER_ADMIN" || session.role === "SCHOOL_ADMIN") ? (
-        <AdminDashboardClient stats={stats} />
-      ) : null} */}
-
-      {/* Recent Activities and Events */}
-      <div className="grid gap-4 md:grid-cols-7">
-        <Card className="md:col-span-4 border-primary/10 shadow-sm">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
-            <CardTitle>Recent Activities</CardTitle>
-            <CardDescription>Latest updates and activities</CardDescription>
+      <div className="grid gap-8 lg:grid-cols-12 mt-8">
+        {/* Recent Activities Section */}
+        <Card className="lg:col-span-8 border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden">
+          <CardHeader className="px-8 pt-8 pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl font-bold font-sora text-slate-800">Recent Activities</CardTitle>
+                <CardDescription className="font-medium text-slate-500">Live updates from across the institution</CardDescription>
+              </div>
+              <div className="p-2 bg-slate-50 rounded-xl">
+                <Bell className="h-5 w-5 text-slate-400" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="px-8 pb-8 pt-2">
             {recentActivities.length === 0 ? (
-              <div className="flex items-center justify-center h-40">
-                <p className="text-muted-foreground">No recent activities</p>
+              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-100 rounded-[2rem] bg-slate-50/50">
+                <p className="text-slate-400 font-medium">No recent activities available</p>
               </div>
             ) : (
-              <div className="divide-y divide-primary/10">
+              <div className="space-y-4">
                 {recentActivities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-center p-4 hover:bg-primary/5 transition-colors"
+                    className="flex items-center p-5 rounded-3xl bg-slate-50/50 hover:bg-white hover:shadow-lg hover:shadow-black/5 border border-transparent hover:border-slate-100 transition-all duration-300 group"
                   >
-                    <div className="space-y-1 flex-1">
-                      <p className="text-sm font-medium leading-none">
+                    <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center mr-4 border border-slate-100 group-hover:scale-110 transition-transform duration-300">
+                      <BookText className="h-6 w-6 text-indigo-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 font-sora truncate">
                         {activity.student.user.name}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        Scored {activity.marks}/{activity.totalMarks} in {activity.subject.name}
+                      <p className="text-sm text-slate-500 font-medium">
+                        Scored <span className="text-indigo-600 font-bold">{activity.total}</span> in <span className="text-slate-700">{activity.subject.name}</span>
                       </p>
                     </div>
-                    <div className="ml-auto text-xs text-muted-foreground">
-                      {format(new Date(activity.updatedAt), "MMM d, yyyy")}
+                    <div className="ml-4 text-xs font-bold text-slate-400 whitespace-nowrap bg-white px-3 py-1.5 rounded-full border border-slate-100">
+                      {format(new Date(activity.updatedAt), "MMM d")}
                     </div>
                   </div>
                 ))}
@@ -364,39 +380,76 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-3 border-secondary/10 shadow-sm">
-          <CardHeader className="bg-secondary/5 border-b border-secondary/10">
-            <CardTitle>Upcoming Events</CardTitle>
-            <CardDescription>Schedule and important dates</CardDescription>
+        {/* Upcoming Events Section */}
+        <Card className="lg:col-span-4 border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-full h-2 bg-indigo-500/50" />
+          <CardHeader className="px-8 pt-8 pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl font-bold font-sora text-slate-800">Timeline</CardTitle>
+                <CardDescription className="font-medium text-slate-500">Upcoming calendar events</CardDescription>
+              </div>
+              <div className="p-2 bg-amber-50 rounded-xl">
+                <Calendar className="h-5 w-5 text-amber-500" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <UpcomingEvents
-              schoolId={session.schoolId}
-              limit={5}
-              showIcon={true}
-            />
+          <CardContent className="px-6 pb-8 pt-2">
+            <div className="bg-slate-50/50 rounded-[2rem] p-4 text-slate-600">
+              <UpcomingEvents
+                schoolId={session.schoolId}
+                limit={5}
+                showIcon={true}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Meta Information */}
-      <Card className="border-primary/10">
-        <CardHeader>
-          <CardTitle className="text-base">School Statistics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Attendance Rate</h4>
-              <p className="font-medium">{stats.attendanceRate}%</p>
+      {/* School Performance Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+        <Card className="border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden p-8">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 bg-indigo-50 rounded-2xl">
+              <UserCheck className="h-6 w-6 text-indigo-600" />
             </div>
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Average Score</h4>
-              <p className="font-medium">{stats.averageScore}%</p>
+              <h4 className="text-lg font-bold font-sora text-slate-800">Attendance Optimization</h4>
+              <p className="text-sm text-slate-500 font-medium">Daily average attendance rate</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-end gap-3">
+            <span className="text-5xl font-black text-slate-800 font-sora">{stats.attendanceRate}%</span>
+            <div className="mb-1.5 h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full"
+                style={{ width: `${stats.attendanceRate}%` }}
+              />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden p-8">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 bg-emerald-50 rounded-2xl">
+              <Layers className="h-6 w-6 text-emerald-600" />
+            </div>
+            <div>
+              <h4 className="text-lg font-bold font-sora text-slate-800">Academic Excellence</h4>
+              <p className="text-sm text-slate-500 font-medium">Average school-wide performance</p>
+            </div>
+          </div>
+          <div className="flex items-end gap-3">
+            <span className="text-5xl font-black text-slate-800 font-sora">{stats.averageScore}%</span>
+            <div className="mb-1.5 h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full"
+                style={{ width: `${stats.averageScore}%` }}
+              />
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }

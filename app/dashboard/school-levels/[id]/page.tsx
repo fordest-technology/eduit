@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { DashboardHeader } from "@/app/components/dashboard-header"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 import {
     Table, TableBody, TableCell, TableHead,
     TableHeader, TableRow
@@ -240,48 +241,29 @@ export default function SchoolLevelDetailsPage({ params: paramsPromise }: PagePr
                 showBanner={true}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <GraduationCap className="mr-2 h-5 w-5" />
-                            Classes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{level._count?.classes || 0}</p>
-                        <p className="text-sm text-blue-600 mt-1">Total classes in this level</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                            <BookOpen className="mr-2 h-5 w-5" />
-                            Subjects
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-purple-800">{level._count?.subjects || 0}</p>
-                        <p className="text-sm text-purple-600 mt-1">Total subjects in this level</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
-                            <Users className="mr-2 h-5 w-5" />
-                            Students
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-emerald-800">
-                            {classes.reduce((sum, cls) => sum + (cls._count?.students || 0), 0)}
-                        </p>
-                        <p className="text-sm text-emerald-600 mt-1">Across all classes</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <DashboardStatsGrid columns={3} className="mb-6">
+                <DashboardStatsCard
+                    title="Classes"
+                    value={level._count?.classes || 0}
+                    icon={GraduationCap}
+                    color="blue"
+                    description="Total classes in this level"
+                />
+                <DashboardStatsCard
+                    title="Subjects"
+                    value={level._count?.subjects || 0}
+                    icon={BookOpen}
+                    color="purple"
+                    description="Total subjects in this level"
+                />
+                <DashboardStatsCard
+                    title="Students"
+                    value={classes.reduce((sum: number, cls: any) => sum + (cls._count?.students || 0), 0)}
+                    icon={Users}
+                    color="emerald"
+                    description="Across all classes"
+                />
+            </DashboardStatsGrid>
 
             <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">

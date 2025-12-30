@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { Users, GraduationCap, BookOpen } from "lucide-react"
 import { ChildrenTable } from "./children-table"
 import { DashboardHeader } from "@/app/components/dashboard-header"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 
 interface Student {
     id: string;
@@ -92,50 +93,29 @@ export default async function ChildrenPage() {
                 showBanner={true}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <Users className="mr-2 h-5 w-5" />
-                            Total Children
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{children.length}</p>
-                        <p className="text-sm text-blue-600 mt-1">Registered children</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                            <GraduationCap className="mr-2 h-5 w-5" />
-                            Active Classes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-purple-800">
-                            {children.filter(child => child.classes.length > 0).length}
-                        </p>
-                        <p className="text-sm text-purple-600 mt-1">Children in active classes</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-emerald-700">
-                            <BookOpen className="mr-2 h-5 w-5" />
-                            Pending
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-emerald-800">
-                            {children.filter(child => child.classes.length === 0).length}
-                        </p>
-                        <p className="text-sm text-emerald-600 mt-1">Children pending class assignment</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <DashboardStatsGrid columns={3} className="mb-6">
+                <DashboardStatsCard
+                    title="Total Children"
+                    value={children.length}
+                    icon={Users}
+                    color="blue"
+                    description="Registered children"
+                />
+                <DashboardStatsCard
+                    title="Active Classes"
+                    value={children.filter(child => child.classes.length > 0).length}
+                    icon={GraduationCap}
+                    color="purple"
+                    description="Children in active classes"
+                />
+                <DashboardStatsCard
+                    title="Pending"
+                    value={children.filter(child => child.classes.length === 0).length}
+                    icon={BookOpen}
+                    color="emerald"
+                    description="Children pending class assignment"
+                />
+            </DashboardStatsGrid>
 
             <Card className="border-primary/10 shadow-md">
                 <CardHeader className="bg-primary/5 border-b border-primary/10">

@@ -8,6 +8,7 @@ import { InfoIcon, ClipboardCheck, Loader2, AlertTriangle } from "lucide-react";
 import { ClassTabs } from "./_components/class-tabs";
 import { ResultsManagementContainer } from "./_components/results-management-container";
 import { ResultsConfigurationForm } from "./_components/results-configuration-form";
+import { PublishResults } from "./_components/publish-results";
 import { DashboardHeader } from "@/app/components/dashboard-header";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -141,12 +142,19 @@ export default function ResultsPage() {
       />
 
       <Tabs defaultValue="results" className="w-full" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="w-full grid grid-cols-2 bg-muted/50 h-11 p-1 rounded-md border border-border/40">
+        <TabsList className="w-full grid grid-cols-3 bg-muted/50 h-11 p-1 rounded-md border border-border/40">
           <TabsTrigger
             value="results"
             className="rounded font-medium data-[state=active]:bg-gradient-to-b data-[state=active]:from-background data-[state=active]:to-background data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:border-b-2 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9"
           >
             Results
+          </TabsTrigger>
+          <TabsTrigger
+            value="publish"
+            className="rounded font-medium data-[state=active]:bg-gradient-to-b data-[state=active]:from-background data-[state=active]:to-background data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:border-b-2 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9"
+            disabled={!isAdmin}
+          >
+            Publish
           </TabsTrigger>
           <TabsTrigger
             value="configuration"
@@ -166,6 +174,9 @@ export default function ResultsPage() {
               />
             )}
           </ClassTabs>
+        </TabsContent>
+        <TabsContent value="publish" className="mt-4">
+          {isAdmin && <PublishResults schoolId={schoolId} />}
         </TabsContent>
         <TabsContent value="configuration" className="mt-4">
           {isLoadingConfig && (

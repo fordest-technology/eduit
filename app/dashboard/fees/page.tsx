@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardHeader } from "@/app/components/dashboard-header"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 import { Loader2, Plus, DollarSign, CreditCard, FileText, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -242,61 +243,36 @@ export default function FeeDashboardPage() {
                 icon={<DollarSign className="h-6 w-6" />}
             />
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <DollarSign className="mr-2 h-5 w-5" />
-                            Total Billed
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{formatCurrency(adminFeeData.totalBilled)}</p>
-                        <p className="text-sm text-blue-600 mt-1">Total amount billed to students</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-green-700">
-                            <CreditCard className="mr-2 h-5 w-5" />
-                            Total Paid
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-green-800">{formatCurrency(adminFeeData.totalPaid)}</p>
-                        <p className="text-sm text-green-600 mt-1">
-                            {((adminFeeData.totalPaid / adminFeeData.totalBilled) * 100 || 0).toFixed(1)}% of total billed
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-yellow-700">
-                            <FileText className="mr-2 h-5 w-5" />
-                            Pending Payments
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-yellow-800">{adminFeeData.totalPending}</p>
-                        <p className="text-sm text-yellow-600 mt-1">Awaiting payment</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-red-700">
-                            <AlertCircle className="mr-2 h-5 w-5" />
-                            Overdue Payments
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-red-800">{adminFeeData.totalOverdue}</p>
-                        <p className="text-sm text-red-600 mt-1">Requires immediate attention</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <DashboardStatsGrid columns={4}>
+                <DashboardStatsCard
+                    title="Total Billed"
+                    value={formatCurrency(adminFeeData.totalBilled)}
+                    icon={DollarSign}
+                    color="blue"
+                    description="Total amount billed to students"
+                />
+                <DashboardStatsCard
+                    title="Total Paid"
+                    value={formatCurrency(adminFeeData.totalPaid)}
+                    icon={CreditCard}
+                    color="emerald"
+                    description={`${((adminFeeData.totalPaid / adminFeeData.totalBilled) * 100 || 0).toFixed(1)}% of total billed`}
+                />
+                <DashboardStatsCard
+                    title="Pending Payments"
+                    value={adminFeeData.totalPending}
+                    icon={FileText}
+                    color="amber"
+                    description="Awaiting payment"
+                />
+                <DashboardStatsCard
+                    title="Overdue Payments"
+                    value={adminFeeData.totalOverdue}
+                    icon={AlertCircle}
+                    color="rose"
+                    description="Requires immediate attention"
+                />
+            </DashboardStatsGrid>
 
             <Separator />
 

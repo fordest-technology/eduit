@@ -1,12 +1,21 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
+import { Poppins, Sora } from "next/font/google";
 import { CustomSessionProvider } from "@/providers/session-provider";
 import { ColorProvider } from "@/contexts/color-context";
 import { ColorLoader } from "@/components/ui/color-loader";
 
-const inter = Inter({ subsets: ["latin"] });
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins"
+});
+
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-sora"
+});
 
 import { Toaster } from "@/components/ui/toaster";
 
@@ -116,7 +125,7 @@ export default function RootLayout({
       <head>
         <style dangerouslySetInnerHTML={{ __html: generateColorVariables("#22c55e", "#f59e0b") }} />
       </head>
-      <body className={inter.className}>
+      <body className={`${poppins.variable} ${sora.variable} font-poppins`}>
         <CustomSessionProvider>
           <ColorProvider>
             <ColorLoader>

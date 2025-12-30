@@ -1,29 +1,18 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
 import { useSchoolStore } from "@/store/school-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff, AlertCircle, School, GraduationCap, Users, BookOpen } from "lucide-react"
 import Link from "next/link"
-
-// TypeScript interface for school data
-interface School {
-  id: string
-  name: string
-  shortName: string
-  subdomain: string
-  logo: string
-  primaryColor: string
-  secondaryColor: string
-}
+import Image from "next/image"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -31,8 +20,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loginAttempts, setLoginAttempts] = useState(0)
   const [isSchoolLoading, setIsSchoolLoading] = useState(true)
-  const router = useRouter();
-  const { toast } = useToast();
+  const router = useRouter()
+  const { toast } = useToast()
   const { school, setSchool } = useSchoolStore()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -42,18 +31,13 @@ export default function LoginPage() {
     try {
       const response = await fetch('/api/auth/check', {
         method: 'GET',
-        credentials: 'include', // Important for cookies
+        credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.authenticated) {
-          // Redirect based on user role
-          if (data.user.role === "super_admin") {
-            router.push("/dashboard");
-          } else {
-            router.push(`/dashboard`);
-          }
+          router.push("/dashboard");
         }
       }
     } catch (error) {
@@ -69,33 +53,22 @@ export default function LoginPage() {
     const fetchSchoolData = async () => {
       setIsSchoolLoading(true)
       try {
-        // Get the subdomain from the current URL
         const host = window.location.host
         const subdomain = host.split(".")[0]
 
-        if (!subdomain) {
-          console.error("No subdomain found in URL")
+        if (!subdomain || subdomain === 'localhost' || subdomain === 'eduit') {
+          setIsSchoolLoading(false)
           return
         }
 
-        console.log("Fetching school data for subdomain:", subdomain)
         const response = await fetch(`/api/public/schools/${subdomain}`)
         const result = await response.json()
 
-        if (!result.success) {
-          throw new Error(result.error || "Failed to fetch school data")
+        if (result.success) {
+          setSchool(result.data)
         }
-
-        const schoolData = result.data
-        if (!schoolData.subdomain) {
-          throw new Error("School data is missing required subdomain property")
-        }
-
-        console.log("School data fetched successfully:", schoolData.name)
-        setSchool(schoolData)
       } catch (error) {
         console.error("Error fetching school data:", error)
-        setError(error instanceof Error ? error.message : "Failed to load school data")
       } finally {
         setIsSchoolLoading(false)
       }
@@ -107,7 +80,6 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    // Check if max login attempts reached
     if (loginAttempts >= 3) {
       setError("Too many login attempts. Please try again later or reset your password.")
       return
@@ -119,218 +91,211 @@ export default function LoginPage() {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
-        credentials: "include", // Important for cookies
+        credentials: "include",
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        setLoginAttempts(prev => prev + 1)
+        throw new Error(data.message || "Invalid email or password");
       }
 
-      // Successful login
       toast({
         title: "Login Successful",
         description: "Welcome back! You are being redirected...",
       });
 
       const targetRoute = data.user.role === "super_admin" ? "/dashboard" : `/dashboard`;
-      await router.push(targetRoute);
+      router.push(targetRoute);
 
     } catch (error) {
-      console.error("Login error:", error);
       setError(error instanceof Error ? error.message : "Login failed");
     } finally {
       setIsLoading(false);
     }
   }
 
-  // Format error message for display
-  const getErrorMessage = (error: string) => {
-    if (error.includes("CredentialsSignin") || error.includes("Invalid credentials")) {
-      return "Invalid email or password. Please try again."
-    }
-    return error
-  }
-
-  // Apply dynamic styles based on school colors
-  const primaryColor = school?.primaryColor || "#3b82f6"
-  const secondaryColor = school?.secondaryColor || "#1f2937"
-  const textColor = school?.primaryColor ? "#ffffff" : undefined
-
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left Panel - Decorative */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#f97316] via-orange-500 to-[#16a34a] relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:16px_16px]" />
-        <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-green-400/20 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/10 to-green-600/10 backdrop-blur-[2px]" />
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#FAFAFA] selection:bg-orange-100 selection:text-orange-900 font-poppins">
+      {/* Left Panel - Premium Decorative */}
+      <div className="hidden md:flex md:w-[45%] lg:w-[42%] bg-[#0F172A] relative overflow-hidden flex-col justify-between p-12 lg:p-16">
+        {/* Background Effects */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[40%] bg-orange-600/20 blur-[120px] rounded-full"></div>
+          <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[40%] bg-blue-600/10 blur-[100px] rounded-full"></div>
+          <div className="absolute inset-0 opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+          <motion.div
+            animate={{ y: [0, -20, 0], opacity: [0.1, 0.2, 0.1] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[20%] left-[10%] w-32 h-32 border border-white/10 rounded-full"
+          />
         </div>
-        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8">
-            <School className="w-16 h-16 text-white" />
+
+        <motion.div
+          className="relative z-10"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <Link href="/">
+            <div className="relative h-16 w-52 bg-white p-2.5 rounded-2xl shadow-2xl group transition-transform hover:scale-105">
+              <Image
+                src="/EDUIT.jpeg"
+                alt="EduIT Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+          </Link>
+
+          <div className="mt-24 space-y-6">
+            <h1 className="text-4xl lg:text-5xl font-black text-white leading-[1.1] font-sora tracking-tight">
+              Welcome to <span className="text-orange-600">EduIT</span>
+            </h1>
+            <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-sm">
+              Your comprehensive school management platform. <br />Sign in to access your dashboard.
+            </p>
           </div>
-          <h1 className="text-4xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-orange-100">
-            Welcome to Eduit
-          </h1>
-          <p className="text-xl text-orange-50 text-center max-w-md mb-12 font-light">
-            Your comprehensive school management platform. Sign in to access your dashboard.
-          </p>
-          <div className="grid grid-cols-3 gap-6 w-full max-w-2xl">
-            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 transform hover:scale-105 transition-transform duration-300">
-              <GraduationCap className="w-8 h-8 mb-4 text-orange-100" />
-              <div className="text-2xl font-bold mb-2">500+</div>
-              <div className="text-orange-100 text-sm">Schools Trust Us</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 transform hover:scale-105 transition-transform duration-300">
-              <Users className="w-8 h-8 mb-4 text-orange-100" />
-              <div className="text-2xl font-bold mb-2">50K+</div>
-              <div className="text-orange-100 text-sm">Active Users</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 transform hover:scale-105 transition-transform duration-300">
-              <BookOpen className="w-8 h-8 mb-4 text-orange-100" />
-              <div className="text-2xl font-bold mb-2">99.9%</div>
-              <div className="text-orange-100 text-sm">Uptime SLA</div>
-            </div>
+        </motion.div>
+
+        <div className="relative z-10">
+          <div className="grid grid-cols-1 gap-5">
+            {[
+              { label: "500+ Schools Trust Us", icon: <GraduationCap className="h-5 w-5" />, value: "500+" },
+              { label: "50K+ Active Users", icon: <Users className="h-5 w-5" />, value: "50K+" },
+              { label: "99.9% Uptime SLA", icon: <BookOpen className="h-5 w-5" />, value: "99.9%" }
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 + (i * 0.1) }}
+                className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600/10 text-orange-500 border border-orange-500/20">
+                  {stat.icon}
+                </div>
+                <div>
+                  <p className="text-lg font-black text-white font-sora leading-none">{stat.value}</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1.5">{stat.label}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-orange-50/30">
-        <Card className="w-full max-w-md shadow-xl border-0 bg-white/70 backdrop-blur-lg">
-          <CardHeader className="space-y-1 pb-8">
-            <div className="flex flex-col items-center space-y-2">
-              {isSchoolLoading ? (
-                <div className="h-16 w-16 flex items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#f97316]" />
-                </div>
-              ) : school?.logo ? (
-                <img
-                  src={school.logo}
-                  alt={school.name}
-                  className="h-16 w-auto mb-2 object-contain"
-                />
-              ) : (
-                <div className="bg-gradient-to-br from-[#f97316] to-[#16a34a] p-4 rounded-xl">
-                  <School className="h-12 w-12 text-white" />
-                </div>
-              )}
-              <CardTitle className="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-[#f97316] to-[#16a34a]">
-                {isSchoolLoading ? (
-                  <div className="h-8 w-48 animate-pulse bg-orange-100 rounded mx-auto" />
-                ) : (
-                  school?.name || "Welcome Back"
-                )}
-              </CardTitle>
-              <CardDescription className="text-center text-gray-600">
-                Sign in to your account to continue
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-6 bg-red-50/80 backdrop-blur-lg text-red-600 border-red-200">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{getErrorMessage(error)}</AlertDescription>
-              </Alert>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">Email Address</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  autoComplete="email"
-                  disabled={isLoading || loginAttempts >= 3}
-                  required
-                  className="h-12 px-4 bg-white/70 backdrop-blur-sm border-gray-200 focus:border-[#f97316] focus:ring-[#f97316] transition-colors duration-200"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+      {/* Right Panel - Form */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-white relative">
+        <div className="absolute top-0 right-0 w-[40%] h-[30%] bg-orange-50/50 blur-[100px] pointer-events-none"></div>
+        <div className="w-full max-w-[420px] relative z-10">
+          <motion.div
+            className="space-y-12"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="text-center space-y-4">
+              <div className="md:hidden flex justify-center mb-8">
+                <Image src="/EDUIT.jpeg" alt="Logo" width={160} height={48} className="object-contain" />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-gray-700">Password</Label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-sm text-[#16a34a] hover:text-[#15803d] transition-colors"
-                  >
+                <h2 className="text-3xl font-black text-slate-900 font-sora tracking-tighter">
+                  {isSchoolLoading ? "Loading..." : (school?.name || "Welcome Back")}
+                </h2>
+                <p className="text-slate-500 font-medium tracking-tight">
+                  Sign in to your account to continue
+                </p>
+              </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-700 shadow-sm"
+                >
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <p className="text-sm font-bold font-sora leading-tight">{error}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <form onSubmit={handleSubmit} className="space-y-7">
+              <div className="space-y-2.5">
+                <Label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 font-sora ml-1">Email Address</Label>
+                <Input
+                  type="email"
+                  placeholder="name@school.com"
+                  required
+                  disabled={isLoading || loginAttempts >= 3}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-14 bg-slate-50/50 border-slate-200 rounded-2xl px-6 font-bold font-poppins focus:bg-white focus:ring-[6px] focus:ring-orange-500/5 focus:border-orange-600 transition-all duration-300"
+                />
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between ml-1">
+                  <Label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 font-sora">Password</Label>
+                  <Link href="/forgot-password" size="sm" className="text-[12px] font-bold text-orange-600 hover:text-orange-700 underline underline-offset-4 decoration-orange-200">
                     Forgot password?
                   </Link>
                 </div>
-                <div className="relative">
+                <div className="relative group">
                   <Input
-                    id="password"
-                    name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    disabled={isLoading || loginAttempts >= 3}
+                    placeholder="••••••••••••"
                     required
-                    className="h-12 px-4 bg-white/70 backdrop-blur-sm border-gray-200 focus:border-[#f97316] focus:ring-[#f97316] transition-colors duration-200"
+                    disabled={isLoading || loginAttempts >= 3}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="h-14 bg-slate-50/50 border-slate-200 rounded-2xl px-6 font-bold font-poppins focus:bg-white focus:ring-[6px] focus:ring-orange-500/5 focus:border-orange-600 transition-all duration-300"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:text-[#f97316] transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-orange-600 transition-colors p-1"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                    <span className="sr-only">
-                      {showPassword ? "Hide password" : "Show password"}
-                    </span>
-                  </Button>
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-12 text-base font-medium bg-gradient-to-r from-[#f97316] to-[#16a34a] hover:from-[#ea580c] hover:to-[#15803d] text-white transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                disabled={isLoading || loginAttempts >= 3}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign in"
-                )}
-              </Button>
-            </form>
-          </CardContent>
-
-          {loginAttempts >= 3 && (
-            <CardFooter className="flex justify-center pt-6 border-t border-gray-200/50">
-              <div className="text-sm text-center">
-                <p className="text-gray-600 mb-2">Too many login attempts.</p>
-                <Link
-                  href="/forgot-password"
-                  className="text-[#16a34a] font-medium hover:text-[#15803d] transition-colors"
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading || loginAttempts >= 3}
+                  className="w-full h-16 bg-orange-600 hover:bg-orange-700 text-white rounded-[1.25rem] text-lg font-black font-sora tracking-tight transition-all active:scale-[0.98] shadow-2xl shadow-orange-100 disabled:opacity-50"
                 >
-                  Reset your password
-                </Link>
+                  {isLoading ? (
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span>Authenticating...</span>
+                    </div>
+                  ) : (
+                    "Sign in"
+                  )}
+                </Button>
               </div>
-            </CardFooter>
-          )}
-        </Card>
+            </form>
+
+            <div className="pt-6 text-center space-y-4">
+              <p className="text-[14px] font-bold text-slate-500">
+                Don't have an account? <Link href="/register" className="text-orange-600 hover:text-orange-700 underline underline-offset-4 decoration-orange-200">Register now</Link>
+              </p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest opacity-60">
+                Managed securely by <Link href="/" className="text-slate-900 hover:text-orange-600 transition-colors">EduIT OS</Link>
+              </p>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </div>
   )

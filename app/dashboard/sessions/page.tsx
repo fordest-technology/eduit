@@ -9,6 +9,7 @@ import { SessionsTable } from "./sessions-table"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { DashboardHeader } from "@/app/components/dashboard-header"
+import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
 
 interface Session {
     id: string
@@ -203,59 +204,36 @@ export default function SessionsPage() {
                 showBanner={true}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <Calendar className="mr-2 h-5 w-5" />
-                            Total Sessions
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{stats.total}</p>
-                        <p className="text-sm text-blue-600 mt-1">Academic periods</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-green-700">
-                            <Clock className="mr-2 h-5 w-5" />
-                            Active Sessions
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-green-800">{stats.active}</p>
-                        <p className="text-sm text-green-600 mt-1">Currently running</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                            <Users className="mr-2 h-5 w-5" />
-                            Students
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-purple-800">{stats.students}</p>
-                        <p className="text-sm text-purple-600 mt-1">Enrolled across sessions</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-amber-700">
-                            <BookOpen className="mr-2 h-5 w-5" />
-                            Current Session
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-xl font-bold text-amber-800 truncate">{stats.currentSession}</p>
-                        <p className="text-sm text-amber-600 mt-1">Default for new entries</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <DashboardStatsGrid columns={4} className="mb-6">
+                <DashboardStatsCard
+                    title="Total Sessions"
+                    value={stats.total}
+                    icon={Calendar}
+                    color="blue"
+                    description="Academic periods"
+                />
+                <DashboardStatsCard
+                    title="Active Sessions"
+                    value={stats.active}
+                    icon={Clock}
+                    color="emerald"
+                    description="Currently running"
+                />
+                <DashboardStatsCard
+                    title="Students"
+                    value={stats.students}
+                    icon={Users}
+                    color="purple"
+                    description="Enrolled across sessions"
+                />
+                <DashboardStatsCard
+                    title="Current Session"
+                    value={stats.currentSession}
+                    icon={BookOpen}
+                    color="amber"
+                    description="Default for new entries"
+                />
+            </DashboardStatsGrid>
 
             <Card className="border-primary/10 shadow-md">
                 <CardHeader className="bg-primary/5 border-b border-primary/10">

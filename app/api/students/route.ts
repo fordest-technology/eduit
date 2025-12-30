@@ -193,13 +193,13 @@ export async function GET(request: NextRequest) {
         })),
         currentClass: currentClass
           ? {
-              id: currentClass.class.id,
-              name: currentClass.class.name,
-              section: currentClass.class.section,
-              level: currentClass.class.level,
-              rollNumber: currentClass.rollNumber,
-              status: currentClass.status,
-            }
+            id: currentClass.class.id,
+            name: currentClass.class.name,
+            section: currentClass.class.section,
+            level: currentClass.class.level,
+            rollNumber: currentClass.rollNumber,
+            status: currentClass.status,
+          }
           : undefined,
         hasParents: student.parents.length > 0,
         parentNames: student.parents.map((p) => p.parent.user.name).join(", "),
@@ -438,39 +438,39 @@ export async function POST(req: Request) {
       return completeStudent;
     });
 
-    // Send credentials email if requested
-    if (sendCredentials) {
-      try {
-        // Get school information for email
-        const school = await db.school.findUnique({
-          where: { id: session.schoolId },
-          select: { name: true, subdomain: true },
-        });
+    // Always send credentials email to student
+    try {
+      // Get school information for email
+      const school = await db.school.findUnique({
+        where: { id: session.schoolId },
+        select: { name: true, subdomain: true, domain: true },
+      });
 
-        await sendStudentCredentialsEmail({
-          studentName: name,
-          studentEmail: email,
-          password: password || generatePassword(),
-          schoolName: school?.name || "Your School",
-          schoolUrl: `${
-            process.env.NEXT_PUBLIC_APP_URL || "https://eduit.app"
-          }/${school?.subdomain || ""}`,
-          schoolId: session.schoolId,
-        });
+      const schoolUrl = school?.domain
+        ? `https://${school.domain}`
+        : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-        logger.info("Student credentials email sent successfully", {
-          studentId: result.id,
-          email,
-          schoolId: session.schoolId,
-        });
-      } catch (emailError) {
-        logger.error("Failed to send student credentials email", emailError, {
-          studentId: result.id,
-          email,
-          schoolId: session.schoolId,
-        });
-        // Don't fail the entire request if email fails
-      }
+      await sendStudentCredentialsEmail({
+        studentName: name,
+        studentEmail: email,
+        password: password || generatePassword(),
+        schoolName: school?.name || "Your School",
+        schoolUrl,
+        schoolId: session.schoolId,
+      });
+
+      logger.info("Student credentials email sent successfully", {
+        studentId: result.id,
+        email,
+        schoolId: session.schoolId,
+      });
+    } catch (emailError) {
+      logger.error("Failed to send student credentials email", emailError, {
+        studentId: result.id,
+        email,
+        schoolId: session.schoolId,
+      });
+      // Don't fail the entire request if email fails
     }
 
     return NextResponse.json(result);

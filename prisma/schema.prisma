@@ -32,6 +32,8 @@ model User {
   parent            Parent?
   processedPayments PaymentRequest[]
   approvedResults   Result[]          @relation("ResultApprover")
+  publishedResults  Result[]          @relation("ResultPublisher")
+  resultPublications ResultPublication[]
   sessions          Session[]
   student           Student?
   teacher           Teacher?
@@ -141,6 +143,7 @@ model School {
   events          Event[]
   paymentAccounts PaymentAccount[]
   resultConfigs   ResultConfiguration[]
+  resultPublications ResultPublication[]
   levels          SchoolLevel[]
   subjects        Subject[]
   users           User[]
@@ -218,6 +221,7 @@ model AcademicSession {
   attendance           Attendance[]
   results              Result[]
   resultConfigurations ResultConfiguration[]
+  resultPublications   ResultPublication[]
   studentClasses       StudentClass[]
 
   @@index([schoolId])
@@ -318,14 +322,40 @@ model Result {
   remark            String
   teacherComment    String?
   total             Float
+  
+  // Publication tracking
+  published         Boolean          @default(false)
+  publishedAt       DateTime?
+  publishedById     String?
+  
   componentScores   ComponentScore[]
   approvedBy        User?            @relation("ResultApprover", fields: [approvedById], references: [id])
+  publishedBy       User?            @relation("ResultPublisher", fields: [publishedById], references: [id])
   period            ResultPeriod     @relation(fields: [periodId], references: [id])
   session           AcademicSession  @relation(fields: [sessionId], references: [id])
   student           Student          @relation(fields: [studentId], references: [id])
   subject           Subject          @relation(fields: [subjectId], references: [id])
 
   @@unique([studentId, subjectId, periodId, sessionId])
+}
+
+model ResultPublication {
+  id                String          @id @default(cuid())
+  schoolId          String
+  sessionId         String
+  periodId          String
+  classId           String?
+  publishedAt       DateTime        @default(now())
+  publishedById     String
+  totalStudents     Int
+  notificationsSent Boolean         @default(false)
+  
+  school            School          @relation(fields: [schoolId], references: [id])
+  session           AcademicSession @relation(fields: [sessionId], references: [id])
+  period            ResultPeriod    @relation(fields: [periodId], references: [id])
+  publishedBy       User            @relation(fields: [publishedById], references: [id])
+  
+  createdAt         DateTime        @default(now())
 }
 
 model Event {
@@ -539,6 +569,7 @@ model ResultPeriod {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   results         Result[]
+  resultPublications ResultPublication[]
   configuration   ResultConfiguration @relation(fields: [configurationId], references: [id])
 }
 

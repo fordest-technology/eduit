@@ -1,50 +1,89 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { CalendarDays, CheckCircle, ChevronRight, Download, Globe, LifeBuoy, Lock, Mail, MessageSquare, School, Shield, Star, Users } from "lucide-react"
+import {
+  CalendarDays,
+  CheckCircle,
+  ChevronRight,
+  Download,
+  Globe,
+  LifeBuoy,
+  Lock,
+  Mail,
+  MessageSquare,
+  School,
+  Shield,
+  Star,
+  Users,
+  BarChart3,
+  BookOpen,
+  LayoutDashboard,
+  Bell,
+  CheckCircle2,
+  ArrowRight,
+  Zap,
+  ShieldCheck,
+  TrendingUp,
+  Plus,
+  ArrowUpRight,
+  Cpu,
+  Layers,
+  Database,
+  HeadphonesIcon
+} from "lucide-react"
 
 export default function Home() {
+  const fadeInUp = {
+    initial: { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true },
+    transition: { duration: 0.6, ease: "easeOut" }
+  }
+
+  const staggerContainer = {
+    animate: {
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white font-poppins selection:bg-orange-100 selection:text-orange-900">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm">
-        <div className="container flex h-16 items-center justify-between">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-20 items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="relative h-10 w-32">
-              <div className="absolute inset-0 flex items-center">
-                <School className="h-6 w-6 text-[#f97316]" />
-                <span className="ml-2 text-xl font-bold text-gray-900">Eduit</span>
+            <Link href="/" className="flex items-center group">
+              <div className="relative h-16 w-48 transition-transform group-hover:scale-105 duration-300">
+                <Image
+                  src="/EDUIT.jpeg"
+                  alt="EduIT Logo"
+                  fill
+                  className="object-contain mix-blend-multiply brightness-[1.1] contrast-[1.1]"
+                  priority
+                />
               </div>
-              <div className="absolute bottom-0 right-0">
-                <span className="text-[10px] text-gray-500 whitespace-nowrap">by Fordest Technologies</span>
-              </div>
-            </div>
+            </Link>
           </div>
-          <nav className="hidden md:flex gap-8">
-            <Link href="#features" className="text-sm font-medium text-gray-600 hover:text-[#f97316] transition-colors">
-              Features
-            </Link>
-            <Link href="#testimonials" className="text-sm font-medium text-gray-600 hover:text-[#f97316] transition-colors">
-              Testimonials
-            </Link>
-            <Link href="#pricing" className="text-sm font-medium text-gray-600 hover:text-[#f97316] transition-colors">
-              Pricing
-            </Link>
-            <Link href="#integrations" className="text-sm font-medium text-gray-600 hover:text-[#f97316] transition-colors">
-              Integrations
-            </Link>
-            <Link href="#about" className="text-sm font-medium text-gray-600 hover:text-[#f97316] transition-colors">
-              About Fordest
-            </Link>
+          <nav className="hidden lg:flex gap-10">
+            {["Features", "Modules", "Pricing", "Security"].map((item) => (
+              <Link
+                key={item}
+                href={`#${item.toLowerCase()}`}
+                className="text-[14px] font-semibold text-slate-600 hover:text-orange-600 transition-colors tracking-tight font-sora"
+              >
+                {item}
+              </Link>
+            ))}
           </nav>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost" className="font-medium text-gray-700">Log in</Button>
-            </Link>
-            <Link href="#request-demo" className="group">
-              <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white font-medium shadow-md hover:shadow-lg transition-all">
-                Request Demo
-                <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+          <div className="flex items-center gap-6">
+            <Link href="/register">
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white text-[15px] font-black h-12 px-8 rounded-2xl shadow-xl shadow-orange-100 transition-all hover:scale-[1.02] active:scale-100 font-sora tracking-tight">
+                Get Started Now
               </Button>
             </Link>
           </div>
@@ -53,456 +92,314 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 md:py-28 overflow-hidden bg-gradient-to-b from-white via-orange-50/50 to-white">
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-40 -right-40 w-80 h-80 bg-orange-100 rounded-full opacity-20 blur-3xl"></div>
-            <div className="absolute top-60 -left-20 w-60 h-60 bg-green-200 rounded-full opacity-20 blur-3xl"></div>
-          </div>
-          <div className="container relative px-4 md:px-6 mx-auto">
-            <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-              <div className="space-y-8 max-w-2xl">
-                <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-sm font-medium bg-orange-50 text-[#f97316]">
-                  All-in-one School Management Platform
+        <section className="relative pt-24 pb-20 md:pt-36 md:pb-32 overflow-hidden">
+          <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto text-center space-y-8">
+              <motion.div
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-100/50"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                  ))}
                 </div>
-                <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl text-gray-900 lg:leading-[1.1]">
-                  Transform School Management with <span className="text-[#f97316]">Eduit</span>
-                </h1>
-                <p className="text-xl text-gray-600 leading-relaxed">
-                  Fordest Technologies' comprehensive platform designed to streamline administration, enhance teaching, and elevate the learning experience.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Link href="#request-demo" className="group">
-                    <Button size="lg" className="w-full sm:w-auto text-base bg-[#f97316] hover:bg-[#ea580c] text-white font-medium shadow-md hover:shadow-lg transition-all">
-                      Request Demo
-                      <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
-                    </Button>
-                  </Link>
-                  <Link href="#features">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto text-base text-gray-700 border-gray-300 hover:bg-gray-50">
-                      See Features
-                    </Button>
-                  </Link>
-                </div>
+                <span className="text-[13px] font-bold text-orange-700 font-sora tracking-tight">⭐ 4.9 / 5 average rating</span>
+              </motion.div>
 
-                <div className="pt-6 border-t border-gray-200">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center text-sm text-gray-600 font-medium">
-                      <CheckCircle className="h-5 w-5 text-[#f97316] mr-2" />
-                      Trusted by 500+ schools
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 font-medium">
-                      <CheckCircle className="h-5 w-5 text-[#f97316] mr-2" />
-                      99.9% Uptime SLA
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 font-medium">
-                      <CheckCircle className="h-5 w-5 text-[#f97316] mr-2" />
-                      FERPA Compliant
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="relative flex justify-center rounded-2xl overflow-hidden shadow-2xl">
-                <div className="relative w-full aspect-[4/3] bg-white rounded-2xl overflow-hidden">
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white via-white to-orange-50 flex items-center justify-center">
-                    <div className="relative w-full h-full p-6">
-                      {/* Placeholder for dashboard image */}
-                      <div className="relative w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-md bg-white">
-                        <div className="absolute top-0 left-0 right-0 h-12 bg-[#f97316] flex items-center px-4">
-                          <div className="flex space-x-2">
-                            <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                          </div>
-                          <div className="ml-4 text-white text-sm font-medium">Eduit Dashboard</div>
-                        </div>
-                        <div className="absolute top-12 left-0 right-0 bottom-0 bg-gray-50 flex">
-                          <div className="w-48 h-full bg-[#ea580c] p-4">
-                            <div className="space-y-4">
-                              <div className="bg-orange-600 rounded p-2 text-white text-xs">Dashboard</div>
-                              <div className="text-orange-100 text-xs p-2">Students</div>
-                              <div className="text-orange-100 text-xs p-2">Teachers</div>
-                              <div className="text-orange-100 text-xs p-2">Classes</div>
-                              <div className="text-orange-100 text-xs p-2">Attendance</div>
-                              <div className="text-orange-100 text-xs p-2">Reports</div>
-                            </div>
-                          </div>
-                          <div className="flex-1 p-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-gray-500 mb-1">Total Students</div>
-                                <div className="text-lg font-bold">1,248</div>
-                                <div className="mt-2 h-1 bg-gray-100 rounded-full">
-                                  <div className="h-1 bg-green-500 rounded-full w-3/4"></div>
-                                </div>
-                              </div>
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-gray-500 mb-1">Attendance Rate</div>
-                                <div className="text-lg font-bold">94.2%</div>
-                                <div className="mt-2 h-1 bg-gray-100 rounded-full">
-                                  <div className="h-1 bg-blue-500 rounded-full w-[94%]"></div>
-                                </div>
-                              </div>
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-gray-500 mb-1">Classes</div>
-                                <div className="text-lg font-bold">42</div>
-                                <div className="mt-2 h-1 bg-gray-100 rounded-full">
-                                  <div className="h-1 bg-purple-500 rounded-full w-1/2"></div>
-                                </div>
-                              </div>
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-gray-500 mb-1">GPA Average</div>
-                                <div className="text-lg font-bold">3.4</div>
-                                <div className="mt-2 h-1 bg-gray-100 rounded-full">
-                                  <div className="h-1 bg-yellow-500 rounded-full w-4/5"></div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="absolute -bottom-4 -right-4 bg-white rounded-lg shadow-lg p-4 flex items-center justify-center">
-                  <div className="px-2 py-1 bg-[#f97316]/10 rounded-md text-xs font-medium text-[#f97316] flex items-center">
-                    <span className="inline-block mr-1 p-1 bg-white rounded-full">
-                      <School className="h-3 w-3 text-[#f97316]" />
-                    </span>
-                    A Fordest Technologies Solution
-                  </div>
-                </div>
-              </div>
+              <motion.h1
+                className="text-5xl md:text-7xl font-extrabold text-slate-900 leading-[1.05] tracking-tight font-sora"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                Building the Future <br />
+                <span className="text-orange-600">of Education.</span>
+              </motion.h1>
+
+              <motion.p
+                className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto font-medium"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                EduIT is a modern, all-in-one operating system designed for forward-thinking schools. Manage academics, finance, communication, and administration from a single intelligent platform built to scale.
+              </motion.p>
+
+              <motion.div
+                className="flex flex-col sm:flex-row gap-4 justify-center pt-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                <Link href="/register">
+                  <Button size="lg" className="bg-orange-600 hover:bg-orange-700 text-white text-[16px] font-black h-14 px-10 rounded-2xl shadow-xl shadow-orange-100 transition-all hover:-translate-y-1 active:translate-y-0 font-sora">
+                    Get Started Now
+                  </Button>
+                </Link>
+                <Link href="#features">
+                  <Button size="lg" variant="outline" className="border-slate-200 text-slate-800 text-[16px] font-bold h-14 px-10 rounded-2xl bg-white hover:bg-slate-50 transition-all">
+                    Explore the Platform
+                  </Button>
+                </Link>
+              </motion.div>
+
+              <motion.p
+                className="text-sm font-bold text-slate-500 tracking-widest uppercase font-sora pt-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1, delay: 0.4 }}
+              >
+                Trusted by 500+ institutions globally
+              </motion.p>
+            </div>
+          </div>
+
+          {/* Background decoration */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(255,237,213,0.4)_0%,rgba(255,255,255,0)_60%)]"></div>
+        </section>
+
+        {/* Product Proof (Quick Metrics) */}
+        <section className="py-16 border-y border-slate-100 bg-slate-50/50">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto text-center">
+              <motion.div {...fadeInUp} className="space-y-2">
+                <p className="text-4xl md:text-5xl font-black text-slate-900 font-sora">+24%</p>
+                <p className="text-[15px] font-bold text-slate-500 uppercase tracking-[0.1em]">Enrollment Growth</p>
+              </motion.div>
+              <motion.div {...fadeInUp} transition={{ delay: 0.1 }} className="space-y-2">
+                <p className="text-4xl md:text-5xl font-black text-orange-600 font-sora">40%</p>
+                <p className="text-[15px] font-bold text-slate-500 uppercase tracking-[0.1em]">Improvement in Efficiency</p>
+              </motion.div>
+              <motion.div {...fadeInUp} transition={{ delay: 0.2 }} className="space-y-2">
+                <p className="text-4xl md:text-5xl font-black text-slate-900 font-sora">99.99%</p>
+                <p className="text-[15px] font-bold text-slate-500 uppercase tracking-[0.1em]">System Reliability</p>
+              </motion.div>
             </div>
           </div>
         </section>
 
-        {/* Trust Indicators */}
-        <section className="py-12 border-y border-gray-200 bg-gray-50">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center text-center">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-8">Trusted By Leading Educational Institutions</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 items-center justify-items-center w-full max-w-5xl">
-                {/* Placeholder for school logos */}
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-12 w-32 bg-white rounded-md shadow-sm flex items-center justify-center px-4">
-                    <div className="text-gray-400 font-medium text-sm">School Logo {i + 1}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-12 flex flex-wrap justify-center gap-6">
-                <div className="flex items-center px-4 py-2 bg-white rounded-lg shadow-sm">
-                  <Shield className="h-5 w-5 text-[#f97316] mr-2" />
-                  <span className="text-sm font-medium">FERPA Compliant</span>
-                </div>
-                <div className="flex items-center px-4 py-2 bg-white rounded-lg shadow-sm">
-                  <Shield className="h-5 w-5 text-[#f97316] mr-2" />
-                  <span className="text-sm font-medium">COPPA Certified</span>
-                </div>
-                <div className="flex items-center px-4 py-2 bg-white rounded-lg shadow-sm">
-                  <Lock className="h-5 w-5 text-[#f97316] mr-2" />
-                  <span className="text-sm font-medium">ISO 27001</span>
-                </div>
-                <div className="flex items-center px-4 py-2 bg-white rounded-lg shadow-sm">
-                  <Shield className="h-5 w-5 text-[#f97316] mr-2" />
-                  <span className="text-sm font-medium">SOC 2 Compliant</span>
-                </div>
-              </div>
-              <div className="mt-8 text-gray-500 text-sm">
-                Featured in: <span className="font-medium">EdTech Magazine</span>, <span className="font-medium">Education World</span>, <span className="font-medium">Tech & Learning</span>
-              </div>
+        {/* Trusted By */}
+        <section className="py-20">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-[13px] font-black text-orange-600 uppercase tracking-[0.2em] mb-12">Powering schools, colleges, and education networks worldwide.</p>
+            <div className="flex flex-wrap justify-center items-center gap-x-16 gap-y-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+              {["School Alpha", "Green Valley Academy", "Riverside College", "Future Scholars Institute", "Global International School"].map((school) => (
+                <span key={school} className="text-xl md:text-2xl font-black tracking-tight text-slate-900 font-sora">
+                  {school}
+                </span>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Fordest Advantage Section */}
-        <section id="about" className="py-20 bg-white">
-          <div className="container px-4 md:px-6">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-sm font-medium bg-orange-50 text-[#f97316]">
-                  The Fordest Advantage
-                </div>
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-gray-900">
-                  Backed by Fordest Technologies' 10+ Years in Education Innovation
-                </h2>
-                <p className="text-lg text-gray-600 leading-relaxed">
-                  Fordest Technologies specializes in creating sophisticated yet intuitive software solutions for the education sector, with a focus on data security, seamless integration, and measurable outcomes.
-                </p>
-                <div className="pt-4">
-                  <Link href="https://fordest.com" target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="text-[#f97316] border-[#f97316]">
-                      Learn More About Fordest Technologies
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-                <div className="grid grid-cols-2 gap-6 pt-6">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-full p-2 bg-orange-50">
-                      <Globe className="h-5 w-5 text-[#f97316]" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Global Presence</h3>
-                      <p className="text-sm text-gray-600">Serving institutions across 25+ countries</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-full p-2 bg-orange-50">
-                      <Users className="h-5 w-5 text-[#f97316]" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Industry Leaders</h3>
-                      <p className="text-sm text-gray-600">Team of education technology experts</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-full p-2 bg-orange-50">
-                      <Star className="h-5 w-5 text-[#f97316]" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Award-Winning</h3>
-                      <p className="text-sm text-gray-600">Multiple EdTech excellence awards</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-full p-2 bg-orange-50">
-                      <LifeBuoy className="h-5 w-5 text-[#f97316]" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">24/7 Support</h3>
-                      <p className="text-sm text-gray-600">Dedicated customer success teams</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="relative flex justify-center">
-                <div className="relative w-full max-w-md">
-                  <div className="absolute -top-6 -left-6 w-20 h-20 bg-orange-100 rounded-lg rotate-6 z-10"></div>
-                  <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-green-200 rounded-lg -rotate-6 z-10"></div>
-                  <div className="relative z-20 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
-                    <div className="aspect-video bg-[#f97316] flex items-center justify-center p-8 text-white">
-                      <div className="text-center">
-                        <div className="mb-4 inline-block">
-                          <School className="h-16 w-16" />
-                        </div>
-                        <h3 className="text-xl font-bold">Fordest Technologies</h3>
-                        <p className="text-orange-100 mt-2">Education Innovation Since 2013</p>
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-lg">Our Mission</h4>
-                        <p className="text-sm text-gray-600">To transform education through technology that empowers educators and enhances student outcomes.</p>
-                      </div>
-                      <div className="pt-4 border-t border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <div className="text-sm text-gray-500">Industry Partners:</div>
-                          <div className="flex space-x-3">
-                            {Array.from({ length: 3 }).map((_, i) => (
-                              <div key={i} className="h-6 w-6 bg-gray-200 rounded-full"></div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Product Showcase */}
-        <section id="features" className="py-20 bg-gray-50 border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-sm font-medium bg-orange-50 text-[#f97316] mb-4">
-                Product Showcase
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-gray-900 mb-4">
-                Experience the Power of Eduit
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Discover how our comprehensive suite of tools can transform your educational institution
+        {/* Product Preview */}
+        <section id="preview" className="py-24 bg-white overflow-hidden">
+          <div className="container mx-auto px-4">
+            <div className="text-center max-w-3xl mx-auto mb-16 space-y-6">
+              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">Product Preview</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-sora">See EduIT in Action</h3>
+              <p className="text-lg text-slate-600 font-medium leading-relaxed">
+                A powerful, intuitive dashboard that gives administrators, educators, and leaders complete visibility and control over their institution.
               </p>
             </div>
 
-            {/* Interactive Demo Viewer */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 mb-16">
-              <div className="border-b border-gray-200">
-                <div className="flex overflow-x-auto">
-                  {["Dashboard", "Student Management", "Attendance", "Gradebook", "Reports"].map((tab, i) => (
-                    <div key={i} className={`px-6 py-4 font-medium whitespace-nowrap cursor-pointer ${i === 0 ? "text-[#f97316] border-b-2 border-[#f97316]" : "text-gray-600 hover:text-gray-900"}`}>
-                      {tab}
-                    </div>
-                  ))}
-                </div>
+            <motion.div
+              className="max-w-6xl mx-auto relative group"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1, ease: "easeOut" }}
+            >
+              <div className="rounded-[2.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(30,41,59,0.15)] border-8 border-slate-100 bg-white">
+                <Image
+                  src="/eduit-dashboard.png"
+                  alt="EduIT Dashboard Preview"
+                  width={1400}
+                  height={900}
+                  className="w-full h-auto object-cover transform group-hover:scale-[1.02] transition-transform duration-1000"
+                />
               </div>
-              <div className="p-8">
-                <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="mb-4">
-                      <School className="h-12 w-12 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-800">Interactive Demo Preview</h3>
-                    <p className="text-gray-500 mt-2 max-w-md mx-auto">
-                      Explore our intuitive dashboard designed for educators and administrators
-                    </p>
-                    <Button className="mt-6 bg-[#f97316] hover:bg-[#ea580c]">Play Demo Video</Button>
+              <div className="absolute inset-0 rounded-[2.5rem] ring-1 ring-inset ring-slate-900/10 pointer-events-none"></div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Why EduIT */}
+        <section id="features" className="py-24 bg-slate-900 text-white">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center mb-20 space-y-4">
+              <h2 className="text-sm font-black text-orange-400 capitalize tracking-widest font-sora italic">Built for Modern Education.</h2>
+              <h3 className="text-4xl md:text-6xl font-black tracking-tight font-sora">Designed for Real Humans.</h3>
+              <p className="text-lg md:text-xl text-slate-400 font-medium max-w-2xl mx-auto pt-4 leading-relaxed">
+                We transformed complex school operations into a seamless experience that saves time, reduces errors, and drives measurable growth.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                { title: "Unified Institutional Control", desc: "Oversee enrollment, academics, finance, staff, and communication from one centralized dashboard.", icon: <LayoutDashboard /> },
+                { title: "Enterprise-Grade Security", desc: "Advanced encryption, role-based access, and secure cloud infrastructure protect your data at every level.", icon: <ShieldCheck /> },
+                { title: "Actionable Intelligence", desc: "Real-time analytics and reports that empower leadership to make smarter, faster decisions.", icon: <TrendingUp /> },
+                { title: "Access Anywhere", desc: "A fully cloud-native platform accessible on desktop, tablet, and mobile devices.", icon: <Globe /> },
+                { title: "Seamless Collaboration", desc: "Bring administrators, teachers, parents, and students together in one secure ecosystem.", icon: <Users /> },
+                { title: "Dedicated Support", desc: "Expert account managers and 24/7 technical assistance tailored to education institutions.", icon: <LifeBuoy /> }
+              ].map((f, i) => (
+                <motion.div
+                  key={f.title}
+                  {...fadeInUp}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-8 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-orange-500/50 transition-all duration-300 group"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-orange-600/20 text-orange-400 border border-orange-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    {f.icon}
+                  </div>
+                  <h4 className="text-xl font-bold mb-4 font-sora">{f.title}</h4>
+                  <p className="text-slate-400 font-medium leading-relaxed">{f.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Comprehensive Modules */}
+        <section id="modules" className="py-24 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="text-center max-w-3xl mx-auto mb-20 space-y-6">
+              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">Comprehensive Modules</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-sora">Everything You Need to Run a High-Performing School</h3>
+              <p className="text-lg text-slate-600 font-medium leading-relaxed">
+                EduIT is modular, flexible, and built to grow with your institution.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+              {[
+                { title: "Student Information System (SIS)", desc: "Centralized student records, attendance tracking, behavioral monitoring, and academic history.", icon: <Users className="h-7 w-7" /> },
+                { title: "Academic Engine", desc: "Automated grading, curriculum management, assessments, and custom transcript generation.", icon: <BookOpen className="h-7 w-7" /> },
+                { title: "Financial Hub", desc: "Tuition billing, invoicing, expense tracking, payment integration, and financial reporting.", icon: <BarChart3 className="h-7 w-7" /> },
+                { title: "Communication Suite", desc: "Instant notifications, parent portals, staff messaging, and engagement tools.", icon: <MessageSquare className="h-7 w-7" /> },
+                { title: "Analytics & Reports", desc: "Performance tracking, institutional insights, and compliance-ready reporting.", icon: <TrendingUp className="h-7 w-7" /> }
+              ].map((m, i) => (
+                <motion.div
+                  key={m.title}
+                  {...fadeInUp}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex gap-6 items-start group"
+                >
+                  <div className="bg-slate-100 p-4 rounded-2xl text-slate-900 group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300 shrink-0">
+                    {m.icon}
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="text-xl font-bold font-sora group-hover:text-orange-600 transition-colors duration-300">{m.title}</h4>
+                    <p className="text-slate-600 font-medium leading-relaxed">{m.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+              <Link href="#request-demo" className="group">
+                <div className="flex gap-6 items-start p-6 rounded-3xl border-2 border-dashed border-slate-200 hover:border-orange-500 hover:bg-orange-50 transition-all cursor-pointer h-full">
+                  <div className="bg-orange-600 p-4 rounded-2xl text-white shrink-0 shadow-lg shadow-orange-100">
+                    <Plus className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-xl font-bold font-sora">Explore 30+ Integrated Modules</h4>
+                    <p className="text-slate-500 font-medium">EduIT scales with your institutional needs. Discover more.</p>
                   </div>
                 </div>
-              </div>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Who EduIT is for */}
+        <section className="py-24 bg-slate-50">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center mb-16 space-y-4">
+              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">Who EduIT is for</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-sora">Built for Institutions That Want More</h3>
+              <p className="text-lg text-slate-600 font-medium pt-2">EduIT supports institutions of all sizes and structures.</p>
             </div>
 
-            {/* Comparison Table */}
-            <div className="mb-16">
-              <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">Why Eduit Stands Out</h3>
-              <div className="overflow-hidden shadow-md rounded-xl border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 bg-white">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="py-3.5 px-6 text-left text-sm font-semibold text-gray-900">Features</th>
-                      <th scope="col" className="py-3.5 px-6 text-center text-sm font-semibold text-gray-900 border-l border-gray-200">
-                        <div className="flex items-center justify-center">
-                          <School className="h-5 w-5 text-[#f97316] mr-2" />
-                          Eduit
-                        </div>
-                      </th>
-                      <th scope="col" className="py-3.5 px-6 text-center text-sm font-semibold text-gray-900 border-l border-gray-200">
-                        Competitor A
-                      </th>
-                      <th scope="col" className="py-3.5 px-6 text-center text-sm font-semibold text-gray-900 border-l border-gray-200">
-                        Competitor B
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {[
-                      { feature: "All-in-one Platform", eduit: true, compA: false, compB: false },
-                      { feature: "Mobile Application", eduit: true, compA: true, compB: false },
-                      { feature: "Real-time Analytics", eduit: true, compA: false, compB: true },
-                      { feature: "Parent Portal", eduit: true, compA: true, compB: true },
-                      { feature: "Advanced Reporting", eduit: true, compA: false, compB: false },
-                    ].map((row, i) => (
-                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                        <td className="py-4 px-6 text-sm font-medium text-gray-900">{row.feature}</td>
-                        <td className="py-4 px-6 text-center text-sm text-gray-500 border-l border-gray-200">
-                          {row.eduit ? (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-600">
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-600">
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9 3L3 9M3 3L9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 px-6 text-center text-sm text-gray-500 border-l border-gray-200">
-                          {row.compA ? (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-600">
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-600">
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9 3L3 9M3 3L9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 px-6 text-center text-sm text-gray-500 border-l border-gray-200">
-                          {row.compB ? (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-600">
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-600">
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9 3L3 9M3 3L9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
+              {["Primary & Secondary Schools", "Colleges & Academies", "Private & International Schools", "Multi-Campus Education Networks"].map((type, i) => (
+                <div key={type} className="bg-white p-8 rounded-[2rem] border border-slate-200/60 text-center space-y-4 hover:shadow-xl transition-all hover:-translate-y-2">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle className="h-6 w-6" />
+                  </div>
+                  <p className="font-bold text-slate-900 font-sora leading-tight">{type}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Mobile App Preview */}
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-gray-900">Access Anywhere with Our Mobile App</h3>
-                <p className="text-lg text-gray-600">
-                  Manage your school on the go with our feature-rich mobile application available for iOS and Android devices.
-                </p>
-                <ul className="space-y-4">
+            <div className="text-center">
+              <p className="text-xl text-slate-600 font-medium italic">Whether you manage 100 students or 100,000, EduIT scales with you.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Security, Compliance & Infrastructure */}
+        <section id="security" className="py-24 bg-slate-900 text-white overflow-hidden relative">
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="grid lg:grid-cols-2 gap-20 items-center">
+              <div className="space-y-12">
+                <div className="space-y-4">
+                  <h2 className="text-sm font-black text-orange-400 uppercase tracking-[0.2em]">Security, Compliance & Infrastructure</h2>
+                  <h3 className="text-4xl md:text-6xl font-black tracking-tight font-sora leading-[1.1]">Institutional-Grade <br />Technology You Can Trust</h3>
+                  <p className="text-xl text-slate-400 font-medium leading-relaxed">EduIT is engineered to meet the highest global standards for reliability and data protection.</p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-8">
                   {[
-                    "Real-time attendance tracking",
-                    "Instant notifications for parents and teachers",
-                    "Grade entry and management",
-                    "Student behavior monitoring",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <div className="rounded-full p-1 bg-[#f97316]/10 text-[#f97316] mt-0.5">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M13.3334 4L6.00002 11.3333L2.66669 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                    { title: "Zero-Trust Security Architecture", desc: "End-to-end encryption with full data ownership and role-based access control.", icon: <Shield className="h-6 w-6" /> },
+                    { title: "Distributed Cloud Infrastructure", desc: "High availability with global edge performance and ultra-low latency.", icon: <Globe className="h-6 w-6" /> },
+                    { title: "Compliance-Ready by Design", desc: "Built to support FERPA, GDPR, and local education data regulations.", icon: <ShieldCheck className="h-6 w-6" /> },
+                    { title: "Expert Architectural Support", desc: "Direct access to senior engineers and education technology specialists.", icon: <HeadphonesIcon className="h-6 w-6" /> }
+                  ].map((f) => (
+                    <div key={f.title} className="space-y-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/10 text-orange-400 flex items-center justify-center mb-4">
+                        {f.icon}
                       </div>
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
+                      <h4 className="text-lg font-bold font-sora leading-snug">{f.title}</h4>
+                      <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+                    </div>
                   ))}
-                </ul>
-                <div className="flex flex-wrap gap-4 pt-4">
-                  <Button className="bg-black text-white hover:bg-gray-800 flex items-center gap-2">
-                    <Download className="h-5 w-5" />
-                    App Store
-                  </Button>
-                  <Button className="bg-black text-white hover:bg-gray-800 flex items-center gap-2">
-                    <Download className="h-5 w-5" />
-                    Google Play
-                  </Button>
                 </div>
               </div>
-              <div className="flex justify-center">
-                <div className="relative w-64 h-[500px] bg-black rounded-[32px] p-2 shadow-xl border-4 border-gray-800">
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-6 bg-black rounded-b-xl"></div>
-                  <div className="w-full h-full bg-white rounded-[24px] overflow-hidden">
-                    <div className="h-12 bg-[#f97316] flex items-center justify-center text-white font-medium">
-                      Eduit Mobile
+
+              <div className="relative">
+                <div className="bg-orange-600/20 blur-[100px] w-full h-full absolute"></div>
+                <div className="bg-white/5 backdrop-blur-2xl p-10 rounded-[3rem] border border-white/10 relative z-10">
+                  <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-2xl font-black font-sora">System Status</h4>
+                      <div className="flex items-center gap-2 text-green-400 font-bold text-sm">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
+                        Operational
+                      </div>
                     </div>
-                    <div className="p-4 space-y-4">
-                      <div className="space-y-2">
-                        <div className="h-8 bg-gray-100 rounded-md w-2/3"></div>
-                        <div className="h-20 bg-gray-100 rounded-md"></div>
+                    <div className="space-y-8">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Uptime</p>
+                        <p className="text-2xl font-black font-sora text-orange-400">99.99%</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="h-24 bg-orange-50 rounded-md p-3">
-                          <div className="h-4 w-12 bg-orange-200 rounded mb-2"></div>
-                          <div className="h-6 w-16 bg-orange-100 rounded"></div>
-                        </div>
-                        <div className="h-24 bg-green-50 rounded-md p-3">
-                          <div className="h-4 w-12 bg-green-200 rounded mb-2"></div>
-                          <div className="h-6 w-16 bg-green-100 rounded"></div>
-                        </div>
-                        <div className="h-24 bg-yellow-50 rounded-md p-3">
-                          <div className="h-4 w-12 bg-yellow-200 rounded mb-2"></div>
-                          <div className="h-6 w-16 bg-yellow-100 rounded"></div>
-                        </div>
-                        <div className="h-24 bg-purple-50 rounded-md p-3">
-                          <div className="h-4 w-12 bg-purple-200 rounded mb-2"></div>
-                          <div className="h-6 w-16 bg-purple-100 rounded"></div>
-                        </div>
+                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Average Latency</p>
+                        <p className="text-2xl font-black font-sora">256ms</p>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Requests / Hr</p>
+                        <p className="text-2xl font-black font-sora">2.4M</p>
+                      </div>
+                    </div>
+                    <div className="p-1 h-3 bg-white/5 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-orange-600 rounded-full"
+                        initial={{ width: 0 }}
+                        whileInView={{ width: "95%" }}
+                        transition={{ duration: 1.5, ease: "easeInOut" }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -512,777 +409,271 @@ export default function Home() {
         </section>
 
         {/* Testimonials */}
-        <section id="testimonials" className="py-20 bg-white border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-sm font-medium bg-orange-50 text-[#f97316] mb-4">
-                Success Stories
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-gray-900 mb-4">
-                Trusted by Educators Nationwide
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Hear from administrators and teachers who have transformed their schools with Eduit
-              </p>
+        <section className="py-24 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
+              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">Testimonials</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-sora">Trusted by Educators Like You</h3>
             </div>
 
-            {/* Video Testimonial */}
-            <div className="mb-20">
-              <div className="relative mx-auto max-w-4xl">
-                <div className="aspect-video rounded-2xl overflow-hidden bg-gray-200 shadow-lg">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="p-4 rounded-full bg-[#f97316]/20 backdrop-blur-sm">
-                      <div className="p-3 rounded-full bg-[#f97316] text-white">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M5 3L19 12L5 21V3Z" fill="currentColor" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent text-white">
-                    <div>
-                      <h3 className="text-xl font-bold">Springfield High School's Success Story</h3>
-                      <p className="text-white/80 mt-2">How we saved 20+ hours per week in administrative tasks</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quote Cards */}
-            <div className="grid gap-8 md:grid-cols-3">
+            <div className="grid md:grid-cols-3 gap-8">
               {[
                 {
-                  quote: "Eduit has revolutionized how we manage student data. Our teachers save countless hours on administrative tasks and can focus more on teaching.",
-                  author: "Jennifer Martinez",
-                  title: "Principal, Washington Academy",
-                  image: null,
+                  quote: "EduIT completely transformed how we manage our school. What took days now takes hours.",
+                  author: "Dr. Sarah Jenkins",
+                  role: "Principal, Lincoln High School",
+                  img: "https://i.pravatar.cc/150?u=sarah"
                 },
                 {
-                  quote: "The parent communication features alone made the investment worthwhile. We've seen parent engagement increase by 40% since implementation.",
-                  author: "Michael Johnson",
-                  title: "Superintendent, Oakridge School District",
-                  image: null,
+                  quote: "Parent engagement has never been better. Communication is now clear, fast, and reliable.",
+                  author: "Marcus Thompson",
+                  role: "Administrator, Green Valley Academy",
+                  img: "https://i.pravatar.cc/150?u=marcus"
                 },
                 {
-                  quote: "As a teacher, I appreciate how intuitive the grading system is. I can provide detailed feedback and track progress with minimal effort.",
-                  author: "Sarah Thompson",
-                  title: "Lead Teacher, Riverside Elementary",
-                  image: null,
-                },
-              ].map((testimonial, i) => (
-                <div key={i} className="bg-white p-8 rounded-xl shadow-md border border-gray-200 flex flex-col h-full">
-                  <div className="mb-6">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9.33333 17.3333C9.33333 17.3333 8 16.4444 8 14.6667C8 12.8889 9.33333 12 9.33333 12C9.33333 12 8.44444 12 8.44444 10.6667C8.44444 9.33333 9.33333 8.44444 10.6667 8.44444C12 8.44444 12.8889 9.33333 12.8889 10.6667C12.8889 12 12 12.8889 10.6667 12.8889M9.33333 17.3333C9.33333 17.3333 10.6667 17.7778 12 17.7778C13.3333 17.7778 14.6667 17.3333 14.6667 17.3333M9.33333 17.3333V20.4444C9.33333 20.4444 10.6667 21.3333 12 21.3333C13.3333 21.3333 14.6667 20.4444 14.6667 20.4444V17.3333M21.3333 17.3333C21.3333 17.3333 20 16.4444 20 14.6667C20 12.8889 21.3333 12 21.3333 12C21.3333 12 20.4444 12 20.4444 10.6667C20.4444 9.33333 21.3333 8.44444 22.6667 8.44444C24 8.44444 24.8889 9.33333 24.8889 10.6667C24.8889 12 24 12.8889 22.6667 12.8889M21.3333 17.3333C21.3333 17.3333 22.6667 17.7778 24 17.7778C25.3333 17.7778 26.6667 17.3333 26.6667 17.3333M21.3333 17.3333V20.4444C21.3333 20.4444 22.6667 21.3333 24 21.3333C25.3333 21.3333 26.6667 20.4444 26.6667 20.4444V17.3333" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-700 flex-grow">{testimonial.quote}</p>
-                  <div className="mt-8 pt-4 border-t border-gray-200 flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">{testimonial.author}</p>
-                      <p className="text-sm text-gray-500">{testimonial.title}</p>
+                  quote: "Finally, a platform teachers actually enjoy using. Clean UI and truly useful features.",
+                  author: "Elena Rodriguez",
+                  role: "Head Teacher, St. Jude’s College",
+                  img: "https://i.pravatar.cc/150?u=elena"
+                }
+              ].map((t, i) => (
+                <motion.div
+                  key={t.author}
+                  {...fadeInUp}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-10 rounded-[3rem] bg-slate-50 border border-slate-100 flex flex-col justify-between hover:bg-white hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+                >
+                  <p className="text-xl text-slate-800 font-medium leading-relaxed mb-10 italic">“{t.quote}”</p>
+                  <div className="flex items-center gap-4">
+                    <div className="relative h-14 w-14 rounded-full overflow-hidden ring-4 ring-white shadow-sm">
+                      <Image src={t.img} alt={t.author} fill className="object-cover" />
                     </div>
-                    <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                    <div>
+                      <p className="font-bold text-slate-900 font-sora">{t.author}</p>
+                      <p className="text-[13px] text-slate-500 font-bold uppercase tracking-wider">{t.role}</p>
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
-
-            {/* Case Studies */}
-            <div className="mt-16 mx-auto max-w-4xl">
-              <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">Featured Case Studies</h3>
-              <div className="space-y-4">
-                {[
-                  {
-                    title: "How Springfield High School Saved 20 Hours Per Week",
-                    summary: "Implementing Eduit's automated attendance and grading systems streamlined administrative processes.",
-                  },
-                  {
-                    title: "Westlake District Increased Parent Engagement by 38%",
-                    summary: "Using Eduit's parent portal and communication tools transformed home-school connections.",
-                  },
-                  {
-                    title: "Charter Academy Network Reduced IT Costs by 42%",
-                    summary: "Consolidating multiple systems into Eduit's comprehensive platform eliminated redundancies.",
-                  },
-                ].map((study, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg p-6 border border-gray-200 hover:border-[#f97316] transition-colors group cursor-pointer">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-semibold text-lg text-gray-900 group-hover:text-[#f97316] transition-colors">{study.title}</h4>
-                        <p className="text-gray-600 mt-1">{study.summary}</p>
-                      </div>
-                      <div className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center group-hover:bg-[#f97316] group-hover:border-[#f97316] transition-colors">
-                        <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-white transition-colors" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-8 text-center">
-                <Button variant="outline" className="text-[#f97316] border-[#f97316]">
-                  View All Case Studies
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Enterprise-Grade Features */}
-        <section className="py-20 bg-gray-50 border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-sm font-medium bg-orange-50 text-[#f97316] mb-4">
-                Enterprise-Grade
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-gray-900 mb-4">
-                Built for Scale and Security
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Eduit is designed to meet the highest standards of data security and system reliability
-              </p>
-            </div>
-
-            <div className="grid gap-8 md:grid-cols-3">
-              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-8">
-                <div className="p-3 rounded-full bg-orange-50 inline-block mb-4">
-                  <Shield className="h-6 w-6 text-[#f97316]" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">Data Security</h3>
-                <p className="text-gray-600 mb-6">
-                  End-to-end encryption, regular security audits, and compliance with FERPA, COPPA, and other education data standards.
-                </p>
-                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-                  {["FERPA", "COPPA", "GDPR Ready", "SOC 2"].map((badge, i) => (
-                    <div key={i} className="px-3 py-1 bg-orange-50 rounded-full text-xs font-medium text-[#f97316]">
-                      {badge}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-8">
-                <div className="p-3 rounded-full bg-green-50 inline-block mb-4">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-green-600">
-                    <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" />
-                    <path d="M12 7V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold mb-3">99.9% Uptime SLA</h3>
-                <p className="text-gray-600 mb-6">
-                  Built on a robust cloud infrastructure with redundant systems to ensure your data is always accessible when you need it.
-                </p>
-                <div className="pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">System Reliability</span>
-                    <span className="text-sm font-medium text-gray-900">99.9%</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full">
-                    <div className="h-2 bg-green-500 rounded-full w-[99.9%]"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-8">
-                <div className="p-3 rounded-full bg-purple-50 inline-block mb-4">
-                  <LifeBuoy className="h-6 w-6 text-purple-600" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">Dedicated Support</h3>
-                <p className="text-gray-600 mb-6">
-                  Access to our education support specialists with experience in school operations and technical troubleshooting.
-                </p>
-                <div className="space-y-3 pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <MessageSquare className="h-5 w-5 text-purple-600" />
-                    <span className="text-sm text-gray-700">Live chat support</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-purple-600" />
-                    <span className="text-sm text-gray-700">Dedicated account manager</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CalendarDays className="h-5 w-5 text-purple-600" />
-                    <span className="text-sm text-gray-700">Regular check-in meetings</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Technology Partners */}
-        <section id="integrations" className="py-16 bg-white border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="text-center mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Technology Partners</h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Eduit seamlessly integrates with your favorite educational tools and services
-              </p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 items-center justify-items-center">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-20 w-32 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200 p-4">
-                  <div className="text-gray-400 text-xs font-medium">Partner Logo</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-10 text-center">
-              <Button variant="outline" className="text-gray-700 border-gray-300">
-                View All Integrations
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* ROI Calculator */}
-        <section className="py-20 bg-gradient-to-b from-orange-50 to-white border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-              <div className="grid md:grid-cols-5">
-                <div className="md:col-span-2 bg-[#f97316] p-8 text-white">
-                  <h2 className="text-2xl font-bold mb-4">Calculate Your ROI</h2>
-                  <p className="text-orange-100 mb-6">
-                    Discover how much time and resources your school can save with Eduit
-                  </p>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-orange-100 mb-1">Number of Students</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 rounded bg-white/10 border border-orange-400 text-white placeholder-orange-200"
-                          placeholder="e.g., 500"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-orange-100 mb-1">Number of Staff</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 rounded bg-white/10 border border-orange-400 text-white placeholder-orange-200"
-                          placeholder="e.g., 50"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-orange-100 mb-1">Current Software Costs/Year</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-orange-200">$</span>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 pl-8 rounded bg-white/10 border border-orange-400 text-white placeholder-orange-200"
-                          placeholder="e.g., 10,000"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="md:col-span-3 p-8">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6">Your Estimated Savings</h3>
-                  <div className="space-y-6">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-gray-600">Time Saved Weekly</span>
-                        <span className="text-xl font-bold text-gray-900">20 hours</span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full">
-                        <div className="h-2 bg-[#f97316] rounded-full w-3/4"></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-gray-600">Annual Cost Savings</span>
-                        <span className="text-xl font-bold text-gray-900">$12,500</span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full">
-                        <div className="h-2 bg-green-500 rounded-full w-2/3"></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-gray-600">Productivity Increase</span>
-                        <span className="text-xl font-bold text-gray-900">32%</span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full">
-                        <div className="h-2 bg-purple-500 rounded-full w-1/3"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-8">
-                    <Button className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-medium py-3">
-                      Get Your Personalized ROI Report
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Newsletter and CTA */}
-        <section id="request-demo" className="py-20 bg-gray-900 text-white">
-          <div className="container px-4 md:px-6">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Ready to Transform Your School?</h2>
-                <p className="text-xl text-gray-300">
-                  Join 500+ schools nationwide that are already benefiting from Eduit's comprehensive platform.
-                </p>
-                <div className="space-y-4">
-                  {[
-                    "Streamline administrative tasks",
-                    "Enhance teacher productivity",
-                    "Improve student outcomes",
-                    "Strengthen parent engagement",
-                  ].map((feature, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="rounded-full p-1 bg-[#f97316]/20 text-[#f97316]">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M13.3334 4L6.00002 11.3333L2.66669 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <span className="text-gray-300">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center pt-6 text-sm">
-                  <div className="flex -space-x-2 mr-3">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-8 w-8 rounded-full border-2 border-gray-900 bg-gray-600"></div>
-                    ))}
-                  </div>
-                  <span className="text-gray-400">Trusted by <span className="text-white font-semibold">500+</span> schools</span>
-                </div>
-              </div>
-              <div>
-                <div className="bg-white rounded-xl p-8 shadow-xl">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Request a Demo</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">School Name</label>
-                      <input
-                        type="text"
-                        className="w-full px-4 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                        placeholder="Enter your school name"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                          placeholder="First name"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                          placeholder="Last name"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        className="w-full px-4 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                        placeholder="you@school.edu"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                      <input
-                        type="tel"
-                        className="w-full px-4 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                        placeholder="(123) 456-7890"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                      <select className="w-full px-4 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all">
-                        <option value="">Select your role</option>
-                        <option value="Administrator">Administrator</option>
-                        <option value="Principal">Principal</option>
-                        <option value="Teacher">Teacher</option>
-                        <option value="IT Director">IT Director</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="mt-6">
-                    <Button className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-medium py-3">
-                      Schedule Your Demo Now
-                    </Button>
-                  </div>
-                  <div className="mt-4 text-center text-xs text-gray-500">
-                    By submitting this form, you agree to our privacy policy and terms of service.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Newsletter Signup */}
-        <section className="py-12 bg-gray-50 border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="max-w-3xl mx-auto text-center">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Stay Updated with Educational Trends</h3>
-              <p className="text-gray-600 mb-6">
-                Subscribe to our newsletter for the latest updates on education technology and best practices.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2 max-w-lg mx-auto">
-                <input
-                  type="email"
-                  className="flex-grow px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                  placeholder="Enter your email"
-                />
-                <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white font-medium">
-                  Subscribe
-                </Button>
-              </div>
             </div>
           </div>
         </section>
 
         {/* Pricing Section */}
-        <section id="pricing" className="py-20 bg-white border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-sm font-medium bg-orange-50 text-[#f97316] mb-4">
-                Flexible Pricing
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-gray-900 mb-4">
-                Choose the Perfect Plan for Your School
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Transparent pricing with no hidden fees. All plans include core features and premium support.
-              </p>
+        <section id="pricing" className="py-24 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
+              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">Pricing</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-sora">Flexible Plans for Every Institution</h3>
+              <p className="text-lg text-slate-600 font-medium pt-2">Transparent pricing that grows with your school.</p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {/* Basic Plan */}
-              <div className="relative bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-                <div className="absolute -top-5 left-6">
-                  <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-xs font-medium bg-orange-50 text-[#f97316]">
-                    STARTER
-                  </div>
-                </div>
-                <div className="mb-6">
-                  <div className="flex items-end gap-2">
-                    <span className="text-4xl font-bold">₦1000</span>
-                    <span className="text-gray-500 mb-1">/ student / month</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">Perfect for small schools starting their digital journey</p>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {[
-                    "Up to 500 students",
-                    "Core management features",
-                    "Basic analytics",
-                    "Email support",
-                    "Mobile app access",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm">
-                      <div className="rounded-full p-1 bg-green-50">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {[
+                {
+                  name: "Starter",
+                  price: "1,000",
+                  desc: "Best for small schools starting their digital journey.",
+                  features: ["Up to 500 students", "Core SIS features", "Basic reports", "Public school portal", "Email support"]
+                },
+                {
+                  name: "Professional",
+                  popular: true,
+                  price: "2,000",
+                  desc: "Ideal for growing schools needing automation and insights.",
+                  features: ["Up to 2,000 students", "Advanced analytics", "Financial hub", "Priority support", "Mobile access", "Custom branding"]
+                },
+                {
+                  name: "Enterprise",
+                  price: "Custom",
+                  desc: "For large institutions and education networks.",
+                  features: ["Unlimited students", "Dedicated account manager", "Custom integrations & APIs", "On-site training", "24/7 phone support", "SLA guarantees"]
+                }
+              ].map((p, i) => (
+                <div
+                  key={p.name}
+                  className={`p-10 rounded-[3rem] border flex flex-col justify-between transition-all duration-300 ${p.popular ? 'bg-slate-900 text-white border-slate-900 shadow-2xl scale-105 relative z-10' : 'bg-white border-slate-200 hover:border-orange-500'}`}
+                >
+                  <div className="space-y-8">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        {p.popular && <span className="bg-orange-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4 inline-block">Most Popular</span>}
+                        <h4 className="text-2xl font-black font-sora">{p.name}</h4>
                       </div>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button variant="outline" className="w-full border-[#f97316] text-[#f97316] hover:bg-orange-50">
-                  Get Started
-                </Button>
-              </div>
-
-              {/* Professional Plan */}
-              <div className="relative bg-[#f97316] rounded-2xl shadow-lg p-8 scale-105 z-10">
-                <div className="absolute -top-5 left-6">
-                  <div className="inline-flex items-center rounded-full border border-white px-4 py-1.5 text-xs font-medium bg-white text-[#f97316]">
-                    PROFESSIONAL
-                  </div>
-                </div>
-                <div className="mb-6">
-                  <div className="flex items-end gap-2 text-white">
-                    <span className="text-4xl font-bold">₦2000</span>
-                    <span className="mb-1 opacity-90">/ student / month</span>
-                  </div>
-                  <p className="text-sm text-orange-100 mt-2">Most popular choice for growing institutions</p>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {[
-                    "Up to 2000 students",
-                    "Advanced analytics",
-                    "Priority support",
-                    "Custom integrations",
-                    "Parent portal",
-                    "API access",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm text-white">
-                      <div className="rounded-full p-1 bg-white/20">
-                        <CheckCircle className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-sm font-bold opacity-60">₦</span>
+                        <span className="text-5xl font-black font-sora">{p.price}</span>
+                        {p.price !== "Custom" && <span className="text-sm font-bold opacity-60">/ student / mo</span>}
                       </div>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button className="w-full bg-white hover:bg-gray-50 text-[#f97316]">
-                  Get Started
-                </Button>
-              </div>
-
-              {/* Enterprise Plan */}
-              <div className="relative bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-                <div className="absolute -top-5 left-6">
-                  <div className="inline-flex items-center rounded-full border border-green-200 px-4 py-1.5 text-xs font-medium bg-green-50 text-green-600">
-                    ENTERPRISE
+                      <p className={`mt-4 font-medium italic ${p.popular ? 'text-slate-400' : 'text-slate-500'}`}>{p.desc}</p>
+                    </div>
+                    <ul className="space-y-4">
+                      {p.features.map(f => (
+                        <li key={f} className="flex gap-3 text-sm font-medium items-center">
+                          <CheckCircle2 className={`h-5 w-5 shrink-0 ${p.popular ? 'text-orange-500' : 'text-green-500'}`} />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                  <Button size="lg" className={`w-full mt-12 rounded-2xl h-14 font-bold text-lg ${p.popular ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-900 hover:bg-slate-800'}`}>
+                    {p.name === "Enterprise" ? "Contact Sales" : "Get Started"}
+                  </Button>
                 </div>
-                <div className="mb-6">
-                  <div className="flex items-end gap-2">
-                    <span className="text-4xl font-bold">Custom</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">Tailored solutions for large educational networks</p>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {[
-                    "Unlimited students",
-                    "Custom development",
-                    "24/7 dedicated support",
-                    "On-premise deployment",
-                    "SLA guarantee",
-                    "Training & onboarding",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm">
-                      <div className="rounded-full p-1 bg-green-50">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      </div>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button variant="outline" className="w-full border-green-600 text-green-600 hover:bg-green-50">
-                  Contact Sales
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-16 text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Frequently Asked Questions</h3>
-              <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
-                {[
-                  {
-                    q: "Can I switch plans later?",
-                    a: "Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.",
-                  },
-                  {
-                    q: "Is there a setup fee?",
-                    a: "No, we don't charge any setup or hidden fees. You only pay for the plan you choose.",
-                  },
-                  {
-                    q: "Do you offer discounts for long-term contracts?",
-                    a: "Yes, we offer special pricing for annual commitments. Contact our sales team for details.",
-                  },
-                  {
-                    q: "What payment methods do you accept?",
-                    a: "We accept all major credit cards, bank transfers, and purchase orders for enterprise customers.",
-                  },
-                ].map((faq, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg p-6">
-                    <h4 className="font-semibold text-gray-900 mb-2">{faq.q}</h4>
-                    <p className="text-gray-600 text-sm">{faq.a}</p>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Contact Section */}
-        <section className="py-20 bg-gray-50 border-t border-gray-200">
-          <div className="container px-4 md:px-6">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div>
-                <div className="inline-flex items-center rounded-full border border-orange-200 px-4 py-1.5 text-sm font-medium bg-orange-50 text-[#f97316] mb-4">
-                  Get in Touch
+        {/* FAQ */}
+        <section className="py-24 bg-slate-50">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center mb-16 space-y-4">
+              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">FAQ</h2>
+              <h3 className="text-4xl font-black text-slate-900 tracking-tight font-sora">Common Questions</h3>
+            </div>
+
+            <div className="space-y-4">
+              {[
+                { q: "Can we migrate data from our existing system?", a: "Yes. We provide secure, white-glove migration services for all clients." },
+                { q: "Are there any setup or hidden fees?", a: "No. EduIT offers clear, transparent pricing with no hidden costs." },
+                { q: "Do you provide training for staff?", a: "Yes. Professional and Enterprise plans include guided onboarding and training." },
+                { q: "Can EduIT be customized for our institution?", a: "Absolutely. EduIT is modular and highly configurable." }
+              ].map((faq, i) => (
+                <div key={i} className="bg-white p-8 rounded-[2rem] border border-slate-200/60 hover:border-orange-200 transition-all cursor-default">
+                  <h4 className="text-[17px] font-black font-sora text-slate-900 mb-3">{faq.q}</h4>
+                  <p className="text-slate-600 font-medium leading-relaxed">{faq.a}</p>
                 </div>
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-gray-900 mb-4">
-                  Let's Discuss Your School's Needs
-                </h2>
-                <p className="text-xl text-gray-600 mb-8">
-                  Our education specialists are here to help you find the perfect solution for your institution.
-                </p>
-                <div className="space-y-6">
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-full p-2 bg-orange-50">
-                      <Mail className="h-6 w-6 text-[#f97316]" />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section id="request-demo" className="py-24 bg-white overflow-hidden relative">
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="bg-orange-600 rounded-[4rem] p-12 md:p-24 text-white overflow-hidden relative">
+              <div className="grid lg:grid-cols-2 gap-16 items-center">
+                <div className="space-y-8">
+                  <h3 className="text-4xl md:text-6xl font-black font-sora tracking-tight leading-[1.05]">Experience EduIT <br />in Action</h3>
+                  <p className="text-xl text-orange-50 font-medium leading-relaxed border-l-4 border-white/30 pl-8 capitalize italic">
+                    See how EduIT can simplify operations, empower educators, and elevate student outcomes at your institution.
+                  </p>
+                  <div className="flex items-center gap-6 pt-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-black font-sora">10M+</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest opacity-80 mt-1">Students Managed</p>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Email Us</h3>
-                      <p className="text-gray-600">contact@eduit.com</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-full p-2 bg-green-50">
-                      <MessageSquare className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Live Chat</h3>
-                      <p className="text-gray-600">Available Monday to Friday, 9am-6pm EST</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-full p-2 bg-orange-50">
-                      <Globe className="h-6 w-6 text-[#f97316]" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Global Support</h3>
-                      <p className="text-gray-600">Supporting schools in over 25 countries</p>
+                    <div className="h-10 w-px bg-white/20"></div>
+                    <div className="text-center">
+                      <p className="text-3xl font-black font-sora">24/7</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest opacity-80 mt-1">Expert Support</p>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Send us a Message</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                      <input
-                        type="text"
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                        placeholder="Your name"
-                      />
+
+                <div className="bg-white rounded-[3rem] p-8 md:p-12 text-slate-900 shadow-2xl">
+                  <h4 className="text-2xl font-black font-sora mb-8 text-center uppercase tracking-tighter italic">Schedule Demo</h4>
+                  <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-400">First Name</label>
+                        <input type="text" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="John" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-400">Last Name</label>
+                        <input type="text" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="Doe" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all"
-                        placeholder="your@email.com"
-                      />
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-widest text-slate-400">Work Email</label>
+                      <input type="email" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="john@school.edu" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                      <textarea
-                        rows={4}
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none transition-all resize-none"
-                        placeholder="How can we help you?"
-                      ></textarea>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-widest text-slate-400">School Name</label>
+                      <input type="text" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="Green Valley High" />
                     </div>
-                    <Button className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white">
-                      Send Message
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-widest text-slate-400">Student Population</label>
+                      <select className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm appearance-none cursor-pointer">
+                        <option>Under 500</option>
+                        <option>500 - 1,000</option>
+                        <option>1,000 - 5,000</option>
+                        <option>Above 5,000</option>
+                      </select>
+                    </div>
+                    <Button className="w-full h-16 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl text-lg font-black shadow-xl shadow-orange-100 mt-4 transition-all hover:scale-[1.02] active:scale-100">
+                      Request a Live Demo
                     </Button>
-                    <p className="text-xs text-center text-gray-500">
-                      We'll get back to you within 24 hours
-                    </p>
-                  </div>
+                  </form>
                 </div>
               </div>
+
+              {/* Decoration */}
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white opacity-5 rounded-full -mr-48 -mt-48 blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-white opacity-5 rounded-full -ml-48 -mb-48 blur-3xl"></div>
             </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 border-t border-gray-800">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 mb-12">
-            <div>
-              <div className="flex items-center gap-2 mb-6">
-                <School className="h-8 w-8 text-white" />
-                <div>
-                  <div className="text-xl font-bold">Eduit</div>
-                  <div className="text-[10px] text-gray-400">by Fordest Technologies</div>
+      <footer className="bg-white pt-24 pb-12 overflow-hidden border-t border-slate-100">
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
+            <div className="space-y-8">
+              <Link href="/" className="flex items-center group">
+                <div className="relative h-16 w-48 bg-white p-2 rounded-xl">
+                  <Image
+                    src="/EDUIT.jpeg"
+                    alt="EduIT Logo"
+                    fill
+                    className="object-contain brightness-[1.1] contrast-[1.1]"
+                  />
                 </div>
-              </div>
-              <p className="text-gray-400 mb-6">
-                The comprehensive school management system trusted by educational institutions nationwide.
+              </Link>
+              <p className="text-slate-500 font-medium leading-relaxed max-w-xs text-sm italic">
+                Empowering institutions through intelligent education infrastructure.
               </p>
-              <div className="flex space-x-4">
-                {["facebook", "twitter", "linkedin", "instagram"].map((social, i) => (
-                  <a key={i} href="#" className="p-2 rounded-full bg-gray-800 hover:bg-[#f97316] transition-colors">
-                    <span className="sr-only">{social}</span>
-                    <div className="h-5 w-5 bg-gray-600"></div>
-                  </a>
+              <div className="flex gap-4">
+                {["Twitter", "LinkedIn", "YouTube"].map((s) => (
+                  <div key={s} className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center hover:bg-orange-600 hover:border-orange-600 hover:text-white transition-all cursor-pointer">
+                    <Star className="h-4 w-4" />
+                  </div>
                 ))}
               </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-lg mb-4">Product</h4>
-              <ul className="space-y-3">
-                {["Features", "Pricing", "Integrations", "Case Studies", "Security", "Updates"].map((link, i) => (
-                  <li key={i}>
-                    <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                      {link}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-lg mb-4">Company</h4>
-              <ul className="space-y-3">
-                {["About Fordest", "Leadership", "Customers", "Careers", "Partner Program", "Media Kit"].map((link, i) => (
-                  <li key={i}>
-                    <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                      {link}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-lg mb-4">Resources</h4>
-              <ul className="space-y-3">
-                {["Blog", "Documentation", "Community", "Support Center", "Webinars", "Privacy Policy"].map((link, i) => (
-                  <li key={i}>
-                    <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                      {link}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+
+            {[
+              { title: "Platform", links: ["Features", "Security", "Modules", "System Updates"] },
+              { title: "Company", links: ["About Us", "Careers", "Partners", "Contact"] },
+              { title: "Resources", links: ["Documentation", "Community", "Support Center", "Privacy Policy"] }
+            ].map((col) => (
+              <div key={col.title} className="space-y-8">
+                <h4 className="text-[13px] font-black uppercase tracking-[0.2em] text-slate-900">{col.title}</h4>
+                <ul className="space-y-4">
+                  {col.links.map((link) => (
+                    <li key={link}>
+                      <Link href="#" className="text-sm font-bold text-slate-500 hover:text-orange-600 transition-colors">
+                        {link}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-          <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              © 2023 Fordest Technologies, Inc. All rights reserved.
-            </div>
-            <div className="flex items-center">
-              <div className="px-3 py-1 bg-gray-800 rounded-full text-xs font-medium text-gray-400 flex items-center">
-                <Lock className="h-3 w-3 mr-1" />
-                SOC 2 Compliant
-              </div>
-              <div className="ml-3 px-3 py-1 bg-gray-800 rounded-full text-xs font-medium text-gray-400 flex items-center">
-                <Shield className="h-3 w-3 mr-1" />
-                FERPA Certified
-              </div>
+
+          <div className="pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <p className="text-sm font-bold text-slate-500">© {new Date().getFullYear()} EduIT Ecosystem. All rights reserved.</p>
+            <div className="flex gap-8">
+              <Link href="#" className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">Terms & Conditions</Link>
             </div>
           </div>
         </div>
       </footer>
-
-      {/* Sticky CTA */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <div className="flex flex-col items-end gap-4">
-          <Button className="rounded-full h-12 w-12 bg-[#f97316] hover:bg-[#ea580c] shadow-lg p-0 flex items-center justify-center">
-            <MessageSquare className="h-5 w-5 text-white" />
-          </Button>
-          <div className="bg-white rounded-xl shadow-xl border border-gray-200 flex items-center overflow-hidden">
-            <Button className="px-4 py-2 bg-[#f97316] hover:bg-[#ea580c] text-white text-sm font-medium rounded-r-none rounded-l-xl">
-              Request Demo
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
-
