@@ -150,7 +150,7 @@ export default function MyResultsPage() {
         try {
             setLoading(true);
             const response = await fetch(
-                `/api/students/${studentId}/results?sessionId=${selectedSession}&periodId=${selectedPeriod}`
+                `/api/students/${studentId}/results-view/results?sessionId=${selectedSession}&periodId=${selectedPeriod}`
             );
 
             if (!response.ok) {

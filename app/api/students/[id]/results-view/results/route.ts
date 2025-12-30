@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth-client';
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { studentId: string } }
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await getSession(null);
@@ -20,7 +20,7 @@ export async function GET(
         // Verify access - user must be the student or parent of the student
         const hasAccess = await verifyResultAccess(
             session.id,
-            params.studentId
+            params.id
         );
 
         if (!hasAccess) {
@@ -32,7 +32,7 @@ export async function GET(
 
         // Build query filters
         const where: any = {
-            studentId: params.studentId,
+            studentId: params.id,
             published: true, // Only show published results
         };
 
@@ -91,7 +91,7 @@ export async function GET(
         // Calculate additional metrics if results exist
         if (results.length > 0 && sessionId && periodId) {
             const metrics = await calculateStudentMetrics(
-                params.studentId,
+                params.id,
                 sessionId,
                 periodId
             );
