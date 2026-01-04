@@ -22,7 +22,10 @@ interface DashboardStats {
   totalSubjects: number
   attendanceRate: number
   averageScore: number
+  totalSessions: number
+  totalLevels: number
 }
+
 
 // Enhanced type for results with more details
 interface ResultWithDetails extends Result {
@@ -51,7 +54,9 @@ export default async function DashboardPage() {
     totalTeachers: 0,
     totalSubjects: 0,
     attendanceRate: 0,
-    averageScore: 0
+    averageScore: 0,
+    totalSessions: 0,
+    totalLevels: 0
   }
 
   // Initialize other dashboard data
@@ -98,11 +103,21 @@ export default async function DashboardPage() {
         ? (presentAttendanceRecords / totalAttendanceRecords) * 100
         : 0
 
+      const totalSessions = await prisma.academicSession.count({
+        where: { schoolId: session.schoolId }
+      })
+
+      const totalLevels = await prisma.schoolLevel.count({
+        where: { schoolId: session.schoolId }
+      })
+
       return {
         totalStudents,
         totalTeachers,
         totalClasses,
         totalSubjects,
+        totalSessions,
+        totalLevels,
         attendanceRate: Number(attendanceRate.toFixed(2)),
         averageScore: 0 // Remove average score logic for now
       }
@@ -267,6 +282,7 @@ export default async function DashboardPage() {
         showBanner={true}
         icon={<LayoutDashboard className="h-8 w-8 text-white" />}
       />
+
 
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

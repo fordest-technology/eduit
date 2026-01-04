@@ -149,13 +149,13 @@ export default function SessionsPage() {
                     }
                 }
 
-                // Calculate stats
-                const activeCount = sessionsData.filter((s: Session) => s.isActive).length
-                const studentCount = sessionsData.reduce((sum: number, s: Session) => sum + s._count.studentClasses, 0)
-                const currentSessionObj = sessionsData.find((s: Session) => s.isCurrent)
+                // Calculate stats using normalized data
+                const activeCount = normalizedSessions.filter((s: any) => s.isActive).length
+                const studentCount = normalizedSessions.reduce((sum: number, s: any) => sum + s._count.studentClasses, 0)
+                const currentSessionObj = normalizedSessions.find((s: any) => s.isActive)
 
                 setStats({
-                    total: sessionsData.length,
+                    total: normalizedSessions.length,
                     active: activeCount,
                     students: studentCount,
                     currentSession: currentSessionObj ? currentSessionObj.name : "None"

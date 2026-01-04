@@ -27,8 +27,9 @@ async function handleApiError(fn: () => Promise<NextResponse>) {
 
 export async function GET(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const { schoolId } = await params;
   return handleApiError(async () => {
     const session = await getSession(); // Get user session
 
@@ -44,7 +45,7 @@ export async function GET(
     // For instance, if session.schoolId should match params.schoolId for non-super-admins:
     if (
       session.role !== "SUPER_ADMIN" &&
-      session.schoolId !== params.schoolId
+      session.schoolId !== schoolId
     ) {
       return new NextResponse(
         JSON.stringify({ message: "Forbidden: Access denied for this school" }),
@@ -52,7 +53,6 @@ export async function GET(
       );
     }
 
-    const schoolId = params.schoolId;
 
     // 1. Get the current active academic session for the school
     const currentAcademicSession = await prisma.academicSession.findFirst({

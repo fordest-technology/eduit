@@ -24,6 +24,8 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
+  ArrowRightLeft,
+  Wallet,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -161,6 +163,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "SUPER_ADMIN":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { title: "Wallet", href: "/dashboard/wallet", icon: Wallet },
           { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
@@ -168,10 +171,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             title: "Results",
             href: "/dashboard/results",
             icon: ClipboardCheck,
-            children: [
-              { title: "Results Management", href: "/dashboard/results" },
-              { title: "Results Configuration", href: "/dashboard/results/configuration" },
-            ]
+          },
+          {
+            title: "Promotion Engine",
+            href: "/dashboard/students/promotions",
+            icon: ArrowRightLeft,
           },
           { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
           { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
@@ -185,6 +189,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "SCHOOL_ADMIN":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { title: "Wallet", href: "/dashboard/wallet", icon: Wallet },
           { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
@@ -192,10 +197,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             title: "Results",
             href: "/dashboard/results",
             icon: ClipboardCheck,
-            children: [
-              { title: "Results Management", href: "/dashboard/results" },
-              { title: "Results Configuration", href: "/dashboard/results/configuration" },
-            ]
+          },
+          {
+            title: "Promotion Engine",
+            href: "/dashboard/students/promotions",
+            icon: ArrowRightLeft,
           },
           { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
           { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
@@ -215,10 +221,6 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             title: "Results",
             href: "/dashboard/results",
             icon: ClipboardCheck,
-            children: [
-              { title: "Results Management", href: "/dashboard/results" },
-              { title: "Results Configuration", href: "/dashboard/results/configuration" },
-            ]
           },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
@@ -262,7 +264,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     // For admin roles, group the items by category
     const items = getNavigationItems()
     return {
-      main: items.filter((item) => ["/dashboard", "/dashboard/fees", "/dashboard/calendar"].includes(item.href)),
+      main: items.filter((item) => ["/dashboard", "/dashboard/wallet", "/dashboard/fees", "/dashboard/calendar"].includes(item.href)),
       users: items.filter((item) =>
         ["/dashboard/teachers", "/dashboard/students", "/dashboard/parents"].includes(item.href),
       ),
@@ -274,6 +276,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           "/dashboard/school-levels",
           "/dashboard/sessions",
           "/dashboard/results",
+          "/dashboard/students/promotions",
         ].includes(item.href),
       ),
       system: items.filter((item) => ["/dashboard/settings"].includes(item.href)),
@@ -358,7 +361,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                     </div>
                   )}
                   <ul className="space-y-1">
-                    {items.map((item) => {
+                    {items.map((item: any) => {
                       const Icon = item.icon
                       const isItemActive = isActive(item.href)
 

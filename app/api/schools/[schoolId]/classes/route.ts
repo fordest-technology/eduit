@@ -5,9 +5,10 @@ import { logger } from "@/lib/logger";
 
 export async function GET(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   const startTime = Date.now();
+  const { schoolId } = await params;
 
   try {
     const session = await getSession();
@@ -17,15 +18,15 @@ export async function GET(
     }
 
     // Check if user has access to this school
-    if (session.schoolId !== params.schoolId) {
+    if (session.schoolId !== schoolId) {
       logger.warn("Access denied to school classes", {
         userSchoolId: session.schoolId,
-        requestedSchoolId: params.schoolId,
+        requestedSchoolId: schoolId,
       });
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    logger.info("Fetching school classes", { schoolId: params.schoolId });
+    logger.info("Fetching school classes", { schoolId: schoolId });
 
     // Get query parameters for filtering
     const url = new URL(request.url);
@@ -37,7 +38,7 @@ export async function GET(
     if (teacherIdParam && session.role === "TEACHER") {
       classes = await prisma.class.findMany({
         where: {
-          schoolId: params.schoolId,
+          schoolId: schoolId,
           teacherId: teacherIdParam,
         },
         orderBy: { name: "asc" },
@@ -54,7 +55,7 @@ export async function GET(
       // For admins or other roles, return all classes
       classes = await prisma.class.findMany({
         where: {
-          schoolId: params.schoolId,
+          schoolId: schoolId,
         },
         orderBy: { name: "asc" },
         include: {
@@ -70,7 +71,7 @@ export async function GET(
 
     const duration = Date.now() - startTime;
     logger.api("GET /api/schools/[schoolId]/classes", duration, {
-      schoolId: params.schoolId,
+      schoolId: schoolId,
       count: classes.length,
       teacherId: teacherIdParam || null,
     });
@@ -79,7 +80,7 @@ export async function GET(
   } catch (error) {
     const duration = Date.now() - startTime;
     logger.error("Error fetching school classes", error, {
-      schoolId: params.schoolId,
+      schoolId: schoolId,
       duration,
     });
     return NextResponse.json(

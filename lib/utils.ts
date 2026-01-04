@@ -68,3 +68,10 @@ export function generateEmailDebugId(): string {
 
   return id;
 }
+
+/**
+ * Generates a 4-digit numeric verification code
+ */
+export function generateResetCode(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}

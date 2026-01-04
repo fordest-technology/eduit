@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { sendWelcomeEmail } from "@/lib/email";
+import { sendSchoolWelcomeEmail } from "@/lib/email";
 import { uploadImage } from "@/lib/cloudinary";
 import { UserRole, AdminType } from "@prisma/client";
 import { checkCloudinaryConfig } from "@/lib/env-check";
@@ -207,19 +207,30 @@ export async function POST(request: NextRequest) {
         return { school, admin };
       });
 
-      // Send welcome email to school admin
+      // Send welcome email to school admin (and copy school email)
       try {
-        await sendWelcomeEmail({
-          name: result.admin.name,
-          email: result.admin.email,
-          role: "School Admin",
+        const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "eduit.com";
+        const schoolUrl = `https://${result.school.subdomain}.${baseDomain}`;
+
+        console.log(`Attempting to send welcome email to Admin: ${result.admin.email} and School: ${result.school.email}`);
+
+        await sendSchoolWelcomeEmail({
+          adminName: result.admin.name || "Administrator",
+          adminEmail: result.admin.email,
           schoolName: result.school.name,
-          schoolUrl: `https://${result.school.subdomain}.eduit.com`,
-          password: adminPassword, // Only for demo - in production, use reset password links
+          schoolUrl: schoolUrl,
+          password: adminPassword,
+          primaryColor: result.school.primaryColor || "#f97316",
+          secondaryColor: result.school.secondaryColor || "#0f172a",
+          logoUrl: result.school.logo || undefined,
         });
+
+        // If school email is different from admin email, we could send a second one or just rely on the first
+        if (result.school.email !== result.admin.email) {
+          console.log(`Note: School email (${result.school.email}) is different from Admin email (${result.admin.email}).`);
+        }
       } catch (emailError) {
         console.error("Error sending welcome email:", emailError);
-        // Continue with the response even if email fails
       }
 
       return NextResponse.json(
