@@ -18,8 +18,8 @@ export async function GET(
 
     // Check if user has permission to view this user
     if (
-      session.role !== "super_admin" &&
-      session.role !== "school_admin" &&
+      session.role !== "SUPER_ADMIN" &&
+      session.role !== "SCHOOL_ADMIN" &&
       session.id !== userId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -40,26 +40,32 @@ export async function GET(
           },
         },
         // Include relevant relations based on role
-        ...(session.role === "school_admin" || session.role === "super_admin"
+        ...(session.role === "SCHOOL_ADMIN" || session.role === "SUPER_ADMIN"
           ? {
-              teacherClasses: {
-                select: {
-                  id: true,
-                  name: true,
-                },
+            teacherClasses: {
+              select: {
+                id: true,
+                name: true,
               },
-              teacherSubjects: {
-                select: {
-                  id: true,
-                  subject: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
+            },
+            teacherSubjects: {
+              select: {
+                id: true,
+                subject: {
+                  select: {
+                    id: true,
+                    name: true,
                   },
                 },
               },
-            }
+            },
+            admin: {
+              select: {
+                adminType: true,
+                permissions: true,
+              },
+            },
+          }
           : {}),
       },
     });
@@ -91,12 +97,12 @@ export async function PUT(
   try {
     const userId = params.id;
     const body = await request.json();
-    const { name, email, password, role, schoolId } = body;
+    const { name, email, password, role, schoolId, adminData } = body;
 
     // Check if user has permission to update this user
     if (
-      session.role !== "super_admin" &&
-      (session.role !== "school_admin" || session.id === userId)
+      session.role !== "SUPER_ADMIN" &&
+      (session.role !== "SCHOOL_ADMIN" || session.id === userId)
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -107,10 +113,26 @@ export async function PUT(
     if (email) updateData.email = email;
     if (password) updateData.password = await hash(password, 10);
 
-    // Only super_admin can change roles and school assignments
-    if (session.role === "super_admin") {
+    // Only SUPER_ADMIN can change roles and school assignments
+    if (session.role === "SUPER_ADMIN") {
       if (role) updateData.role = role.toUpperCase();
       if (schoolId) updateData.schoolId = schoolId;
+    }
+
+    // Handle Admin data (permissions)
+    if (adminData) {
+      updateData.admin = {
+        upsert: {
+          create: {
+            adminType: adminData.adminType || 'SCHOOL_ADMIN',
+            permissions: adminData.permissions,
+          },
+          update: {
+            adminType: adminData.adminType,
+            permissions: adminData.permissions,
+          },
+        },
+      };
     }
 
     const user = await prisma.user.update({
@@ -144,7 +166,7 @@ export async function DELETE(
 
   if (
     !session ||
-    (session.role !== "super_admin" && session.role !== "school_admin")
+    (session.role !== "SUPER_ADMIN" && session.role !== "SCHOOL_ADMIN")
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -153,7 +175,7 @@ export async function DELETE(
     const userId = params.id;
 
     // Check if user has permission to delete this user
-    if (session.role === "school_admin") {
+    if (session.role === "SCHOOL_ADMIN") {
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { schoolId: true },

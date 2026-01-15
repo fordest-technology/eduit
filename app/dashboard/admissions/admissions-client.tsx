@@ -17,13 +17,13 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -31,6 +31,7 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
+    FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -341,15 +342,15 @@ export function AdmissionsClient({ sessions, error }: AdmissionsClientProps) {
                 </Card>
             </div>
 
-            {/* Add Session Modal */}
-            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Add Academic Session</DialogTitle>
-                        <DialogDescription>
+            {/* Add Session Sheet */}
+            <Sheet open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Add Academic Session</SheetTitle>
+                        <SheetDescription>
                             Create a new academic session for student enrollments.
-                        </DialogDescription>
-                    </DialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField
@@ -472,7 +473,7 @@ export function AdmissionsClient({ sessions, error }: AdmissionsClientProps) {
                                 )}
                             />
 
-                            <DialogFooter className="pt-4">
+                            <SheetFooter className="pt-4 mt-6">
                                 <Button
                                     variant="outline"
                                     onClick={() => setIsAddModalOpen(false)}
@@ -490,21 +491,21 @@ export function AdmissionsClient({ sessions, error }: AdmissionsClientProps) {
                                         <>Create Session</>
                                     )}
                                 </Button>
-                            </DialogFooter>
+                            </SheetFooter>
                         </form>
                     </Form>
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
 
-            {/* Edit Session Modal */}
-            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Edit Academic Session</DialogTitle>
-                        <DialogDescription>
+            {/* Edit Session Sheet */}
+            <Sheet open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Edit Academic Session</SheetTitle>
+                        <SheetDescription>
                             Update the details of this academic session.
-                        </DialogDescription>
-                    </DialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField
@@ -627,7 +628,7 @@ export function AdmissionsClient({ sessions, error }: AdmissionsClientProps) {
                                 )}
                             />
 
-                            <DialogFooter className="pt-4">
+                            <SheetFooter className="pt-4 mt-6">
                                 <Button
                                     variant="outline"
                                     onClick={() => setIsEditModalOpen(false)}
@@ -645,11 +646,11 @@ export function AdmissionsClient({ sessions, error }: AdmissionsClientProps) {
                                         <>Update Session</>
                                     )}
                                 </Button>
-                            </DialogFooter>
+                            </SheetFooter>
                         </form>
                     </Form>
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
 
             {/* Delete Confirmation */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

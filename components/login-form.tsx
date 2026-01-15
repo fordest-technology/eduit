@@ -16,6 +16,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { toast } from "@/components/ui/use-toast"
 
 const formSchema = z.object({
@@ -120,8 +121,7 @@ export default function LoginForm() {
                                     </Link>
                                 </div>
                                 <FormControl>
-                                    <Input
-                                        type="password"
+                                    <PasswordInput
                                         {...field}
                                         disabled={isLoading}
                                     />

@@ -15,13 +15,13 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
 import {
     Table,
     TableBody,
@@ -168,20 +168,20 @@ export function BillsTab({ bills, paymentAccounts, students, classes }: BillsTab
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Dialog>
-                        <DialogTrigger asChild>
+                    <Sheet>
+                        <SheetTrigger asChild>
                             <Button>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create Bill
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-h-[80vh] overflow-y-auto w-[800px] p-6">
-                            <DialogHeader className="space-y-3 pb-6 border-b">
-                                <DialogTitle className="text-2xl font-semibold tracking-tight">Create New Bill</DialogTitle>
-                                <DialogDescription className="text-base text-muted-foreground">
+                        </SheetTrigger>
+                        <SheetContent className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl overflow-y-auto" side="right">
+                            <SheetHeader className="space-y-3 pb-6 border-b">
+                                <SheetTitle className="text-2xl font-semibold tracking-tight">Create New Bill</SheetTitle>
+                                <SheetDescription className="text-base text-muted-foreground">
                                     Fill in the details below to create a new bill. Add as many items as needed.
-                                </DialogDescription>
-                            </DialogHeader>
+                                </SheetDescription>
+                            </SheetHeader>
                             <div className="my-6">
                                 <BillForm
                                     paymentAccounts={paymentAccounts}
@@ -205,8 +205,8 @@ export function BillsTab({ bills, paymentAccounts, students, classes }: BillsTab
                                     }}
                                 />
                             </div>
-                        </DialogContent>
-                    </Dialog>
+                        </SheetContent>
+                    </Sheet>
                 </div>
             </div>
 

@@ -30,17 +30,20 @@ import {
 
 export interface Teacher {
     id: string
-    userId: string
+    userId?: string
     name: string
     email: string
-    phone: string
-    department: string
+    phone: string | null
+    department?: any
     departmentId: string | null
-    classes: string
-    subjects: string
+    classes: any[]
+    subjects: any[]
     profileImage?: string | null
-    rawClasses?: any[]
-    rawSubjects?: any[]
+    stats?: {
+        totalClasses: number
+        totalStudents: number
+        totalSubjects: number
+    }
 }
 
 interface TeacherActionsProps {

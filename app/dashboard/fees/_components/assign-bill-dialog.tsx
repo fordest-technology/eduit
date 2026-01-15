@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -126,14 +126,14 @@ export function AssignBillDialog({
     }, [isOpen])
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Assign Bill</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={isOpen} onOpenChange={onClose}>
+            <SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right">
+                <SheetHeader>
+                    <SheetTitle>Assign Bill</SheetTitle>
+                    <SheetDescription>
                         Assign this bill to a class or individual student
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <div className="grid gap-4 py-4">
                     <Tabs
@@ -205,7 +205,7 @@ export function AssignBillDialog({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <SheetFooter>
                     <Button
                         variant="outline"
                         onClick={onClose}
@@ -226,8 +226,8 @@ export function AssignBillDialog({
                             "Assign Bill"
                         )}
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
     )
 } 

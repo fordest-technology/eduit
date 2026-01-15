@@ -16,6 +16,7 @@ import {
     FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
     Sheet,
     SheetContent,
@@ -299,8 +300,7 @@ export default function ParentModal({ parent, trigger, onSuccess }: ParentModalP
                                             </FormLabel>
                                             <div className="flex space-x-2">
                                                 <FormControl>
-                                                    <Input
-                                                        type="text"
+                                                    <PasswordInput
                                                         placeholder={parent ? "New password" : "Password"}
                                                         {...field}
                                                     />

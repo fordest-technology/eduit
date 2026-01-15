@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Plus, Pencil, Trash2, Loader2, AlertCircle, Search, BookOpen, X, Users, GraduationCap } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -793,16 +793,16 @@ export function SubjectsTable({
             </div>
 
             {canManageSubjects && (
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="sm:max-w-[600px]">
-                        <DialogHeader>
-                            <DialogTitle>{editingSubject ? "Edit Subject" : "Add New Subject"}</DialogTitle>
-                            <DialogDescription>
+                <Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <SheetContent className="sm:max-w-[600px] w-full overflow-y-auto" side="right">
+                        <SheetHeader className="mb-6">
+                            <SheetTitle>{editingSubject ? "Edit Subject" : "Add New Subject"}</SheetTitle>
+                            <SheetDescription>
                                 {editingSubject
                                     ? "Update the subject details below."
                                     : "Fill in the details to create a new subject."}
-                            </DialogDescription>
-                        </DialogHeader>
+                            </SheetDescription>
+                        </SheetHeader>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="grid gap-6">
                                 <div className="grid gap-4 sm:grid-cols-2">
@@ -882,7 +882,7 @@ export function SubjectsTable({
                                 </div>
                             </div>
 
-                            <DialogFooter>
+                            <SheetFooter className="mt-8">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -904,10 +904,10 @@ export function SubjectsTable({
                                         editingSubject ? "Update" : "Create"
                                     )}
                                 </Button>
-                            </DialogFooter>
+                            </SheetFooter>
                         </form>
-                    </DialogContent>
-                </Dialog>
+                    </SheetContent>
+                </Sheet>
             )}
 
             <TeacherAssignmentModal

@@ -6,13 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -29,15 +29,16 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import { Role } from "@prisma/client"
+import { UserRole } from "@prisma/client"
 
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters").optional(),
-    role: z.nativeEnum(Role),
+    role: z.nativeEnum(UserRole),
     schoolId: z.string().optional(),
 })
 
@@ -48,7 +49,7 @@ interface EditUserDialogProps {
         id: string
         name: string
         email: string
-        role: Role
+        role: UserRole
         schoolId?: string | null
     }
     onSuccess?: () => void
@@ -101,14 +102,14 @@ export function EditUserDialog({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Edit User</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[540px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>Edit User</SheetTitle>
+                    <SheetDescription>
                         Update user information and settings.
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -147,7 +148,7 @@ export function EditUserDialog({
                                 <FormItem>
                                     <FormLabel>Password (leave blank to keep current)</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter new password" type="password" {...field} />
+                                        <PasswordInput placeholder="Enter new password" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -170,10 +171,10 @@ export function EditUserDialog({
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value={Role.SCHOOL_ADMIN}>School Admin</SelectItem>
-                                            <SelectItem value={Role.TEACHER}>Teacher</SelectItem>
-                                            <SelectItem value={Role.STUDENT}>Student</SelectItem>
-                                            <SelectItem value={Role.PARENT}>Parent</SelectItem>
+                                            <SelectItem value={UserRole.SCHOOL_ADMIN}>School Admin</SelectItem>
+                                            <SelectItem value={UserRole.TEACHER}>Teacher</SelectItem>
+                                            <SelectItem value={UserRole.STUDENT}>Student</SelectItem>
+                                            <SelectItem value={UserRole.PARENT}>Parent</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -181,7 +182,7 @@ export function EditUserDialog({
                             )}
                         />
 
-                        <DialogFooter>
+                        <SheetFooter className="pt-6">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -194,10 +195,10 @@ export function EditUserDialog({
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Update User
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 

@@ -16,5 +16,6 @@ export async function GET(request: NextRequest) {
     role: session.role,
     schoolId: session.schoolId,
     profileImage: session.profileImage,
+    permissions: session.permissions,
   });
 }

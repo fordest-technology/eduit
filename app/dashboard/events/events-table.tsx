@@ -8,13 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import type { UserRole } from "@/lib/auth"
 import { Calendar, Edit, Loader2, Plus, Trash } from "lucide-react"
@@ -299,7 +299,7 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
             className="w-full sm:w-[300px]"
           />
 
-          {userRole === "super_admin" && (
+          {userRole === "SUPER_ADMIN" && (
             <Select value={formData.schoolId} onValueChange={(value) => handleSelectChange("schoolId", value)}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Schools" />
@@ -393,13 +393,13 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
         </Table>
       </div>
 
-      {/* Add Event Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Add New Event</DialogTitle>
-            <DialogDescription>Create a new event for your school.</DialogDescription>
-          </DialogHeader>
+      {/* Add Event Sheet */}
+      <Sheet open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Add New Event</SheetTitle>
+            <SheetDescription>Create a new event for your school.</SheetDescription>
+          </SheetHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="title">Event Title</Label>
@@ -469,7 +469,7 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
               <Label htmlFor="isPublic">Make this event public to all users</Label>
             </div>
 
-            {userRole === "super_admin" && (
+            {userRole === "SUPER_ADMIN" && (
               <div className="space-y-2">
                 <Label htmlFor="schoolId">School</Label>
                 <Select
@@ -491,7 +491,7 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
               </div>
             )}
           </div>
-          <DialogFooter>
+          <SheetFooter className="mt-6">
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Cancel
             </Button>
@@ -499,17 +499,17 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Event
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      {/* Edit Event Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Event</DialogTitle>
-            <DialogDescription>Update event details.</DialogDescription>
-          </DialogHeader>
+      {/* Edit Event Sheet */}
+      <Sheet open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+          <SheetHeader>
+            <SheetTitle>Edit Event</SheetTitle>
+            <SheetDescription>Update event details.</SheetDescription>
+          </SheetHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-title">Event Title</Label>
@@ -566,7 +566,7 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
               <Label htmlFor="edit-isPublic">Make this event public to all users</Label>
             </div>
 
-            {userRole === "super_admin" && (
+            {userRole === "SUPER_ADMIN" && (
               <div className="space-y-2">
                 <Label htmlFor="edit-schoolId">School</Label>
                 <Select
@@ -588,7 +588,7 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
               </div>
             )}
           </div>
-          <DialogFooter>
+          <SheetFooter className="mt-6">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
@@ -596,9 +596,9 @@ export function EventsTable({ userRole, userId, schoolId, schools = [] }: Events
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update Event
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

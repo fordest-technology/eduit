@@ -23,6 +23,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Loader2, Mail, CheckCircle, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -271,8 +272,7 @@ export function AddParentModal({
                                         {isEditMode ? "New Password (leave blank to keep current)" : "Password (Optional)"}
                                     </FormLabel>
                                     <FormControl>
-                                        <Input
-                                            type="password"
+                                        <PasswordInput
                                             placeholder={isEditMode ? "New password" : "Leave blank to auto-generate"}
                                             {...field}
                                         />

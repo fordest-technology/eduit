@@ -19,13 +19,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
     }
 
+    // If user is an admin, fetch their permissions
+    let permissions = null;
+    if (user.role === "SCHOOL_ADMIN" || user.role === "SUPER_ADMIN") {
+      const adminRecord = await prisma.admin.findUnique({
+        where: { userId: user.id },
+        select: { permissions: true },
+      });
+      permissions = adminRecord?.permissions;
+    }
+
     // build JWT & cookie
     const session = await createSession({
       id: user.id,
       email: user.email,
       role: user.role,
       ...(user.schoolId && { schoolId: user.schoolId }),
-    });
+      permissions,
+    } as any);
 
     // copy cookie into our response
     const response = NextResponse.json({

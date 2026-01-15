@@ -14,13 +14,13 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import {
     Table,
     TableBody,
@@ -176,16 +176,16 @@ export function PaymentRequestsTab({ payments }: PaymentRequestsTabProps) {
                 </CardContent>
             </Card>
 
-            {/* Payment Details Dialog */}
-            <Dialog open={showDetails} onOpenChange={setShowDetails}>
+            {/* Payment Details Sheet */}
+            <Sheet open={showDetails} onOpenChange={setShowDetails}>
                 {selectedPayment && (
-                    <DialogContent className="sm:max-w-[600px]">
-                        <DialogHeader>
-                            <DialogTitle>Payment Request Details</DialogTitle>
-                            <DialogDescription>
+                    <SheetContent className="sm:max-w-[600px] w-full overflow-y-auto" side="right">
+                        <SheetHeader>
+                            <SheetTitle>Payment Request Details</SheetTitle>
+                            <SheetDescription>
                                 Review payment details and approve or reject
-                            </DialogDescription>
-                        </DialogHeader>
+                            </SheetDescription>
+                        </SheetHeader>
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -242,7 +242,7 @@ export function PaymentRequestsTab({ payments }: PaymentRequestsTabProps) {
                                 />
                             </div>
 
-                            <DialogFooter className="flex justify-between space-x-4">
+                            <SheetFooter className="flex justify-between space-x-4 mt-6">
                                 <div className="flex space-x-2">
                                     <Button
                                         variant="outline"
@@ -272,11 +272,11 @@ export function PaymentRequestsTab({ payments }: PaymentRequestsTabProps) {
                                         Approve
                                     </Button>
                                 </div>
-                            </DialogFooter>
+                            </SheetFooter>
                         </div>
-                    </DialogContent>
+                    </SheetContent>
                 )}
-            </Dialog>
+            </Sheet>
         </div>
     );
 } 

@@ -81,9 +81,9 @@ export default function Home() {
             ))}
           </nav>
           <div className="flex items-center gap-6">
-            <Link href="/register">
+            <Link href="#request-demo">
               <Button className="bg-orange-600 hover:bg-orange-700 text-white text-[15px] font-black h-12 px-8 rounded-2xl shadow-xl shadow-orange-100 transition-all hover:scale-[1.02] active:scale-100 font-sora tracking-tight">
-                Get Started Now
+                Book a Demo
               </Button>
             </Link>
           </div>

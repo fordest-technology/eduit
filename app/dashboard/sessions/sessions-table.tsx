@@ -4,14 +4,14 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -462,18 +462,18 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                     <p className="text-sm text-muted-foreground">Manage your academic sessions and terms</p>
                 </div>
 
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
+                <Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <SheetTrigger asChild>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             Add Session
                         </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create New Academic Session</DialogTitle>
-                            <DialogDescription>Add a new academic session or term to your school calendar.</DialogDescription>
-                        </DialogHeader>
+                    </SheetTrigger>
+                    <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+                        <SheetHeader>
+                            <SheetTitle>Create New Academic Session</SheetTitle>
+                            <SheetDescription>Add a new academic session or term to your school calendar.</SheetDescription>
+                        </SheetHeader>
 
                         {error && (
                             <Alert variant="destructive">
@@ -617,13 +617,13 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                                     </div>
                                 </div>
 
-                                <DialogFooter>
+                                <SheetFooter className="mt-6">
                                     <Button type="submit" disabled={isLoading}>{isLoading ? "Creating..." : "Create Session"}</Button>
-                                </DialogFooter>
+                                </SheetFooter>
                             </form>
                         </Form>
-                    </DialogContent>
-                </Dialog>
+                    </SheetContent>
+                </Sheet>
             </div>
 
             {sessions.length > 0 ? (
@@ -644,13 +644,13 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                 </Card>
             )}
 
-            {/* Edit Session Dialog */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Academic Session</DialogTitle>
-                        <DialogDescription>Update the details of your academic session.</DialogDescription>
-                    </DialogHeader>
+            {/* Edit Session Sheet */}
+            <Sheet open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Edit Academic Session</SheetTitle>
+                        <SheetDescription>Update the details of your academic session.</SheetDescription>
+                    </SheetHeader>
 
                     {error && (
                         <Alert variant="destructive">
@@ -750,21 +750,21 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                                 <p className="text-[10px] text-muted-foreground italic">Term names cannot be changed once the session is created.</p>
                             </div>
 
-                            <DialogFooter>
+                            <SheetFooter className="mt-6">
                                 <Button type="submit" disabled={isLoading}>{isLoading ? "Saving..." : "Save Changes"}</Button>
-                            </DialogFooter>
+                            </SheetFooter>
                         </form>
                     </Form>
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
 
-            {/* View Details Dialog */}
-            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Session Details</DialogTitle>
-                        <DialogDescription>Complete information about this academic session.</DialogDescription>
-                    </DialogHeader>
+            {/* View Details Sheet */}
+            <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Session Details</SheetTitle>
+                        <SheetDescription>Complete information about this academic session.</SheetDescription>
+                    </SheetHeader>
                     {selectedSession && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -819,15 +819,15 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                             </div>
                         </div>
                     )}
-                    <DialogFooter>
+                    <SheetFooter className="mt-6">
                         <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>Close</Button>
                         <Button onClick={() => {
                             setIsDetailsOpen(false)
                             router.push('/dashboard/classes')
                         }}>Manage Classes</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
