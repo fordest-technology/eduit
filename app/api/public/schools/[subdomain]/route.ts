@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { subdomain: string } }
+  { params }: { params: Promise<{ subdomain: string }> }
 ) {
   try {
-    const subdomain = params.subdomain;
+    const { subdomain } = await params;
 
     if (!subdomain) {
       return NextResponse.json(

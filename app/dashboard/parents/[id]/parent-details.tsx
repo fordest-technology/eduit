@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -489,12 +489,12 @@ export default function ParentDetails({
                 </CardContent>
             </Card>
 
-            {/* Link Student Dialog */}
-            <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Link Student</DialogTitle>
-                    </DialogHeader>
+            {/* Link Student Sheet */}
+            <Sheet open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+                <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Link Student</SheetTitle>
+                    </SheetHeader>
                     <div className="space-y-4 py-4">
                         <div className="relative">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -567,7 +567,7 @@ export default function ParentDetails({
                             </Label>
                         </div>
                     </div>
-                    <DialogFooter>
+                    <SheetFooter className="mt-6">
                         <Button
                             variant="outline"
                             onClick={() => {
@@ -594,9 +594,9 @@ export default function ParentDetails({
                                 "Link Student"
                             )}
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
 
             {/* Unlink Student Dialog */}
             <AlertDialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
@@ -632,12 +632,12 @@ export default function ParentDetails({
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Edit Parent Dialog */}
-            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Edit Parent Details</DialogTitle>
-                    </DialogHeader>
+            {/* Edit Parent Sheet */}
+            <Sheet open={showEditDialog} onOpenChange={setShowEditDialog}>
+                <SheetContent className="sm:max-w-[600px] w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Edit Parent Details</SheetTitle>
+                    </SheetHeader>
                     <div className="space-y-4 py-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -747,7 +747,7 @@ export default function ParentDetails({
                             </select>
                         </div>
                     </div>
-                    <DialogFooter>
+                    <SheetFooter className="mt-6">
                         <Button
                             variant="outline"
                             onClick={() => {
@@ -782,9 +782,9 @@ export default function ParentDetails({
                                 "Save Changes"
                             )}
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
 
             {/* Delete Parent Dialog */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

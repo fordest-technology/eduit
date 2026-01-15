@@ -9,14 +9,14 @@ import { CalendarIcon } from 'lucide-react'
 import { useQueryClient, useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog'
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -112,21 +112,21 @@ export function EventDialog({ mode, event }: EventDialogProps) {
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
+        <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
                 <Button variant={mode === 'create' ? 'default' : 'ghost'} size={mode === 'create' ? 'sm' : 'icon'}>
                     {mode === 'create' ? 'Add Event' : 'Edit'}
                 </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{mode === 'create' ? 'Create Event' : 'Edit Event'}</DialogTitle>
-                    <DialogDescription>
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right">
+                <SheetHeader>
+                    <SheetTitle>{mode === 'create' ? 'Create Event' : 'Edit Event'}</SheetTitle>
+                    <SheetDescription>
                         {mode === 'create'
                             ? 'Add a new event to the calendar'
                             : 'Make changes to the event'}
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
@@ -186,7 +186,7 @@ export function EventDialog({ mode, event }: EventDialogProps) {
                                                     mode="single"
                                                     selected={field.value}
                                                     onSelect={field.onChange}
-                                                    disabled={(date) =>
+                                                    disabled={(date: Date) =>
                                                         date < new Date(new Date().setHours(0, 0, 0, 0))
                                                     }
                                                     initialFocus
@@ -227,7 +227,7 @@ export function EventDialog({ mode, event }: EventDialogProps) {
                                                     mode="single"
                                                     selected={field.value}
                                                     onSelect={field.onChange}
-                                                    disabled={(date) =>
+                                                    disabled={(date: Date) =>
                                                         date < form.getValues('startDate')
                                                     }
                                                     initialFocus
@@ -252,7 +252,7 @@ export function EventDialog({ mode, event }: EventDialogProps) {
                                 </FormItem>
                             )}
                         />
-                        <DialogFooter className="gap-2">
+                        <SheetFooter className="gap-2 mt-6">
                             {mode === 'edit' && (
                                 <Button
                                     type="button"
@@ -265,10 +265,10 @@ export function EventDialog({ mode, event }: EventDialogProps) {
                             <Button type="submit">
                                 {mode === 'create' ? 'Create' : 'Update'}
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 

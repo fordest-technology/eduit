@@ -72,8 +72,10 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        // TODO: Send notifications in background
-        // await sendResultNotifications(publication.id);
+        // Send notifications in background (using a separate function for better structure)
+        sendResultNotifications(publication.id).catch(err =>
+            console.error('Failed to send result notifications:', err)
+        );
 
         return NextResponse.json({
             success: true,
@@ -86,6 +88,96 @@ export async function POST(req: NextRequest) {
             { error: 'Failed to publish results' },
             { status: 500 }
         );
+    }
+}
+
+async function sendResultNotifications(publicationId: string) {
+    try {
+        const publication = await prisma.resultPublication.findUnique({
+            where: { id: publicationId },
+            include: {
+                school: true,
+                session: true,
+                period: true,
+            }
+        });
+
+        if (!publication) return;
+
+        // Get all students affected by this publication
+        const where: any = {
+            sessionId: publication.sessionId,
+            periodId: publication.periodId,
+            published: true,
+        };
+
+        if (publication.classId) {
+            where.student = {
+                classes: {
+                    some: {
+                        classId: publication.classId,
+                        sessionId: publication.sessionId,
+                        status: 'ACTIVE',
+                    },
+                },
+            };
+        }
+
+        const uniqueStudentIds = await prisma.result.findMany({
+            where,
+            select: { studentId: true },
+            distinct: ['studentId'],
+        });
+
+        const studentIds = uniqueStudentIds.map(r => r.studentId);
+
+        // Fetch student and parent details
+        const students = await prisma.student.findMany({
+            where: { id: { in: studentIds } },
+            include: {
+                user: { select: { name: true, email: true } },
+                parents: {
+                    include: {
+                        parent: {
+                            include: {
+                                user: { select: { name: true, email: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const { sendResultPublishedEmail } = await import('@/lib/email');
+
+        for (const student of students) {
+            const studentEmail = student.user.email;
+            if (!studentEmail) continue;
+
+            const primaryParent = student.parents.find(p => p.isPrimary) || student.parents[0];
+            const parentEmail = primaryParent?.parent.user.email;
+            const parentName = primaryParent?.parent.user.name;
+
+            await sendResultPublishedEmail({
+                studentName: student.user.name,
+                studentEmail,
+                parentName,
+                parentEmail,
+                periodName: publication.period.name,
+                sessionName: publication.session.name,
+                schoolName: publication.school.name,
+                schoolId: publication.schoolId,
+            });
+        }
+
+        // Mark notifications as sent
+        await prisma.resultPublication.update({
+            where: { id: publicationId },
+            data: { notificationsSent: true },
+        });
+
+    } catch (error) {
+        console.error('Error in sendResultNotifications:', error);
     }
 }
 

@@ -6,13 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -185,14 +185,14 @@ export function EditTeacherModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Edit Teacher</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>Edit Teacher</SheetTitle>
+                    <SheetDescription>
                         Update the teacher's information.
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -354,7 +354,7 @@ export function EditTeacherModal({
                             />
                         </div>
 
-                        <DialogFooter>
+                        <SheetFooter className="mt-8 pb-4">
                             <Button type="submit" disabled={isLoading}>
                                 {isLoading ? (
                                     <>
@@ -365,10 +365,10 @@ export function EditTeacherModal({
                                     "Save Changes"
                                 )}
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 

@@ -8,6 +8,7 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { HexColorPicker } from "react-colorful"
@@ -328,12 +329,12 @@ export default function RegisterPage() {
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2.5">
                       <Label className="text-xs font-black uppercase tracking-widest text-slate-400 font-sora ml-1">Secure Password</Label>
-                      <Input name="adminPassword" type="password" placeholder="••••••••" required value={formData.adminPassword} onChange={handleChange}
+                      <PasswordInput name="adminPassword" placeholder="••••••••" required value={formData.adminPassword} onChange={handleChange}
                         className="h-14 bg-white border-slate-200 rounded-2xl px-6 font-bold" />
                     </div>
                     <div className="space-y-2.5">
                       <Label className="text-xs font-black uppercase tracking-widest text-slate-400 font-sora ml-1">Confirm Password</Label>
-                      <Input name="confirmPassword" type="password" placeholder="••••••••" required value={formData.confirmPassword} onChange={handleChange}
+                      <PasswordInput name="confirmPassword" placeholder="••••••••" required value={formData.confirmPassword} onChange={handleChange}
                         className="h-14 bg-white border-slate-200 rounded-2xl px-6 font-bold" />
                     </div>
                   </div>

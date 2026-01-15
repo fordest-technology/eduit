@@ -17,14 +17,13 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import {
     Form,
     FormControl,
@@ -160,15 +159,15 @@ export function PaymentAccountsTab({ accounts }: PaymentAccountsTabProps) {
                 </CardContent>
             </Card>
 
-            {/* Create Account Dialog */}
-            <Dialog open={isCreating} onOpenChange={setIsCreating}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Add Payment Account</DialogTitle>
-                        <DialogDescription>
+            {/* Create Account Sheet */}
+            <Sheet open={isCreating} onOpenChange={setIsCreating}>
+                <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Add Payment Account</SheetTitle>
+                        <SheetDescription>
                             Add a new bank account for receiving payments
-                        </DialogDescription>
-                    </DialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField
@@ -270,16 +269,16 @@ export function PaymentAccountsTab({ accounts }: PaymentAccountsTabProps) {
                                 )}
                             />
 
-                            <DialogFooter>
+                            <SheetFooter className="mt-6">
                                 <Button type="button" variant="outline" onClick={() => setIsCreating(false)}>
                                     Cancel
                                 </Button>
                                 <Button type="submit">Add Account</Button>
-                            </DialogFooter>
+                            </SheetFooter>
                         </form>
                     </Form>
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 } 

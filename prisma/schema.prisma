@@ -7,14 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  SCHOOL_ADMIN
-  TEACHER
-  STUDENT
-  PARENT
-}
-
 model User {
   id                String            @id @default(cuid())
   name              String
@@ -32,8 +24,6 @@ model User {
   parent            Parent?
   processedPayments PaymentRequest[]
   approvedResults   Result[]          @relation("ResultApprover")
-  publishedResults  Result[]          @relation("ResultPublisher")
-  resultPublications ResultPublication[]
   sessions          Session[]
   student           Student?
   teacher           Teacher?
@@ -134,16 +124,18 @@ model School {
   primaryColor    String?
   secondaryColor  String?
   shortName       String                @unique
+  virtualAccountNo String?             @unique
+  virtualBankName  String?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
   sessions        AcademicSession[]
+  wallet          SchoolWallet?
   bills           Bill[]
   classes         Class[]
   departments     Department[]
   events          Event[]
   paymentAccounts PaymentAccount[]
   resultConfigs   ResultConfiguration[]
-  resultPublications ResultPublication[]
   levels          SchoolLevel[]
   subjects        Subject[]
   users           User[]
@@ -193,6 +185,7 @@ model Subject {
   schoolId     String
   departmentId String?
   levelId      String?
+  isCore       Boolean           @default(false)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   classes      ClassSubject[]
@@ -221,7 +214,6 @@ model AcademicSession {
   attendance           Attendance[]
   results              Result[]
   resultConfigurations ResultConfiguration[]
-  resultPublications   ResultPublication[]
   studentClasses       StudentClass[]
 
   @@index([schoolId])
@@ -322,40 +314,14 @@ model Result {
   remark            String
   teacherComment    String?
   total             Float
-  
-  // Publication tracking
-  published         Boolean          @default(false)
-  publishedAt       DateTime?
-  publishedById     String?
-  
   componentScores   ComponentScore[]
   approvedBy        User?            @relation("ResultApprover", fields: [approvedById], references: [id])
-  publishedBy       User?            @relation("ResultPublisher", fields: [publishedById], references: [id])
   period            ResultPeriod     @relation(fields: [periodId], references: [id])
   session           AcademicSession  @relation(fields: [sessionId], references: [id])
   student           Student          @relation(fields: [studentId], references: [id])
   subject           Subject          @relation(fields: [subjectId], references: [id])
 
   @@unique([studentId, subjectId, periodId, sessionId])
-}
-
-model ResultPublication {
-  id                String          @id @default(cuid())
-  schoolId          String
-  sessionId         String
-  periodId          String
-  classId           String?
-  publishedAt       DateTime        @default(now())
-  publishedById     String
-  totalStudents     Int
-  notificationsSent Boolean         @default(false)
-  
-  school            School          @relation(fields: [schoolId], references: [id])
-  session           AcademicSession @relation(fields: [sessionId], references: [id])
-  period            ResultPeriod    @relation(fields: [periodId], references: [id])
-  publishedBy       User            @relation(fields: [publishedById], references: [id])
-  
-  createdAt         DateTime        @default(now())
 }
 
 model Event {
@@ -569,7 +535,6 @@ model ResultPeriod {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   results         Result[]
-  resultPublications ResultPublication[]
   configuration   ResultConfiguration @relation(fields: [configurationId], references: [id])
 }
 
@@ -606,6 +571,14 @@ model ComponentScore {
   updatedAt   DateTime            @updatedAt
   component   AssessmentComponent @relation(fields: [componentId], references: [id])
   result      Result              @relation(fields: [resultId], references: [id])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  STUDENT
+  PARENT
 }
 
 enum AdminType {
@@ -650,4 +623,51 @@ enum PaymentStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+model SchoolWallet {
+  id                String              @id @default(cuid())
+  schoolId          String              @unique
+  balance           Float               @default(0)
+  virtualAccountNo  String?             @unique
+  virtualBankName   String?
+  providerRef       String?             // Gateway reference ID
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  school            School              @relation(fields: [schoolId], references: [id])
+  transactions      WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String           @id @default(cuid())
+  walletId    String
+  amount      Float
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  reference   String           @unique
+  description String?
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  wallet      SchoolWallet     @relation(fields: [walletId], references: [id])
+}
+
+model SessionHistory {
+  id          String   @id @default(cuid())
+  schoolId    String
+  sessionId   String
+  snapshot    Json     // Store class lists/results at session end
+  archivedBy  String
+  createdAt   DateTime @default(now())
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }

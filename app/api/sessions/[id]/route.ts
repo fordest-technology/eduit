@@ -31,9 +31,10 @@ function serializeBigInts(data: any): any {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: sessionId } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -42,8 +43,6 @@ export async function GET(
 
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
-
-    const sessionId = params.id;
 
     const academicSession = await prisma.academicSession.findUnique({
       where: { id: sessionId },
@@ -73,7 +72,7 @@ export async function GET(
 
     // Check if user has permission to view this session
     if (
-      session.role !== "super_admin" &&
+      session.role !== "SUPER_ADMIN" &&
       academicSession.schoolId !== session.schoolId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -105,9 +104,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: sessionId } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -123,7 +123,6 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const sessionId = params.id;
     const body = await request.json();
 
     // Find the session first to check permissions
@@ -242,9 +241,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: sessionId } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -254,12 +254,11 @@ export async function DELETE(
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
 
-    // Only super_admin and school_admin can delete sessions
-    if (!["super_admin", "school_admin"].includes(session.role)) {
+    // Only SUPER_ADMIN and SCHOOL_ADMIN can delete sessions
+    const allowedRoles: UserRole[] = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+    if (!allowedRoles.includes(session.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const sessionId = params.id;
 
     // Find the session first to check permissions
     const existingSession = await prisma.academicSession.findUnique({
@@ -284,7 +283,7 @@ export async function DELETE(
 
     // Check if user has permission to delete this session
     if (
-      session.role !== "super_admin" &&
+      session.role !== "SUPER_ADMIN" &&
       existingSession.schoolId !== session.schoolId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -310,9 +309,40 @@ export async function DELETE(
       );
     }
 
-    // Delete the session
-    await prisma.academicSession.delete({
-      where: { id: sessionId },
+    // Delete the session and its configurations in a transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Find all result configurations for this session
+      const configs = await tx.resultConfiguration.findMany({
+        where: { sessionId },
+        select: { id: true },
+      });
+
+      const configIds = configs.map((c) => c.id);
+
+      if (configIds.length > 0) {
+        // 2. Delete all related records for these configurations
+        await tx.gradingScale.deleteMany({
+          where: { configurationId: { in: configIds } },
+        });
+
+        await tx.assessmentComponent.deleteMany({
+          where: { configurationId: { in: configIds } },
+        });
+
+        await tx.resultPeriod.deleteMany({
+          where: { configurationId: { in: configIds } },
+        });
+
+        // 3. Delete the configurations themselves
+        await tx.resultConfiguration.deleteMany({
+          where: { id: { in: configIds } },
+        });
+      }
+
+      // 4. Finally delete the session
+      await tx.academicSession.delete({
+        where: { id: sessionId },
+      });
     });
 
     return NextResponse.json(

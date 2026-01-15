@@ -159,6 +159,20 @@ export async function POST(
       }
     }
 
+    // Fetch result configuration for grading and cumulative settings
+    const firstResult = results[0];
+    const resultConfig = await prisma.resultConfiguration.findUnique({
+      where: {
+        schoolId_sessionId: {
+          schoolId: params.schoolId,
+          sessionId: firstResult.sessionId
+        }
+      },
+      include: {
+        gradingScale: true
+      }
+    });
+
     // Process each result
     const resultPromises = results.map(async (result: any) => {
       // Check teacher permissions
@@ -176,6 +190,45 @@ export async function POST(
         }
       }
 
+      // Calculate total
+      const total = result.componentScores.reduce(
+        (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
+        0
+      );
+
+      // Determine grade and remark from configuration
+      let grade = "N/A";
+      let remark = "Pending";
+      if (resultConfig) {
+        const matchedScale = resultConfig.gradingScale.find(
+          (scale) => total >= scale.minScore && total <= scale.maxScore
+        );
+        if (matchedScale) {
+          grade = matchedScale.grade;
+          remark = matchedScale.remark;
+        }
+      }
+
+      // Calculate cumulative average if enabled
+      let cumulativeAverage = total;
+      if (resultConfig?.cumulativeEnabled) {
+        const previousResults = await prisma.result.findMany({
+          where: {
+            studentId: result.studentId,
+            subjectId: result.subjectId,
+            sessionId: result.sessionId,
+            NOT: {
+              periodId: result.periodId,
+            },
+          },
+        });
+
+        if (previousResults.length > 0) {
+          const totalPrevious = previousResults.reduce((sum, r) => sum + r.total, 0);
+          cumulativeAverage = (totalPrevious + total) / (previousResults.length + 1);
+        }
+      }
+
       // Check if the result already exists
       const existingResult = await prisma.result.findFirst({
         where: {
@@ -184,69 +237,51 @@ export async function POST(
           periodId: result.periodId,
           sessionId: result.sessionId,
         },
-        include: {
-          componentScores: true,
-        },
       });
 
       if (existingResult) {
         // Update existing result and component scores
-        const updatedResult = await prisma.result.update({
+        return await prisma.result.update({
           where: { id: existingResult.id },
           data: {
-            // Update main result fields
             updatedAt: new Date(),
-            // Add required fields
-            total: result.componentScores.reduce(
-              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
-              0
-            ),
-            grade: result.grade || existingResult.grade || "N/A", // Use existing if available
-            remark: result.remark || existingResult.remark || "Pending", // Use existing if available
-
-            // Update component scores
+            total,
+            grade,
+            remark,
+            cumulativeAverage,
             componentScores: {
-              // Delete existing scores
               deleteMany: {},
-              // Create new scores
               createMany: {
                 data: result.componentScores.map((cs: any) => ({
                   componentKey: cs.componentKey,
-                  score: cs.score,
+                  score: parseFloat(cs.score) || 0,
                 })),
               },
             },
           },
         });
-
-        return updatedResult;
       } else {
         // Create new result with component scores
-        const newResult = await prisma.result.create({
+        return await prisma.result.create({
           data: {
             studentId: result.studentId,
             subjectId: result.subjectId,
             periodId: result.periodId,
             sessionId: result.sessionId,
-            // Add required fields
-            total: result.componentScores.reduce(
-              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
-              0
-            ),
-            grade: result.grade || "N/A", // Default grade or from input
-            remark: result.remark || "Pending", // Default remark
+            total,
+            grade,
+            remark,
+            cumulativeAverage,
             componentScores: {
               createMany: {
                 data: result.componentScores.map((cs: any) => ({
                   componentKey: cs.componentKey,
-                  score: cs.score,
+                  score: parseFloat(cs.score) || 0,
                 })),
               },
             },
           },
         });
-
-        return newResult;
       }
     });
 

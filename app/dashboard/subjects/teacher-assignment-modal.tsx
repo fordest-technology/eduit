@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2, Search } from "lucide-react"
@@ -90,14 +97,14 @@ export function TeacherAssignmentModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Assign Teachers</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>Assign Teachers</SheetTitle>
+                    <SheetDescription>
                         {subject ? `Assign teachers to ${subject.name}` : 'Select teachers to assign'}
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <div className="space-y-4 py-2">
                     <div className="relative">
@@ -151,7 +158,7 @@ export function TeacherAssignmentModal({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <SheetFooter className="mt-8">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
@@ -173,8 +180,8 @@ export function TeacherAssignmentModal({
                             "Assign Teachers"
                         )}
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
     )
 } 

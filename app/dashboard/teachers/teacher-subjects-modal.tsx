@@ -4,13 +4,13 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import { Search, Loader2 } from "lucide-react"
@@ -150,14 +150,14 @@ export function TeacherSubjectsModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Manage Subjects for {teacher?.name}</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>Manage Subjects for {teacher?.name}</SheetTitle>
+                    <SheetDescription>
                         Assign or remove subjects for this teacher.
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <div className="space-y-4 py-4">
                     <div className="relative">
@@ -237,7 +237,7 @@ export function TeacherSubjectsModal({
                     )}
                 </div>
 
-                <DialogFooter>
+                <SheetFooter className="mt-8">
                     <Button
                         variant="ghost"
                         onClick={() => onOpenChange(false)}>
@@ -249,8 +249,8 @@ export function TeacherSubjectsModal({
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save Changes
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
     )
 } 

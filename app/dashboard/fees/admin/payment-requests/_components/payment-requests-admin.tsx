@@ -13,13 +13,13 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
@@ -308,13 +308,13 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
         </CardContent>
       </Card>
 
-      {/* Approve Dialog */}
-      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Approve Payment Request</DialogTitle>
-            <DialogDescription>Are you sure you want to approve this payment request?</DialogDescription>
-          </DialogHeader>
+      {/* Approve Sheet */}
+      <Sheet open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+          <SheetHeader className="mb-6">
+            <SheetTitle>Approve Payment Request</SheetTitle>
+            <SheetDescription>Are you sure you want to approve this payment request?</SheetDescription>
+          </SheetHeader>
           <div className="bg-muted/50 p-3 rounded-md my-2">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div className="text-muted-foreground">Student:</div>
@@ -325,7 +325,7 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
               <div>{selectedRequest && formatCurrency(selectedRequest.amount)}</div>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 py-4">
             <label htmlFor="approve-notes" className="text-sm font-medium">
               Notes (Optional)
             </label>
@@ -336,7 +336,7 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
               onChange={(e) => setReviewNotes(e.target.value)}
             />
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:space-x-0">
+          <SheetFooter className="mt-8">
             <Button
               type="button"
               variant="outline"
@@ -353,17 +353,17 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
             >
               {isProcessing ? "Processing..." : "Approve"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      {/* Reject Dialog */}
-      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reject Payment Request</DialogTitle>
-            <DialogDescription>Please provide a reason for rejecting this payment request.</DialogDescription>
-          </DialogHeader>
+      {/* Reject Sheet */}
+      <Sheet open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+          <SheetHeader className="mb-6">
+            <SheetTitle>Reject Payment Request</SheetTitle>
+            <SheetDescription>Please provide a reason for rejecting this payment request.</SheetDescription>
+          </SheetHeader>
           <div className="bg-muted/50 p-3 rounded-md my-2">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div className="text-muted-foreground">Student:</div>
@@ -374,7 +374,7 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
               <div>{selectedRequest && formatCurrency(selectedRequest.amount)}</div>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 py-4">
             <label htmlFor="reject-notes" className="text-sm font-medium">
               Rejection Reason
             </label>
@@ -387,7 +387,7 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
               required
             />
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:space-x-0">
+          <SheetFooter className="mt-8">
             <Button
               type="button"
               variant="outline"
@@ -405,9 +405,9 @@ export function PaymentRequestsAdmin({ paymentRequests: initialRequests }: Payme
             >
               {isProcessing ? "Processing..." : "Reject"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 

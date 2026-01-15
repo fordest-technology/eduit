@@ -6,14 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -30,6 +30,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Loader2, User, Phone, Mail, Calendar, Home, MapPin, GraduationCap } from "lucide-react"
 import { User as PrismaUser } from "@prisma/client"
@@ -210,17 +211,17 @@ export default function StudentModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>
+        <Sheet open={open} onOpenChange={handleOpenChange}>
+            <SheetTrigger asChild>
                 {trigger || <Button>Edit Student</Button>}
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl overflow-y-auto max-h-[90vh] p-0">
-                <DialogHeader className="px-6 pt-6 pb-2">
-                    <DialogTitle className="text-2xl font-bold">Edit Student Profile</DialogTitle>
-                    <DialogDescription className="text-muted-foreground">
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-2xl w-full overflow-y-auto" side="right">
+                <SheetHeader className="px-6 pt-6 pb-2">
+                    <SheetTitle className="text-2xl font-bold">Edit Student Profile</SheetTitle>
+                    <SheetDescription className="text-muted-foreground">
                         Update student information and academic details
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <Separator className="my-2" />
 
@@ -503,7 +504,7 @@ export default function StudentModal({
                                             <FormItem>
                                                 <FormLabel>Password (leave empty to keep current)</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} type="password" placeholder="New password" />
+                                                    <PasswordInput {...field} placeholder="New password" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -515,7 +516,7 @@ export default function StudentModal({
 
                         <Separator className="my-4" />
 
-                        <DialogFooter className="px-0 gap-2">
+                        <SheetFooter className="px-0 gap-2 mt-6">
                             <Button variant="outline" onClick={() => setOpen(false)}>
                                 Cancel
                             </Button>
@@ -532,10 +533,10 @@ export default function StudentModal({
                                     </>
                                 )}
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 

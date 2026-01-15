@@ -20,13 +20,15 @@ import {
 } from "@/components/ui/table"
 import { useColors } from "@/contexts/color-context"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface ClassData {
     id: string
@@ -467,31 +469,28 @@ export default function SchoolLevelDetailsPage({ params: paramsPromise }: PagePr
             </Card>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete School Level</DialogTitle>
-                        <DialogDescription>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete School Level</AlertDialogTitle>
+                        <AlertDialogDescription>
                             Are you sure you want to delete this school level? This action cannot be undone.
                             {level._count?.classes > 0 || level._count?.subjects > 0 ? (
                                 <p className="text-red-500 mt-2">
                                     This level has associated classes or subjects. You must remove or reassign them before deleting.
                                 </p>
                             ) : null}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowDeleteDialog(false)}
-                            disabled={isDeleting}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDelete}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault()
+                                handleDelete()
+                            }}
                             disabled={isDeleting || level._count?.classes > 0 || level._count?.subjects > 0}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             {isDeleting ? (
                                 <>
@@ -501,10 +500,10 @@ export default function SchoolLevelDetailsPage({ params: paramsPromise }: PagePr
                             ) : (
                                 "Delete"
                             )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 } 

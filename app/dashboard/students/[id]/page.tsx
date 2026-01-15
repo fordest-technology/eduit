@@ -14,13 +14,13 @@ import { DashboardHeader } from "@/app/components/dashboard-header"
 import { Card, CardContent } from "@/components/ui/card"
 import StudentModal from "../student-modal"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -735,15 +735,15 @@ export default function StudentDetailsPage() {
                 />
             )}
 
-            {/* Add to Class Dialog - Improved for better user experience */}
-            <Dialog open={showClassModal} onOpenChange={setShowClassModal}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Add Student to Class</DialogTitle>
-                        <DialogDescription>
+            {/* Add to Class Sheet - Improved for better user experience */}
+            <Sheet open={showClassModal} onOpenChange={setShowClassModal}>
+                <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Add Student to Class</SheetTitle>
+                        <SheetDescription>
                             Select a class and academic session to add the student to.
-                        </DialogDescription>
-                    </DialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
 
                     {studentClassConflict && (
                         <Alert className="mb-4 border-amber-500 bg-amber-50">
@@ -855,7 +855,7 @@ export default function StudentDetailsPage() {
                                 )}
                             />
 
-                            <DialogFooter>
+                            <SheetFooter className="mt-6">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -874,11 +874,11 @@ export default function StudentDetailsPage() {
                                         "Add to Class"
                                     )}
                                 </Button>
-                            </DialogFooter>
+                            </SheetFooter>
                         </form>
                     </Form>
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
         </div>
     )
 } 

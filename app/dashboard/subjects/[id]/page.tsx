@@ -20,13 +20,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useColors } from "@/contexts/color-context"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Select,
     SelectContent,
@@ -629,31 +639,28 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
             </Card>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Subject</DialogTitle>
-                        <DialogDescription>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Subject</AlertDialogTitle>
+                        <AlertDialogDescription>
                             Are you sure you want to delete this subject? This action cannot be undone.
                             {subject._count?.classes > 0 ? (
                                 <p className="text-red-500 mt-2">
                                     This subject is associated with {subject._count.classes} classes. You must remove or reassign them before deleting.
                                 </p>
                             ) : null}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowDeleteDialog(false)}
-                            disabled={isDeleting}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDelete}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault()
+                                handleDelete()
+                            }}
                             disabled={isDeleting || subject._count?.classes > 0}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             {isDeleting ? (
                                 <>
@@ -663,20 +670,20 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
                             ) : (
                                 "Delete"
                             )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-            {/* Add Teacher Dialog */}
-            <Dialog open={showAddTeacherDialog} onOpenChange={setShowAddTeacherDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Assign Teacher</DialogTitle>
-                        <DialogDescription>
+            {/* Add Teacher Sheet */}
+            <Sheet open={showAddTeacherDialog} onOpenChange={setShowAddTeacherDialog}>
+                <SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Assign Teacher</SheetTitle>
+                        <SheetDescription>
                             Select a teacher to assign to this subject.
-                        </DialogDescription>
-                    </DialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
                     <div className="py-4">
                         {loadingTeachers ? (
                             <div className="flex justify-center py-6">
@@ -701,7 +708,7 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
                             </Select>
                         )}
                     </div>
-                    <DialogFooter>
+                    <SheetFooter>
                         <Button
                             variant="outline"
                             onClick={() => setShowAddTeacherDialog(false)}
@@ -722,18 +729,18 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
                                 "Assign"
                             )}
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
 
-            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Edit Subject</DialogTitle>
-                        <DialogDescription>
+            <Sheet open={showEditDialog} onOpenChange={setShowEditDialog}>
+                <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Edit Subject</SheetTitle>
+                        <SheetDescription>
                             Update the subject details. Click save when you're done.
-                        </DialogDescription>
-                    </DialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Subject Name</Label>
@@ -796,7 +803,7 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter>
+                    <SheetFooter>
                         <Button
                             variant="outline"
                             onClick={() => setShowEditDialog(false)}
@@ -808,9 +815,9 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
                             {isEditing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Save Changes
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
         </div>
     )
 } 

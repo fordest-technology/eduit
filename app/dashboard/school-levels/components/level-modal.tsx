@@ -7,12 +7,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 
 interface SchoolLevel {
     id: string
@@ -58,18 +59,18 @@ export function LevelModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>
                         {mode === "create" ? "Create New Level" : "Edit Level"}
-                    </DialogTitle>
-                    <DialogDescription>
+                    </SheetTitle>
+                    <SheetDescription>
                         {mode === "create"
                             ? "Add a new academic level to your school"
                             : "Update the academic level details"}
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
@@ -121,7 +122,7 @@ export function LevelModal({
                         </p>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
+                    <SheetFooter className="mt-8">
                         <Button
                             type="button"
                             variant="outline"
@@ -144,9 +145,9 @@ export function LevelModal({
                                 "Update Level"
                             )}
                         </Button>
-                    </div>
+                    </SheetFooter>
                 </form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 
