@@ -5,13 +5,14 @@ import { getSession } from "@/lib/auth"
 import prisma from "@/lib/db"
 import { redirect } from "next/navigation"
 import { format } from "date-fns"
-import { Result, Event } from "@prisma/client"
 import { cn } from "@/lib/utils"
 import dynamic from "next/dynamic"
+import type { Result, Event } from "@prisma/client"
 
 const AdminDashboardClient = dynamic(() => import("./admin-client"))
-const ParentDashboard = dynamic(() => import("./parent/_components/parent-dashboard"))
+const ParentDashboard = dynamic(() => import("./parent/_components/parent-dashboard").then(mod => mod.ParentDashboard))
 const UpcomingEvents = dynamic(() => import("./upcoming-events").then(mod => mod.UpcomingEvents))
+const BillingStatus = dynamic(() => import("./_components/billing-status").then(mod => mod.BillingStatus))
 
 
 // Define interface for dashboard stats
@@ -56,14 +57,14 @@ export default async function DashboardPage() {
 
   // Initialize other dashboard data
   let recentActivities: ResultWithDetails[] = []
-  let upcomingEvents: Event[] = []
+  let upcomingEvents: any[] = []
   let children: any[] = []
   let pendingPayments = 0
 
   try {
     // Fetch comprehensive dashboard stats using Prisma
-    const dashboardStats = await prisma.$transaction(async (prisma) => {
-      const totalStudents = await prisma.student.count({
+    const dashboardStats = await prisma.$transaction(async (tx: any) => {
+      const totalStudents = await tx.student.count({
         where: { user: { schoolId: session.schoolId } }
       })
       const totalTeachers = await prisma.teacher.count({
@@ -240,12 +241,6 @@ export default async function DashboardPage() {
       <ParentDashboard
         data={{
           children: children,
-          bills: [],
-          paymentAccounts: [],
-          paymentRequests: [],
-          paymentHistory: [],
-          approvedResults: recentActivities,
-          upcomingEvents: upcomingEvents,
           stats: {
             totalBilled: 0,
             totalPaid: 0,
@@ -267,6 +262,10 @@ export default async function DashboardPage() {
         showBanner={true}
         icon={<LayoutDashboard className="h-8 w-8 text-white" />}
       />
+
+      {(session.role === "SCHOOL_ADMIN" || session.role === "SUPER_ADMIN") && (
+        <BillingStatus />
+      )}
 
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -356,7 +355,7 @@ export default async function DashboardPage() {
               <div className="space-y-4">
                 {recentActivities.map((activity) => (
                   <div
-                    key={activity.id}
+                    key={(activity as any).id}
                     className="flex items-center p-5 rounded-3xl bg-slate-50/50 hover:bg-white hover:shadow-lg hover:shadow-black/5 border border-transparent hover:border-slate-100 transition-all duration-300 group"
                   >
                     <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center mr-4 border border-slate-100 group-hover:scale-110 transition-transform duration-300">
@@ -367,7 +366,7 @@ export default async function DashboardPage() {
                         {activity.student.user.name}
                       </p>
                       <p className="text-sm text-slate-500 font-medium">
-                        Scored <span className="text-indigo-600 font-bold">{activity.total}</span> in <span className="text-slate-700">{activity.subject.name}</span>
+                        Scored <span className="text-indigo-600 font-bold">{(activity as any).total || (activity as any).score}</span> in <span className="text-slate-700">{activity.subject.name}</span>
                       </p>
                     </div>
                     <div className="ml-4 text-xs font-bold text-slate-400 whitespace-nowrap bg-white px-3 py-1.5 rounded-full border border-slate-100">

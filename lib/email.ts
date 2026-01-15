@@ -571,3 +571,123 @@ export async function sendTeacherCredentialsEmail({
 
   return await sendEmail({ to: email, subject, html });
 }
+
+interface PaymentNotificationEmailParams {
+  to: string;
+  recipientName: string;
+  studentName: string;
+  amount: number;
+  billName: string;
+  transactionRef: string;
+  date: Date;
+  schoolName: string;
+  schoolLogo?: string;
+  isParent: boolean;
+}
+
+export async function sendPaymentNotificationEmail({
+  to,
+  recipientName,
+  studentName,
+  amount,
+  billName,
+  transactionRef,
+  date,
+  schoolName,
+  schoolLogo,
+  isParent,
+}: PaymentNotificationEmailParams) {
+  const subject = isParent 
+    ? `Payment Successful: ${billName} for ${studentName}`
+    : `New Payment Received: ${billName} from ${studentName}`;
+
+  const formattedAmount = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+  }).format(amount);
+
+  const formattedDate = format(date, "PPP p");
+  const logoUrl = schoolLogo || "https://eduit.app/logo.png";
+  const primaryColor = "#22c55e";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .header { background-color: #ffffff; padding: 32px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+        .header img { max-height: 48px; }
+        .content { padding: 40px; }
+        .success-icon { width: 64px; height: 64px; background-color: #ecfdf5; color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
+        .footer { background-color: #f9fafb; padding: 24px; text-align: center; font-size: 13px; color: #6b7280; }
+        h1 { color: #111827; font-size: 24px; margin: 0 0 8px; font-weight: 700; text-align: center; }
+        p { color: #4b5563; line-height: 1.6; margin: 0 0 24px; }
+        .receipt-card { background-color: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid #f3f4f6; }
+        .receipt-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e5e7eb; }
+        .receipt-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .label { color: #6b7280; font-weight: 500; font-size: 14px; }
+        .value { color: #111827; font-weight: 600; font-size: 14px; text-align: right; }
+        .amount-row { margin-top: 8px; }
+        .amount-value { color: #10b981; font-size: 20px; font-weight: 800; }
+        .button { display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; margin-top: 8px; width: 100%; text-align: center; box-sizing: border-box; }
+        .powered-by { margin-top: 16px; font-size: 11px; color: #9ca3af; display: flex; align-items: center; justify-content: center; gap: 4px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <img src="${logoUrl}" alt="${schoolName} Logo" />
+        </div>
+        <div class="content">
+          <div class="success-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h1>Payment ${isParent ? 'Successful' : 'Received'}</h1>
+          <p>Hello ${recipientName}, ${isParent ? `your payment for ${studentName}'s ${billName} has been processed successfully.` : `a payment of ${formattedAmount} has been received from ${studentName} for ${billName}.`}</p>
+          
+          <div class="receipt-card">
+            <div class="receipt-row">
+              <span class="label">Bill / Fee</span>
+              <span class="value">${billName}</span>
+            </div>
+            <div class="receipt-row">
+              <span class="label">Student</span>
+              <span class="value">${studentName}</span>
+            </div>
+            <div class="receipt-row">
+              <span class="label">Date</span>
+              <span class="value">${formattedDate}</span>
+            </div>
+            <div class="receipt-row">
+              <span class="label">Reference</span>
+              <span class="value">${transactionRef}</span>
+            </div>
+            <div class="receipt-row amount-row">
+              <span class="label">Amount Paid</span>
+              <span class="value amount-value">${formattedAmount}</span>
+            </div>
+          </div>
+          
+          <div style="text-align: center;">
+            <a href="https://${schoolName.toLowerCase().replace(/\s+/g, '-')}.eduit.app/dashboard/fees/parent" class="button">View Payment History</a>
+          </div>
+        </div>
+        <div class="footer">
+          <p>&copy; ${new Date().getFullYear()} ${schoolName}. All rights reserved.</p>
+          <div class="powered-by">
+            <span>Powered by</span>
+            <img src="https://eduit.app/eduit-logo.png" style="height: 12px;" />
+            <span>&</span>
+            <img src="https://squadco.com/assets/images/squad-logo.png" style="height: 12px;" />
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({ to, subject, html });
+}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { Prisma, PrismaClient } from "@prisma/client";
+import { prisma, withErrorHandling } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 interface CreateBillItem {
   name: string;
@@ -12,7 +12,7 @@ interface CreateBillItem {
 interface CreateBillRequest {
   name: string;
   items: CreateBillItem[];
-  accountId: string;
+  accountId?: string;
 }
 
 type TransactionClient = Omit<
@@ -21,7 +21,7 @@ type TransactionClient = Omit<
 >;
 
 export async function POST(req: NextRequest) {
-  try {
+  return withErrorHandling(async () => {
     // 1. Authentication & Authorization
     const session = await getSession(null);
     if (!session) {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, items, accountId } = body as CreateBillRequest;
 
-    if (!name?.trim() || !items?.length || !accountId?.trim()) {
+    if (!name?.trim() || !items?.length) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -62,22 +62,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Business Logic
+    // 4. Business Logic & (Optional) Manual Account Validation
     const totalAmount = items.reduce((total, item) => total + item.amount, 0);
+    let account = null;
+    if (accountId) {
+      account = await prisma.paymentAccount.findFirst({
+        where: {
+          id: accountId,
+          schoolId: user.schoolId,
+          isActive: true,
+        },
+      });
 
-    const account = await prisma.paymentAccount.findFirst({
-      where: {
-        id: accountId,
-        schoolId: user.schoolId,
-        isActive: true,
-      },
-    });
-
-    if (!account) {
-      return NextResponse.json(
-        { error: "Invalid or inactive payment account" },
-        { status: 400 }
-      );
+      if (!account) {
+        return NextResponse.json(
+          { error: "Invalid or inactive payment account" },
+          { status: 400 }
+        );
+      }
     }
 
     // 5. Transaction with proper error handling
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
               name: name.trim(),
               amount: totalAmount,
               schoolId: user.schoolId as string,
-              accountId: accountId,
+              ...(accountId ? { accountId } : {}),
             },
           });
 
@@ -150,24 +152,11 @@ export async function POST(req: NextRequest) {
         }`
       );
     }
-  } catch (error) {
-    console.error("Error in bill creation endpoint:", error);
-
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to create bill",
-        ...(process.env.NODE_ENV === "development" && {
-          stack: error instanceof Error ? error.stack : undefined,
-          details: error,
-        }),
-      },
-      { status: 500 }
-    );
-  }
+  });
 }
 
 export async function GET(req: NextRequest) {
-  try {
+  return withErrorHandling(async () => {
     // 1. Authentication & Authorization
     const session = await getSession(null);
     if (!session) {
@@ -216,17 +205,5 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(bills);
-  } catch (error) {
-    console.error("Error fetching bills:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to fetch bills",
-        ...(process.env.NODE_ENV === "development" && {
-          stack: error instanceof Error ? error.stack : undefined,
-          details: error,
-        }),
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

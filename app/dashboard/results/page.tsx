@@ -142,25 +142,35 @@ export default function ResultsPage() {
       />
 
       <Tabs defaultValue="results" className="w-full" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="w-full grid grid-cols-3 bg-muted/50 h-11 p-1 rounded-md border border-border/40">
+        <TabsList className="w-full grid grid-cols-3 bg-gradient-to-r from-slate-100 to-slate-50 h-14 p-1.5 rounded-2xl gap-2 shadow-inner">
           <TabsTrigger
             value="results"
-            className="rounded font-medium data-[state=active]:bg-gradient-to-b data-[state=active]:from-background data-[state=active]:to-background data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:border-b-2 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9"
+            className="rounded-xl font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-orange-600 data-[state=active]:shadow-lg data-[state=active]:shadow-orange-100 transition-all h-11 flex items-center gap-2"
           >
-            Results
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+            <span>Results Entry</span>
           </TabsTrigger>
           <TabsTrigger
             value="publish"
-            className="rounded font-medium data-[state=active]:bg-gradient-to-b data-[state=active]:from-background data-[state=active]:to-background data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:border-b-2 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9"
+            className="rounded-xl font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-green-600 data-[state=active]:shadow-lg data-[state=active]:shadow-green-100 transition-all h-11 flex items-center gap-2"
             disabled={!isAdmin}
           >
-            Publish
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Publish Results</span>
           </TabsTrigger>
           <TabsTrigger
             value="configuration"
-            className="rounded font-medium data-[state=active]:bg-gradient-to-b data-[state=active]:from-background data-[state=active]:to-background data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:border-b-2 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9"
+            className="rounded-xl font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-100 transition-all h-11 flex items-center gap-2"
           >
-            Configuration
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>Configuration</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="results">
@@ -194,20 +204,21 @@ export default function ResultsPage() {
             </Alert>
           )}
           {!isLoadingConfig && !configError && configData && (
-            <ResultsConfigurationForm
-              initialData={configData}
-              isReadOnly={!isAdmin}
-            />
-          )}
-          {!isLoadingConfig && !configError && !configData && (
-            <Alert>
-              <InfoIcon className="h-4 w-4" />
-              <AlertTitle>No Configuration Data</AlertTitle>
-              <AlertDescription>
-                Result configuration data could not be loaded or is not yet set up for your school for the current academic session.
-                {isAdmin && " You can set it up using the form above once loaded, or if this persists, ensure an academic session is active."}
-              </AlertDescription>
-            </Alert>
+            <>
+              {(configData as any).isNew && (
+                <Alert className="mb-4 bg-blue-50 border-blue-200">
+                  <InfoIcon className="h-4 w-4 text-blue-600" />
+                  <AlertTitle className="text-blue-800">New Configuration</AlertTitle>
+                  <AlertDescription className="text-blue-700">
+                    This is a default template. Customize the settings below and save to create your school's result configuration.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <ResultsConfigurationForm
+                initialData={configData}
+                isReadOnly={!isAdmin}
+              />
+            </>
           )}
         </TabsContent>
       </Tabs>

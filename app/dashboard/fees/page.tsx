@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardHeader } from "@/app/components/dashboard-header"
@@ -43,13 +43,19 @@ interface Class {
     id: string
     name: string
     section?: string
-    students: { id: string }[]
+    _count?: {
+        students: number
+    }
 }
 
 interface Student {
     id: string
-    user: {
+    name: string
+    email: string
+    currentClass?: {
+        id: string
         name: string
+        section?: string
     }
 }
 
@@ -112,6 +118,8 @@ interface PaymentRequest {
     status: "PENDING" | "APPROVED" | "REJECTED"
 }
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 export default function FeeDashboardPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(true)
@@ -125,114 +133,67 @@ export default function FeeDashboardPage() {
     const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([])
     const [activeTab, setActiveTab] = useState("bills")
 
-    useEffect(() => {
-        async function fetchSessionAndData() {
-            try {
-                // Get session
-                const sessionRes = await fetch('/api/auth/session')
-                if (!sessionRes.ok) {
-                    throw new Error('Failed to fetch session')
-                }
 
+
+    const loadDashboardData = useCallback(async () => {
+        setLoading(true)
+        try {
+            // Fetch basic entities in parallel
+            const [accountsRes, billsRes, classesRes, studentsRes, requestsRes] = await Promise.all([
+                fetch('/api/payment-accounts').then(r => r.ok ? r.json() : []),
+                fetch('/api/bills').then(r => r.ok ? r.json() : []),
+                fetch('/api/classes').then(r => r.ok ? r.json() : []),
+                fetch('/api/students').then(r => r.ok ? r.json() : []),
+                fetch('/api/payment-requests').then(r => r.ok ? r.json() : [])
+            ])
+
+            setPaymentAccounts(accountsRes)
+            setBills(billsRes)
+            setClasses(classesRes)
+            setStudents(studentsRes)
+            setPaymentRequests(requestsRes)
+
+            // Calculate fee statistics
+            const feeData: AdminFeeData = {
+                totalBilled: billsRes.reduce((sum: number, bill: Bill) =>
+                    sum + bill.items.reduce((itemSum, item) => itemSum + item.amount, 0), 0),
+                totalPaid: billsRes.reduce((sum: number, bill: Bill) =>
+                    sum + bill.assignments.reduce((assignmentSum, assignment) =>
+                        assignmentSum + assignment.studentPayments.reduce((paymentSum, payment) =>
+                            paymentSum + payment.amountPaid, 0), 0), 0),
+                totalPending: billsRes.reduce((sum: number, bill: Bill) =>
+                    sum + (bill.assignments?.filter(assignment => assignment.status === 'PENDING').length || 0), 0),
+                totalOverdue: billsRes.reduce((sum: number, bill: Bill) =>
+                    sum + (bill.assignments?.filter(assignment => assignment.status === 'OVERDUE').length || 0), 0),
+                pendingRequests: requestsRes.filter((req: PaymentRequest) => req.status === 'PENDING').length
+            }
+            setAdminFeeData(feeData)
+        } catch (error) {
+            console.error("Error loading dashboard data:", error)
+            toast.error("Some data failed to load")
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        async function fetchSession() {
+            try {
+                const sessionRes = await fetch('/api/auth/session')
+                if (!sessionRes.ok) throw new Error('Failed to fetch session')
                 const sessionData = await sessionRes.json()
                 setSession(sessionData)
-
-                // If no session or not allowed, redirect
-                if (!sessionData) {
-                    router.push("/login")
-                    return
-                }
-
-                // Fetch payment accounts
-                const accountsRes = await fetch('/api/payment-accounts')
-                if (!accountsRes.ok) {
-                    throw new Error("Failed to fetch payment accounts")
-                }
-                const accountsData = await accountsRes.json()
-                setPaymentAccounts(accountsData)
-
-                // Fetch bills
-                const billsRes = await fetch('/api/bills')
-                if (!billsRes.ok) {
-                    throw new Error("Failed to fetch bills")
-                }
-                const billsData = await billsRes.json()
-                setBills(billsData)
-
-                // Fetch classes
-                const classesRes = await fetch('/api/classes')
-                if (!classesRes.ok) {
-                    throw new Error("Failed to fetch classes")
-                }
-                const classesData = await classesRes.json()
-                setClasses(classesData)
-
-                // Fetch students
-                const studentsRes = await fetch('/api/students')
-                if (!studentsRes.ok) {
-                    throw new Error("Failed to fetch students")
-                }
-                const studentsData = await studentsRes.json()
-                setStudents(studentsData)
-
-                // Fetch payment requests
-                const requestsRes = await fetch('/api/payment-requests')
-                if (!requestsRes.ok) {
-                    throw new Error("Failed to fetch payment requests")
-                }
-                const requestsData = await requestsRes.json()
-                setPaymentRequests(requestsData)
-
-                // Calculate fee statistics
-                const feeData: AdminFeeData = {
-                    totalBilled: billsData.reduce((sum: number, bill: Bill) =>
-                        sum + bill.items.reduce((itemSum, item) => itemSum + item.amount, 0), 0),
-                    totalPaid: billsData.reduce((sum: number, bill: Bill) =>
-                        sum + bill.assignments.reduce((assignmentSum, assignment) =>
-                            assignmentSum + assignment.studentPayments.reduce((paymentSum, payment) =>
-                                paymentSum + payment.amountPaid, 0), 0), 0),
-                    totalPending: billsData.reduce((sum: number, bill: Bill) =>
-                        sum + bill.assignments.filter(assignment => assignment.status === 'PENDING').length, 0),
-                    totalOverdue: billsData.reduce((sum: number, bill: Bill) =>
-                        sum + bill.assignments.filter(assignment => assignment.status === 'OVERDUE').length, 0),
-                    pendingRequests: requestsData.filter((req: PaymentRequest) => req.status === 'PENDING').length
-                }
-                setAdminFeeData(feeData)
-
+                if (!sessionData) router.push("/login")
             } catch (error) {
-                console.error("Error:", error)
-                if (error instanceof Error) {
-                    setError(error.message)
-                } else {
-                    setError("An unexpected error occurred")
-                }
-                toast.error("Error loading page")
-            } finally {
-                setLoading(false)
+                console.error("Session error:", error)
             }
         }
 
-        fetchSessionAndData()
-    }, [router])
+        fetchSession()
+        loadDashboardData()
+    }, [router, loadDashboardData])
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        )
-    }
-
-    if (error || !session || !adminFeeData) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen">
-                <p className="text-red-500 mb-4">{error || "Not found or not authorized"}</p>
-                <Button onClick={() => router.push("/dashboard")}>
-                    Back to Dashboard
-                </Button>
-            </div>
-        )
-    }
+    if (!session && !loading) return null
 
     return (
         <div className="space-y-6">
@@ -243,36 +204,44 @@ export default function FeeDashboardPage() {
                 icon={<DollarSign className="h-6 w-6" />}
             />
 
-            <DashboardStatsGrid columns={4}>
-                <DashboardStatsCard
-                    title="Total Billed"
-                    value={formatCurrency(adminFeeData.totalBilled)}
-                    icon={DollarSign}
-                    color="blue"
-                    description="Total amount billed to students"
-                />
-                <DashboardStatsCard
-                    title="Total Paid"
-                    value={formatCurrency(adminFeeData.totalPaid)}
-                    icon={CreditCard}
-                    color="emerald"
-                    description={`${((adminFeeData.totalPaid / adminFeeData.totalBilled) * 100 || 0).toFixed(1)}% of total billed`}
-                />
-                <DashboardStatsCard
-                    title="Pending Payments"
-                    value={adminFeeData.totalPending}
-                    icon={FileText}
-                    color="amber"
-                    description="Awaiting payment"
-                />
-                <DashboardStatsCard
-                    title="Overdue Payments"
-                    value={adminFeeData.totalOverdue}
-                    icon={AlertCircle}
-                    color="rose"
-                    description="Requires immediate attention"
-                />
-            </DashboardStatsGrid>
+            {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-32 rounded-xl" />
+                    ))}
+                </div>
+            ) : (
+                <DashboardStatsGrid columns={4}>
+                    <DashboardStatsCard
+                        title="Total Billed"
+                        value={formatCurrency(adminFeeData?.totalBilled || 0)}
+                        icon={DollarSign}
+                        color="blue"
+                        description="Total amount billed to students"
+                    />
+                    <DashboardStatsCard
+                        title="Total Paid"
+                        value={formatCurrency(adminFeeData?.totalPaid || 0)}
+                        icon={CreditCard}
+                        color="emerald"
+                        description={adminFeeData?.totalBilled ? `${((adminFeeData.totalPaid / adminFeeData.totalBilled) * 100).toFixed(1)}% of total billed` : "No billing yet"}
+                    />
+                    <DashboardStatsCard
+                        title="Pending Payments"
+                        value={adminFeeData?.totalPending || 0}
+                        icon={FileText}
+                        color="amber"
+                        description="Awaiting payment"
+                    />
+                    <DashboardStatsCard
+                        title="Overdue Payments"
+                        value={adminFeeData?.totalOverdue || 0}
+                        icon={AlertCircle}
+                        color="rose"
+                        description="Requires immediate attention"
+                    />
+                </DashboardStatsGrid>
+            )}
 
             <Separator />
 
@@ -296,30 +265,39 @@ export default function FeeDashboardPage() {
                             className="relative rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-background hover:bg-muted/50"
                         >
                             Payment Requests
-                            {adminFeeData.pendingRequests > 0 && (
+                            {(adminFeeData?.pendingRequests || 0) > 0 && (
                                 <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                                    {adminFeeData.pendingRequests}
+                                    {adminFeeData?.pendingRequests}
                                 </span>
                             )}
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="bills" className="m-0">
-                        <BillsTab
-                            bills={bills}
-                            classes={classes}
-                            students={students}
-                            paymentAccounts={paymentAccounts}
-                        />
-                    </TabsContent>
+                    {loading ? (
+                        <div className="p-4 space-y-4">
+                            <Skeleton className="h-[400px] w-full rounded-2xl" />
+                        </div>
+                    ) : (
+                        <>
+                            <TabsContent value="bills" className="m-0">
+                                <BillsTab
+                                    bills={bills}
+                                    classes={classes}
+                                    students={students}
+                                    paymentAccounts={paymentAccounts}
+                                    onRefresh={loadDashboardData}
+                                />
+                            </TabsContent>
 
-                    <TabsContent value="accounts" className="m-0">
-                        <PaymentAccountsTab accounts={paymentAccounts} />
-                    </TabsContent>
+                            <TabsContent value="accounts" className="m-0">
+                                <PaymentAccountsTab accounts={paymentAccounts} />
+                            </TabsContent>
 
-                    <TabsContent value="requests" className="m-0">
-                        <PaymentRequestsTab payments={paymentRequests} />
-                    </TabsContent>
+                            <TabsContent value="requests" className="m-0">
+                                <PaymentRequestsTab payments={paymentRequests} />
+                            </TabsContent>
+                        </>
+                    )}
                 </div>
             </Tabs>
         </div>

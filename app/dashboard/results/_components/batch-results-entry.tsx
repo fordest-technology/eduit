@@ -409,19 +409,62 @@ export function BatchResultsEntry({
     );
   }
 
+  // Check if periods are available
+  if (periods.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Results Entry</CardTitle>
+          <CardDescription>No periods configured</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <InfoIcon className="h-4 w-4" />
+            <AlertTitle>No Academic Periods</AlertTitle>
+            <AlertDescription>
+              No academic periods (terms) have been configured. Please go to the Configuration tab to set up periods, assessment components, and grading scales.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Check if no class is selected
+  if (!selectedClassId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Results Entry</CardTitle>
+          <CardDescription>Select a class to continue</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert className="bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800">Select a Class</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              Please select a class from the tabs above to view and enter student results.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!hasStudents) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Results Entry</CardTitle>
-          <CardDescription>No students to display</CardDescription>
+          <CardDescription>No students in selected class</CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert>
-            <InfoIcon className="h-4 w-4" />
-            <AlertTitle>No Students Available</AlertTitle>
-            <AlertDescription>
-              There are no students in the selected class. Please add students to the class to enter results.
+          <Alert className="bg-amber-50 border-amber-200">
+            <InfoIcon className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800">No Students Found</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              There are no active students enrolled in the selected class for the current session.
+              Please ensure students have been enrolled in this class.
             </AlertDescription>
           </Alert>
         </CardContent>

@@ -292,7 +292,29 @@ export function ResultsManagement({
 
     return (
         <div className="space-y-8">
-            {selectedClassId && (
+            {/* Check if periods exist */}
+            {periods.length === 0 && (
+                <Alert className="bg-amber-50 border-amber-200">
+                    <InfoIcon className="h-4 w-4 text-amber-600" />
+                    <AlertTitle className="text-amber-800">No Academic Periods</AlertTitle>
+                    <AlertDescription className="text-amber-700">
+                        No academic periods (terms) have been configured. Please go to the Configuration tab to set up periods.
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {/* Check if students exist */}
+            {students.length === 0 && selectedClassId && (
+                <Alert className="bg-blue-50 border-blue-200">
+                    <InfoIcon className="h-4 w-4 text-blue-600" />
+                    <AlertTitle className="text-blue-800">No Students Found</AlertTitle>
+                    <AlertDescription className="text-blue-700">
+                        No active students were found in the selected class. Please ensure students are enrolled in this class.
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {selectedClassId && students.length > 0 && periods.length > 0 && (
                 <Alert>
                     <InfoIcon className="h-4 w-4" />
                     <AlertTitle>Filtered by Class</AlertTitle>

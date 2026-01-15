@@ -1,5 +1,7 @@
 import { db } from "@/lib/db"
 import { type NextRequest, NextResponse } from "next/server"
+import { billingService } from "@/lib/billing-service"
+import { BillingStatus } from "@prisma/client"
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,14 +12,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Result ID is required" }, { status: 400 })
     }
 
-    // Check if result exists
+    // Check if result exists and get schoolId
     const result = await db.result.findUnique({
       where: { id: resultId },
-      include: { report: true },
+      include: { 
+        report: true,
+        student: {
+          include: {
+            user: {
+              select: { schoolId: true }
+            }
+          }
+        }
+      },
     })
 
     if (!result) {
       return NextResponse.json({ error: "Result not found" }, { status: 404 })
+    }
+
+    const schoolId = result.student.user.schoolId;
+    if (schoolId) {
+      const billingInfo = await billingService.getBillingInfo(schoolId);
+      if (billingInfo.billingStatus === BillingStatus.BLOCKED) {
+        return NextResponse.json(
+          { 
+            message: "Account Blocked: Please complete your usage payment to continue using core features like report generation.",
+            billingInfo 
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // If report already exists, return it

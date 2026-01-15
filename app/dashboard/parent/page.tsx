@@ -43,10 +43,15 @@ export default async function ParentDashboardPage() {
         }
     })
 
-    // Fetch upcoming events
+    // Get all school IDs from the children to fetch relevant events, bills, etc.
+    const childSchoolIds = Array.from(new Set(
+        children.map(c => c.student.user.schoolId).filter(Boolean) as string[]
+    ))
+
+    // Fetch upcoming events from all relevant schools
     const upcomingEvents = await prisma.event.findMany({
         where: {
-            schoolId: session.schoolId,
+            schoolId: { in: childSchoolIds },
             endDate: {
                 gte: new Date()
             }
@@ -60,10 +65,10 @@ export default async function ParentDashboardPage() {
     // Fetch fee information
     const studentIds = children.map(child => child.student.id)
 
-    // Fetch bills assigned to the children or their classes
+    // Fetch bills assigned to the children or their classes from all relevant schools
     const bills = await prisma.bill.findMany({
         where: {
-            schoolId: session.schoolId,
+            schoolId: { in: childSchoolIds },
             assignments: {
                 some: {
                     OR: [
@@ -88,10 +93,10 @@ export default async function ParentDashboardPage() {
         }
     })
 
-    // Fetch payment accounts
+    // Fetch payment accounts from all relevant schools
     const paymentAccounts = await prisma.paymentAccount.findMany({
         where: {
-            schoolId: session.schoolId,
+            schoolId: { in: childSchoolIds },
             isActive: true
         }
     })

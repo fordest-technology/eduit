@@ -39,6 +39,7 @@ export default function RegisterPage() {
     email: "",
     primaryColor: "#f97316", // Default EduIT orange
     secondaryColor: "#0f172a", // Default EduIT dark
+    schoolType: "combined", // primary, secondary, combined
     adminName: "",
     adminEmail: "",
     adminPassword: "",
@@ -94,6 +95,11 @@ export default function RegisterPage() {
     if (currentStep === 1) {
       if (validateStep1()) setCurrentStep(2)
       return
+    }
+
+    if (currentStep === 2) {
+        setCurrentStep(3);
+        return;
     }
 
     if (formData.adminPassword !== formData.confirmPassword) {
@@ -183,18 +189,21 @@ export default function RegisterPage() {
               Back to Login
             </Link>
             <div className="flex gap-2">
-              <div className={`h-1.5 w-12 rounded-full transition-colors ${currentStep === 1 ? 'bg-orange-600' : 'bg-green-500'}`} />
-              <div className={`h-1.5 w-12 rounded-full transition-colors ${currentStep === 2 ? 'bg-orange-600' : 'bg-slate-200'}`} />
+              <div className={`h-1.5 w-12 rounded-full transition-colors ${currentStep >= 1 ? 'bg-orange-600' : 'bg-slate-200'}`} />
+              <div className={`h-1.5 w-12 rounded-full transition-colors ${currentStep >= 2 ? 'bg-orange-600' : 'bg-slate-200'}`} />
+              <div className={`h-1.5 w-12 rounded-full transition-colors ${currentStep >= 3 ? 'bg-orange-600' : 'bg-slate-200'}`} />
             </div>
           </div>
 
           <div className="space-y-2">
             <h2 className="text-4xl font-black text-slate-900 font-sora tracking-tighter">
-              {currentStep === 1 ? "Institutional Setup" : "Administrator Access"}
+              {currentStep === 1 ? "Institutional Setup" : currentStep === 2 ? "Academic Structure" : "Administrator Access"}
             </h2>
             <p className="text-slate-500 font-medium">
               {currentStep === 1
                 ? "Let's start with your school's unique identity."
+                : currentStep === 2 
+                ? "Select your institution type to auto-generate classes."
                 : "Secure your portal with an administrator account."}
             </p>
           </div>
@@ -310,6 +319,29 @@ export default function RegisterPage() {
                     </div>
                   </div>
                 </div>
+              ) : currentStep === 2 ? (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {[
+                            { id: "primary", name: "Primary School", desc: "Nursery - P6" },
+                            { id: "secondary", name: "Secondary School", desc: "JSS1 - SSS3" },
+                            { id: "combined", name: "Combined", desc: "Nursery - SSS3" },
+                            { id: "custom", name: "Custom Setup", desc: "Define structure manually" }
+                        ].map((type) => (
+                             <div 
+                                key={type.id}
+                                onClick={() => setFormData(prev => ({ ...prev, schoolType: type.id }))}
+                                className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${formData.schoolType === type.id ? 'border-orange-600 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}
+                             >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-4 ${formData.schoolType === type.id ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                    {formData.schoolType === type.id ? <CheckCircle2 className="h-5 w-5" /> : <School className="h-5 w-5" />}
+                                </div>
+                                <h4 className="text-lg font-black font-sora mb-1">{type.name}</h4>
+                                <p className="text-sm text-slate-500 font-medium">{type.desc}</p>
+                             </div>
+                        ))}
+                    </div>
+                </div>
               ) : (
                 <div className="space-y-8">
                   <div className="grid md:grid-cols-2 gap-6">
@@ -350,8 +382,8 @@ export default function RegisterPage() {
               )}
 
               <div className="flex gap-4 pt-4">
-                {currentStep === 2 && (
-                  <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="h-16 px-8 rounded-2xl border-slate-200 font-bold">
+                {currentStep > 1 && (
+                  <Button type="button" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="h-16 px-8 rounded-2xl border-slate-200 font-bold">
                     Back
                   </Button>
                 )}
@@ -366,7 +398,7 @@ export default function RegisterPage() {
                       Authenticating...
                     </div>
                   ) : (
-                    currentStep === 1 ? "Configure Access" : "Launch Institution"
+                    currentStep === 3 ? "Launch Institution" : "Continue"
                   )}
                 </Button>
               </div>

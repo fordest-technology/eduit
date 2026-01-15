@@ -165,7 +165,15 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
     const fetchCurrentSchoolColors = useCallback(async (): Promise<SchoolColors | null> => {
         try {
             const response = await fetch("/api/schools/current")
-            if (!response.ok) throw new Error("Failed to fetch school colors")
+            
+            // Handle 401 Unauthorized gracefully - expected for non-logged in users
+            if (response.status === 401) {
+                logger.info("No current school session found (public page)")
+                return null
+            }
+
+            if (!response.ok) throw new Error(`Failed to fetch school colors: ${response.statusText}`)
+            
             const data = await response.json()
 
             if (data.school?.primaryColor && data.school?.secondaryColor) {
@@ -182,7 +190,8 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
             }
             return null
         } catch (error) {
-            logger.error("Error fetching school colors", error)
+            // Only log actual unexpected errors
+            logger.error("Unexpected error fetching school colors", error)
             return null
         }
     }, [])
@@ -203,7 +212,14 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
             const subdomain = host.split('.')[0]
 
             const response = await fetch(`/api/public/schools/${subdomain}`)
-            if (!response.ok) throw new Error("Failed to fetch subdomain colors")
+            
+            // Handle 404 gracefully - subdomain might not match a school
+            if (response.status === 404) {
+                logger.info("No matching school found for subdomain", { subdomain })
+                return null
+            }
+
+            if (!response.ok) throw new Error(`Failed to fetch subdomain colors: ${response.statusText}`)
 
             const data = await response.json()
 
@@ -222,7 +238,8 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
             }
             return null
         } catch (error) {
-            logger.error("Error fetching subdomain colors", error)
+            // Only log actual unexpected errors
+            logger.error("Unexpected error fetching subdomain colors", error)
             return null
         }
     }, [])

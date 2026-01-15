@@ -24,10 +24,26 @@ export async function GET(req: Request) {
       return new NextResponse("School not found", { status: 404 });
     }
 
+    // Get query parameters
+    const url = new URL(req.url);
+    const classId = url.searchParams.get("classId");
+
+    // Build where clause
+    const whereClause: any = {
+      schoolId: session.schoolId,
+    };
+
+    // If classId is provided, filter subjects by class
+    if (classId) {
+      whereClause.classes = {
+        some: {
+          classId: classId,
+        },
+      };
+    }
+
     const subjects = await prisma.subject.findMany({
-      where: {
-        schoolId: session.schoolId,
-      },
+      where: whereClause,
       include: {
         department: true,
         level: true,

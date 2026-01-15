@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
 // GET handler to fetch results in batch for a class/period/session combination
 export async function GET(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const { schoolId } = await params;
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user has access to this school
-    if (session.schoolId !== params.schoolId) {
+    if (session.role !== "SUPER_ADMIN" && session.schoolId !== schoolId) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -112,19 +113,20 @@ export async function GET(
   }
 }
 
-// POST handler for batch saving results
+// POST handler for batch saving results - OPTIMIZED
 export async function POST(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const { schoolId } = await params;
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user has access to this school
-    if (session.schoolId !== params.schoolId) {
+    if (session.role !== "SUPER_ADMIN" && session.schoolId !== schoolId) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -138,124 +140,170 @@ export async function POST(
       );
     }
 
-    // Check for teacher permissions
+    // Check for teacher permissions ONCE
     let teacherSubjectIds: string[] = [];
     let teacherClassIds: string[] = [];
 
     if (session.role === "TEACHER") {
       const teacherInfo = await prisma.teacher.findFirst({
         where: { userId: session.id },
-        include: {
-          classes: true,
-          subjects: { include: { subject: true } },
+        select: {
+          classes: { select: { id: true } },
+          subjects: { select: { subjectId: true } },
         },
       });
 
       if (teacherInfo) {
-        teacherSubjectIds = teacherInfo.subjects.map(
-          (ts: any) => ts.subject.id
-        );
+        teacherSubjectIds = teacherInfo.subjects.map((ts: any) => ts.subjectId);
         teacherClassIds = teacherInfo.classes.map((cls: any) => cls.id);
       }
     }
 
-    // Process each result
-    const resultPromises = results.map(async (result: any) => {
-      // Check teacher permissions
-      if (session.role === "TEACHER") {
-        const isAssignedToClass =
-          result.classId && teacherClassIds.includes(result.classId);
-        const isAssignedToSubject = teacherSubjectIds.includes(
-          result.subjectId
-        );
+    // Filter results based on permissions
+    const permittedResults = session.role === "TEACHER" 
+      ? results.filter((result: any) => {
+          const isAssignedToClass = result.classId && teacherClassIds.includes(result.classId);
+          const isAssignedToSubject = teacherSubjectIds.includes(result.subjectId);
+          return isAssignedToClass || isAssignedToSubject;
+        })
+      : results;
 
-        if (!isAssignedToClass && !isAssignedToSubject) {
-          throw new Error(
-            `Permission denied for subject ${result.subjectId} in class ${result.classId}`
-          );
+    if (permittedResults.length === 0) {
+      return NextResponse.json({ 
+        message: "No permitted results to save", 
+        count: 0 
+      });
+    }
+
+    // Build lookup keys for existing results - fetch in ONE query
+    const lookupConditions = permittedResults.map((r: any) => ({
+      studentId: r.studentId,
+      subjectId: r.subjectId,
+      periodId: r.periodId,
+      sessionId: r.sessionId,
+    }));
+
+    // Get all existing results in ONE query
+    const existingResults = await prisma.result.findMany({
+      where: {
+        OR: lookupConditions,
+      },
+      select: {
+        id: true,
+        studentId: true,
+        subjectId: true,
+        periodId: true,
+        sessionId: true,
+        grade: true,
+        remark: true,
+      },
+    });
+
+    // Create lookup map for fast access
+    const existingMap = new Map(
+      existingResults.map(r => [
+        `${r.studentId}-${r.subjectId}-${r.periodId}-${r.sessionId}`,
+        r
+      ])
+    );
+
+    // Prepare data for updates and creates
+    const resultsToCreate: any[] = [];
+    const resultsToUpdate: any[] = [];
+    const componentScoresToCreate: any[] = [];
+    const resultIdsToDeleteScores: string[] = [];
+
+    for (const result of permittedResults) {
+      const key = `${result.studentId}-${result.subjectId}-${result.periodId}-${result.sessionId}`;
+      const existing = existingMap.get(key);
+      const total = result.componentScores.reduce(
+        (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
+        0
+      );
+
+      if (existing) {
+        resultIdsToDeleteScores.push(existing.id);
+        resultsToUpdate.push({
+          where: { id: existing.id },
+          data: {
+            total,
+            grade: result.grade || existing.grade || "N/A",
+            remark: result.remark || existing.remark || "Pending",
+            updatedAt: new Date(),
+          },
+        });
+        // Add component scores with existing result ID
+        for (const cs of result.componentScores) {
+          if (cs.componentId) {
+            componentScoresToCreate.push({
+              componentId: cs.componentId,
+              resultId: existing.id,
+              score: parseFloat(cs.score) || 0,
+            });
+          }
         }
-      }
-
-      // Check if the result already exists
-      const existingResult = await prisma.result.findFirst({
-        where: {
+      } else {
+        resultsToCreate.push({
           studentId: result.studentId,
           subjectId: result.subjectId,
           periodId: result.periodId,
           sessionId: result.sessionId,
-        },
-        include: {
-          componentScores: true,
-        },
-      });
-
-      if (existingResult) {
-        // Update existing result and component scores
-        const updatedResult = await prisma.result.update({
-          where: { id: existingResult.id },
-          data: {
-            // Update main result fields
-            updatedAt: new Date(),
-            // Add required fields
-            total: result.componentScores.reduce(
-              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
-              0
-            ),
-            grade: result.grade || existingResult.grade || "N/A", // Use existing if available
-            remark: result.remark || existingResult.remark || "Pending", // Use existing if available
-
-            // Update component scores
-            componentScores: {
-              // Delete existing scores
-              deleteMany: {},
-              // Create new scores
-              createMany: {
-                data: result.componentScores.map((cs: any) => ({
-                  componentKey: cs.componentKey,
-                  score: cs.score,
-                })),
-              },
-            },
-          },
+          total,
+          grade: result.grade || "N/A",
+          remark: result.remark || "Pending",
+          _componentScores: result.componentScores, // temp storage
         });
-
-        return updatedResult;
-      } else {
-        // Create new result with component scores
-        const newResult = await prisma.result.create({
-          data: {
-            studentId: result.studentId,
-            subjectId: result.subjectId,
-            periodId: result.periodId,
-            sessionId: result.sessionId,
-            // Add required fields
-            total: result.componentScores.reduce(
-              (sum: number, cs: any) => sum + (parseFloat(cs.score) || 0),
-              0
-            ),
-            grade: result.grade || "N/A", // Default grade or from input
-            remark: result.remark || "Pending", // Default remark
-            componentScores: {
-              createMany: {
-                data: result.componentScores.map((cs: any) => ({
-                  componentKey: cs.componentKey,
-                  score: cs.score,
-                })),
-              },
-            },
-          },
-        });
-
-        return newResult;
       }
+    }
+
+    // Execute everything in a TRANSACTION for speed and consistency
+    const savedCount = await prisma.$transaction(async (tx) => {
+      // 1. Delete old component scores for updates (batch)
+      if (resultIdsToDeleteScores.length > 0) {
+        await tx.componentScore.deleteMany({
+          where: { resultId: { in: resultIdsToDeleteScores } },
+        });
+      }
+
+      // 2. Update existing results (batch)
+      for (const update of resultsToUpdate) {
+        await tx.result.update(update);
+      }
+
+      // 3. Create new results
+      const createdResults: any[] = [];
+      for (const createData of resultsToCreate) {
+        const { _componentScores, ...resultData } = createData;
+        const newResult = await tx.result.create({ data: resultData });
+        createdResults.push({ result: newResult, scores: _componentScores });
+      }
+
+      // 4. Add component scores for new results
+      for (const { result, scores } of createdResults) {
+        for (const cs of scores) {
+          if (cs.componentId) {
+            componentScoresToCreate.push({
+              componentId: cs.componentId,
+              resultId: result.id,
+              score: parseFloat(cs.score) || 0,
+            });
+          }
+        }
+      }
+
+      // 5. Create all component scores in ONE batch
+      if (componentScoresToCreate.length > 0) {
+        await tx.componentScore.createMany({
+          data: componentScoresToCreate,
+        });
+      }
+
+      return resultsToUpdate.length + createdResults.length;
     });
 
-    // Execute all promises
-    const savedResults = await Promise.all(resultPromises);
-
     return NextResponse.json({
-      message: `Successfully saved ${savedResults.length} results`,
-      count: savedResults.length,
+      message: `Successfully saved ${savedCount} results`,
+      count: savedCount,
     });
   } catch (error) {
     console.error("Error saving batch results:", error);
@@ -268,3 +316,4 @@ export async function POST(
     );
   }
 }
+

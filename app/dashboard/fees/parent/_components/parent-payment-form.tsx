@@ -2,30 +2,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { format } from "date-fns";
-import { CreditCard, Upload, CheckCircle2, ArrowRight } from "lucide-react";
+import { 
+  CheckCircle2, 
+  ArrowRight, 
+  Wallet, 
+  Receipt, 
+  Check
+} from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 import {
     Card,
     CardContent,
-    CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
 import {
     Select,
     SelectContent,
@@ -33,164 +27,80 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/app/dashboard/fees/_components/date-picker";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/components/ui/accordion";
-
-// Form schema
-const paymentFormSchema = z.object({
-    studentId: z.string().min(1, { message: "Please select a student" }),
-    billId: z.string().min(1, { message: "Please select a bill" }),
-    billAssignmentId: z.string().min(1, { message: "Invalid bill assignment" }),
-    amount: z.coerce.number().positive({ message: "Amount must be positive" }),
-    receiptUrl: z.string().optional(),
-    notes: z.string().optional(),
-});
-
-type PaymentFormValues = z.infer<typeof paymentFormSchema>;
+import { cn } from "@/lib/utils";
 
 interface ParentPaymentFormProps {
     children: any[];
     bills: any[];
-    paymentAccounts: any[];
 }
 
 export function ParentPaymentForm({
     children,
     bills,
-    paymentAccounts,
 }: ParentPaymentFormProps) {
     const router = useRouter();
-    const [selectedBill, setSelectedBill] = useState<any | null>(null);
     const [selectedChild, setSelectedChild] = useState<any | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isComplete, setIsComplete] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
+    const searchParams = useSearchParams();
 
-    // The cloudinary cloud name should be properly exposed to the client-side
-    // either through Next.js public environment variables or fetched from an API
-    const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+    // Check for successful payment on mount
+    useEffect(() => {
+        const reference = searchParams.get("transaction_ref") || searchParams.get("reference");
+        if (reference) {
+            const verifyPayment = async () => {
+                toast.loading("Verifying your payment...", { id: "verify-p" });
+                try {
+                    const res = await fetch(`/api/payments/verify?reference=${reference}`);
+                    const result = await res.json();
 
-    const form = useForm<PaymentFormValues>({
-        resolver: zodResolver(paymentFormSchema),
-        defaultValues: {
-            studentId: "",
-            billId: "",
-            billAssignmentId: "",
-            amount: 0,
-            receiptUrl: "",
-            notes: "",
-        },
-    });
+                    if (result.status === "success") {
+                        toast.success("Payment verified successfully!", { 
+                            id: "verify-p",
+                            description: "Your receipt is ready.",
+                            action: {
+                                label: "View Receipt",
+                                onClick: () => router.push(`/dashboard/receipt/${reference}`)
+                            }
+                        });
+                        // Automatically redirect after a short delay
+                        setTimeout(() => {
+                            router.push(`/dashboard/receipt/${reference}`);
+                        }, 2000);
+                    } else if (result.error) {
+                        toast.error(result.error || "Could not verify payment status", { id: "verify-p" });
+                    } else {
+                        toast.dismiss("verify-p");
+                    }
+                } catch (error) {
+                    console.error("Verification error:", error);
+                    toast.dismiss("verify-p");
+                }
+            };
+            verifyPayment();
+        }
+    }, [searchParams, router]);
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("en-NG", {
             style: "currency",
-            currency: "USD",
+            currency: "NGN",
         }).format(amount);
-    };
-
-    // Handle uploading of receipt
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || !e.target.files[0]) return;
-
-        const file = e.target.files[0];
-        setIsUploading(true);
-
-        try {
-            const formData = new FormData();
-            formData.append("file", file);
-
-            const response = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Upload failed");
-            }
-
-            const data = await response.json();
-            if (data.url) {
-                form.setValue("receiptUrl", data.url);
-                toast.success("Receipt uploaded successfully");
-            } else {
-                throw new Error("No URL returned from upload service");
-            }
-        } catch (error) {
-            console.error("Upload error:", error);
-            toast.error(error instanceof Error ? error.message : "Failed to upload receipt");
-        } finally {
-            setIsUploading(false);
-        }
     };
 
     // Handle student selection
     const onStudentChange = (studentId: string) => {
         setSelectedChild(children.find((child) => child.id === studentId));
-        form.setValue("billId", "");
-        form.setValue("billAssignmentId", "");
-        form.setValue("amount", 0);
-        setSelectedBill(null);
     };
 
-    // Handle bill selection
-    const onBillChange = (billId: string) => {
-        const bill = bills.find((b) => b.id === billId);
-        setSelectedBill(bill);
-
-        // Find the bill assignment for this student
-        if (bill && form.getValues("studentId")) {
-            const studentId = form.getValues("studentId");
-
-            // First check if there's a direct student assignment
-            let assignment = bill.assignments.find(
-                (a: any) => a.targetType === "STUDENT" && a.targetId === studentId
-            );
-
-            // If no direct assignment, check for class assignments
-            if (!assignment) {
-                const student = children.find((child) => child.id === studentId);
-                const classIds = Array.isArray(student?.classes)
-                    ? student.classes.map((c: any) => c.classId)
-                    : [];
-
-                assignment = bill.assignments.find(
-                    (a: any) => a.targetType === "CLASS" && classIds.includes(a.targetId)
-                );
-            }
-
-            if (assignment) {
-                form.setValue("billAssignmentId", assignment.id);
-
-                // Calculate remaining amount
-                const totalPaid = assignment.studentPayments.reduce(
-                    (sum: number, payment: any) => sum + payment.amountPaid,
-                    0
-                );
-                const remainingAmount = Math.max(0, bill.amount - totalPaid);
-                form.setValue("amount", remainingAmount);
-            }
-        }
-    };
-
-    // Get available bills for the selected student
-    const getAvailableBills = () => {
+    // Get assigned bills for the selected student
+    const getAssignedBills = () => {
         if (!selectedChild) return [];
 
         const studentId = selectedChild.id;
         const classIds = Array.isArray(selectedChild.classes)
-            ? selectedChild.classes.map((c: any) => c.classId)
+            ? selectedChild.classes.map((c: any) => c.classId || (c.class && c.class.id))
             : [];
 
         return bills.filter((bill: any) => {
@@ -199,347 +109,258 @@ export function ParentPaymentForm({
                     (assignment.targetType === "STUDENT" && assignment.targetId === studentId) ||
                     (assignment.targetType === "CLASS" && classIds.includes(assignment.targetId))
             );
+        }).map(bill => {
+            const assignment = bill.assignments.find((a: any) => 
+                (a.targetType === "STUDENT" && a.targetId === studentId) ||
+                (a.targetType === "CLASS" && classIds.includes(a.targetId))
+            );
+            
+            const paidAmount = assignment?.studentPayments?.filter((p: any) => p.studentId === studentId).reduce((sum: number, p: any) => sum + p.amountPaid, 0) || 0;
+            const balance = Math.max(0, bill.amount - paidAmount);
+            const status = balance <= 0 ? "PAID" : (paidAmount > 0 ? "PARTIALLY_PAID" : "PENDING");
+            
+            return {
+                ...bill,
+                assignmentId: assignment?.id,
+                assignmentType: assignment?.targetType,
+                paidAmount,
+                balance,
+                status
+            };
         });
     };
 
-    // Submit the payment request
-    const onSubmit = async (data: PaymentFormValues) => {
-        setIsSubmitting(true);
+    const handlePayNow = async (bill: any, amountToPay: number, itemName?: string) => {
+        const payId = itemName ? `${bill.id}-${itemName}` : bill.id;
+        setIsSubmitting(payId);
+        
         try {
-            const response = await fetch("/api/payment-requests", {
+            if (isNaN(amountToPay) || amountToPay <= 0) {
+                toast.error("Invalid payment amount");
+                setIsSubmitting(null);
+                return;
+            }
+
+            const response = await fetch("/api/payments/create", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify({
+                    type: "FEE_PAYMENT",
+                    amount: amountToPay,
+                    studentId: selectedChild.id,
+                    billId: bill.id,
+                    billAssignmentId: bill.assignmentId,
+                    description: `Payment for ${itemName ? `${itemName} (${bill.name})` : bill.name} - ${selectedChild.user.name}`
+                }),
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to submit payment request");
+                throw new Error(result.error || "Failed to initiate payment");
             }
 
-            toast.success("Payment request submitted successfully");
-            setIsComplete(true);
+            if ((result.status === 200 || result.status === "success" || result.success) && (result.data?.checkout_url || result.checkout_url)) {
+                const url = result.data?.checkout_url || result.checkout_url;
+                toast.success("Redirecting to payment gateway...");
+                window.location.href = url;
+            } else {
+                console.error("Ambiguous Squad Response:", result);
+                throw new Error("Invalid response from payment gateway");
+            }
         } catch (error) {
+            console.error("Payment error:", error);
             toast.error(error instanceof Error ? error.message : "An error occurred");
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(null);
         }
     };
 
-    // Reset the form and state for a new payment
-    const makeAnotherPayment = () => {
-        form.reset();
-        setSelectedBill(null);
-        setSelectedChild(null);
-        setIsComplete(false);
-    };
-
-    if (isComplete) {
-        return (
-            <Card className="w-full max-w-3xl mx-auto">
-                <CardHeader>
-                    <CardTitle className="text-center">Payment Submitted</CardTitle>
-                    <CardDescription className="text-center">
-                        Your payment request has been submitted and is awaiting approval
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 flex flex-col items-center">
-                    <div className="rounded-full bg-green-100 p-3">
-                        <CheckCircle2 className="h-12 w-12 text-green-600" />
-                    </div>
-                    <div className="text-center space-y-2">
-                        <h3 className="text-lg font-semibold">Thank You!</h3>
-                        <p className="text-muted-foreground">
-                            Your payment request has been submitted successfully. The school
-                            administration will review your payment and update your balance
-                            accordingly.
-                        </p>
-                    </div>
-                    <div className="bg-muted p-4 rounded-md w-full max-w-md">
-                        <div className="space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-sm font-medium">Student:</span>
-                                <span className="text-sm">{selectedChild?.user.name}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm font-medium">Bill:</span>
-                                <span className="text-sm">{selectedBill?.name}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm font-medium">Amount:</span>
-                                <span className="text-sm">
-                                    {formatCurrency(form.getValues("amount"))}
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm font-medium">Date:</span>
-                                <span className="text-sm">{format(new Date(), "PP")}</span>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                    <Button onClick={makeAnotherPayment} className="w-full">
-                        Make Another Payment
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => router.push("/dashboard")}
-                        className="w-full"
-                    >
-                        Return to Dashboard
-                    </Button>
-                </CardFooter>
-            </Card>
-        );
-    }
-
-    const availableBills = getAvailableBills();
+    const assignedBills = getAssignedBills();
 
     return (
-        <Card className="w-full max-w-3xl mx-auto">
-            <CardHeader>
-                <CardTitle>Submit a Payment</CardTitle>
-                <CardDescription>
-                    Make a payment for your child's school fees
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {children.length === 0 ? (
-                    <div className="text-center py-6">
-                        <p className="text-muted-foreground">
-                            No students found. Please contact the school administration.
-                        </p>
-                    </div>
-                ) : (
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            <FormField
-                                control={form.control}
-                                name="studentId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Student</FormLabel>
-                                        <Select
-                                            onValueChange={(value) => {
-                                                field.onChange(value);
-                                                onStudentChange(value);
-                                            }}
-                                            defaultValue={field.value}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a student" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {children.map((child) => (
-                                                    <SelectItem key={child.id} value={child.id}>
-                                                        {child.user.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormDescription>
-                                            Select the student you want to make a payment for
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+        <div className="space-y-6">
+            <Card className="border-none shadow-none bg-slate-50/50">
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-medium">Step 1: Select Student</CardTitle>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => router.push("/dashboard/fees/parent/history")}
+                        className="text-xs font-bold text-slate-400 hover:text-black hover:bg-white"
+                    >
+                        <Receipt className="h-3 w-3 mr-2" />
+                        PAYMENT HISTORY
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <Select onValueChange={onStudentChange}>
+                        <SelectTrigger className="w-full bg-white h-12 rounded-xl border-slate-200">
+                            <SelectValue placeholder="Which child are you paying for?" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-200">
+                            {children.map((child) => (
+                                <SelectItem key={child.id} value={child.id}>
+                                    {child.user.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
 
-                            {selectedChild && (
-                                <>
-                                    <FormField
-                                        control={form.control}
-                                        name="billId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Bill</FormLabel>
-                                                <Select
-                                                    onValueChange={(value) => {
-                                                        field.onChange(value);
-                                                        onBillChange(value);
-                                                    }}
-                                                    defaultValue={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select a bill" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {availableBills.length > 0 ? (
-                                                            availableBills.map((bill) => (
-                                                                <SelectItem key={bill.id} value={bill.id}>
-                                                                    {bill.name} - {formatCurrency(bill.amount)}
-                                                                </SelectItem>
-                                                            ))
-                                                        ) : (
-                                                            <div className="px-2 py-1 text-sm text-muted-foreground">
-                                                                No bills available
-                                                            </div>
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {selectedBill && (
-                                        <>
-                                            <div className="bg-muted p-4 rounded-md">
-                                                <h3 className="font-medium text-sm mb-2">
-                                                    Payment Details
-                                                </h3>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm">Bill Amount:</span>
-                                                        <span className="text-sm font-medium">
-                                                            {formatCurrency(selectedBill.amount)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm">Account:</span>
-                                                        <span className="text-sm">
-                                                            {selectedBill.account.name}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm">Bank:</span>
-                                                        <span className="text-sm">
-                                                            {selectedBill.account.bankName}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm">Account Number:</span>
-                                                        <span className="text-sm font-medium">
-                                                            {selectedBill.account.accountNo}
-                                                        </span>
-                                                    </div>
-                                                    <Separator className="my-2" />
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm font-medium">
-                                                            Remaining Balance:
-                                                        </span>
-                                                        <span className="text-sm font-medium">
-                                                            {formatCurrency(form.getValues("amount"))}
-                                                        </span>
-                                                    </div>
-                                                </div>
+            {selectedChild && (
+                <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 px-1">
+                        Assigned Fees
+                    </h3>
+                    
+                    {assignedBills.length === 0 ? (
+                        <Card className="border-dashed border-2 py-16 flex flex-col items-center justify-center text-slate-400 rounded-[2rem] bg-slate-50/50">
+                            <Receipt className="h-12 w-12 mb-4 opacity-20" />
+                            <p className="text-sm font-bold uppercase tracking-widest">No bills assigned to this student</p>
+                        </Card>
+                    ) : (
+                        <div className="space-y-12">
+                            {assignedBills.map((bill) => {
+                                let currentPaidPool = bill.paidAmount;
+                                
+                                return (
+                                    <div key={bill.id} className="space-y-6">
+                                        {/* Bill Title & Overall Status */}
+                                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
+                                            <div>
+                                                <h4 className="text-2xl font-black text-slate-900 font-sora tracking-tight leading-none group flex items-center gap-3">
+                                                    {bill.name}
+                                                    <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold text-[10px] uppercase truncate max-w-[120px]">
+                                                        {bill.assignmentType}
+                                                    </Badge>
+                                                </h4>
+                                                <p className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">
+                                                    Due: {format(new Date(bill.createdAt), "MMMM d, yyyy")}
+                                                </p>
                                             </div>
+                                            <div className="text-left md:text-right">
+                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Balance</p>
+                                                <p className="text-2xl font-black text-slate-900 tracking-tighter">
+                                                    {formatCurrency(bill.balance)}
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                            <FormField
-                                                control={form.control}
-                                                name="amount"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Payment Amount</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                type="number"
-                                                                step="0.01"
-                                                                min="0"
-                                                                max={selectedBill.amount}
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormDescription>
-                                                            Enter the amount you are paying
-                                                        </FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                        <div className="grid gap-4">
+                                            {(bill.items?.length > 0 ? bill.items : [{ id: bill.id, name: bill.name, amount: bill.amount }]).map((item: any) => {
+                                                const paidForItem = Math.min(item.amount, currentPaidPool);
+                                                currentPaidPool = Math.max(0, currentPaidPool - item.amount);
+                                                const itemBalance = item.amount - paidForItem;
+                                                const isFullyPaid = itemBalance <= 0;
+                                                const payId = `${bill.id}-${item.id}`;
 
-                                            <FormField
-                                                control={form.control}
-                                                name="receiptUrl"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Payment Receipt</FormLabel>
-                                                        <div className="flex items-center gap-2">
-                                                            <Input
-                                                                id="receipt"
-                                                                type="file"
-                                                                accept="image/*,.pdf"
-                                                                className="hidden"
-                                                                onChange={handleUpload}
-                                                                disabled={isUploading}
-                                                            />
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                onClick={() =>
-                                                                    document.getElementById("receipt")?.click()
-                                                                }
-                                                                disabled={isUploading}
-                                                                className="w-full"
-                                                            >
-                                                                <Upload className="h-4 w-4 mr-2" />
-                                                                {isUploading
-                                                                    ? "Uploading..."
-                                                                    : field.value
-                                                                        ? "Change Receipt"
-                                                                        : "Upload Receipt"}
-                                                            </Button>
-                                                            {field.value && (
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => {
-                                                                        window.open(field.value, "_blank");
-                                                                    }}
+                                                return (
+                                                    <Card 
+                                                        key={item.id} 
+                                                        className={cn(
+                                                            "group transition-all rounded-[2rem] border-slate-100 shadow-sm hover:shadow-xl hover:shadow-black/5 flex flex-col md:flex-row items-center justify-between p-6 md:p-8 gap-6",
+                                                            isFullyPaid ? "bg-slate-50/50" : "bg-white"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center gap-6 w-full">
+                                                            <div className={cn(
+                                                                "h-16 w-16 rounded-[1.25rem] flex items-center justify-center transition-all group-hover:scale-110",
+                                                                isFullyPaid ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-600"
+                                                            )}>
+                                                                {isFullyPaid ? <CheckCircle2 className="h-8 w-8" /> : <Wallet className="h-8 w-8" />}
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3 mb-1">
+                                                                    <p className="text-xl font-black text-slate-800 font-sora leading-tight">{item.name}</p>
+                                                                    {isFullyPaid && (
+                                                                        <Badge className="bg-green-100 text-green-700 border-none font-black text-[10px] uppercase tracking-tighter">Paid</Badge>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-sm font-bold text-slate-400">
+                                                                    Full Cost: {formatCurrency(item.amount)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between md:justify-end gap-8 w-full md:w-auto border-t md:border-t-0 pt-6 md:pt-0">
+                                                            <div className="text-left md:text-right">
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Outstanding</p>
+                                                                <p className={cn(
+                                                                    "text-xl font-black tracking-tight font-sora",
+                                                                    isFullyPaid ? "text-slate-300" : "text-slate-900"
+                                                                )}>
+                                                                    {formatCurrency(itemBalance)}
+                                                                </p>
+                                                            </div>
+
+                                                            {!isFullyPaid ? (
+                                                                <Button 
+                                                                    onClick={() => handlePayNow(bill, itemBalance, item.name)}
+                                                                    disabled={!!isSubmitting}
+                                                                    className="h-14 px-8 rounded-2xl bg-black hover:bg-slate-800 text-white font-black font-sora text-base shadow-xl shadow-black/10 active:scale-95 transition-all w-full md:w-auto"
                                                                 >
-                                                                    <ArrowRight className="h-4 w-4" />
+                                                                    {isSubmitting === `${bill.id}-${item.name}` ? (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                                            <span>Processing...</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span>Pay Now</span>
+                                                                            <ArrowRight className="h-5 w-5" />
+                                                                        </div>
+                                                                    )}
                                                                 </Button>
+                                                            ) : (
+                                                                <div className="h-14 flex items-center gap-3 px-6 rounded-2xl bg-green-50 text-green-600 font-black text-sm border border-green-100">
+                                                                    <Check className="h-5 w-5" />
+                                                                    COMPLETED
+                                                                </div>
                                                             )}
                                                         </div>
-                                                        <FormDescription>
-                                                            Upload a screenshot or photo of your payment
-                                                            receipt
-                                                        </FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                                    </Card>
+                                                )
+                                            })}
 
-                                            <FormField
-                                                control={form.control}
-                                                name="notes"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Additional Notes</FormLabel>
-                                                        <FormControl>
-                                                            <Textarea
-                                                                placeholder="Any additional information about this payment"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            {/* Final Total / Whole Bill Option */}
+                                            {bill.balance > 0 && bill.items?.length > 1 && (
+                                                <div className="mt-4 flex flex-col md:flex-row items-center justify-between p-8 rounded-[2rem] bg-slate-900 text-white shadow-2xl">
+                                                    <div>
+                                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Settle Remaining Total</p>
+                                                        <h5 className="text-3xl font-black font-sora leading-none">
+                                                            {formatCurrency(bill.balance)}
+                                                        </h5>
+                                                    </div>
+                                                    <Button 
+                                                        onClick={() => handlePayNow(bill, bill.balance)}
+                                                        disabled={!!isSubmitting}
+                                                        className="h-14 mt-6 md:mt-0 px-10 rounded-2xl bg-white text-black hover:bg-slate-200 font-black font-sora shadow-lg shadow-white/10 w-full md:w-auto transition-all active:scale-95"
+                                                    >
+                                                        Pay Full Balance
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
 
-                                            <Button
-                                                type="submit"
-                                                className="w-full"
-                                                disabled={isSubmitting || isUploading}
-                                            >
-                                                {isSubmitting ? "Submitting..." : "Submit Payment Request"}
-                                            </Button>
-                                        </>
-                                    )}
-                                </>
-                            )}
-                        </form>
-                    </Form>
-                )}
-            </CardContent>
-        </Card>
+                            <div className="flex items-center justify-center gap-3 pt-8 pb-4 opacity-50 grayscale">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Powered By</p>
+                                <img src="/squad.png" alt="Squad" className="h-4 w-auto object-contain" />
+                                <div className="h-3 w-px bg-slate-300"></div>
+                                <img src="/habaripay.jpg" alt="HabariPay" className="h-4 w-auto object-contain" />
+                                <div className="h-3 w-px bg-slate-300"></div>
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" alt="GTBank" className="h-4 w-auto object-contain" />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
     );
 }

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withErrorHandling } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { billId: string } }
+  { params }: { params: Promise<{ billId: string }> }
 ) {
-  try {
+  return withErrorHandling(async () => {
+    const { billId } = await params;
     // 1. Authentication & Authorization
     const session = await getSession(null);
     if (!session) {
@@ -28,7 +29,7 @@ export async function GET(
     // 2. Fetch bill with related data
     const bill = await prisma.bill.findUnique({
       where: {
-        id: params.billId,
+        id: billId,
         schoolId: user.schoolId,
       },
       include: {
@@ -56,30 +57,98 @@ export async function GET(
       return NextResponse.json({ error: "Bill not found" }, { status: 404 });
     }
 
-    return NextResponse.json(bill);
-  } catch (error) {
-    console.error("Error fetching bill details:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch bill details",
-        ...(process.env.NODE_ENV === "development" && {
-          stack: error instanceof Error ? error.stack : undefined,
-          details: error,
-        }),
-      },
-      { status: 500 }
-    );
-  }
+    // 3. Manually fetch names for assignments to avoid Prisma include issues
+    const targetIds = bill.assignments.map((a) => a.targetId);
+    const studentIds = bill.assignments
+      .filter((a) => a.targetType === "STUDENT")
+      .map((a) => a.targetId);
+    
+    const classIds = bill.assignments
+      .filter((a) => a.targetType === "CLASS")
+      .map((a) => a.targetId);
+
+    const [students, classes, legacyStudentClasses] = await Promise.all([
+      prisma.student.findMany({
+        where: { id: { in: studentIds } },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profileImage: true,
+            },
+          },
+        },
+      }),
+      prisma.class.findMany({
+        where: { id: { in: classIds } },
+        select: {
+          id: true,
+          name: true,
+          section: true,
+          students: {
+            where: { status: "ACTIVE" }, // Only count active students
+            select: { id: true }
+          }
+        },
+      }),
+      // Backward compatibility: some assignments might have used StudentClass.id
+      prisma.studentClass.findMany({
+        where: { id: { in: studentIds } },
+        include: {
+          student: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  profileImage: true,
+                }
+              }
+            }
+          }
+        }
+      })
+    ]);
+
+    // 4. Map the data back to assignments
+    const assignmentsWithData = bill.assignments.map((assignment) => {
+      if (assignment.targetType === "STUDENT") {
+        let studentData = students.find((s) => s.id === assignment.targetId);
+        
+        // Try legacy studentClass lookup if direct student not found
+        if (!studentData) {
+          const lsc = legacyStudentClasses.find((sc) => sc.id === assignment.targetId);
+          if (lsc) {
+            studentData = lsc.student as any;
+          }
+        }
+
+        return {
+          ...assignment,
+          student: studentData,
+        };
+      } else {
+        return {
+          ...assignment,
+          class: classes.find((c) => c.id === assignment.targetId),
+        };
+      }
+    });
+
+    return NextResponse.json({
+      ...bill,
+      assignments: assignmentsWithData,
+    });
+  });
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { billId: string } }
+  { params }: { params: Promise<{ billId: string }> }
 ) {
-  try {
+  return withErrorHandling(async () => {
+    const { billId } = await params;
     // 1. Authentication & Authorization
     const session = await getSession(null);
     if (!session) {
@@ -101,7 +170,7 @@ export async function DELETE(
     // 2. Verify bill exists and belongs to user's school
     const bill = await prisma.bill.findUnique({
       where: {
-        id: params.billId,
+        id: billId,
         schoolId: user.schoolId,
       },
       include: {
@@ -133,26 +202,14 @@ export async function DELETE(
     await prisma.$transaction([
       // Delete all bill assignments
       prisma.billAssignment.deleteMany({
-        where: { billId: params.billId },
+        where: { billId: billId },
       }),
       // Delete the bill
       prisma.bill.delete({
-        where: { id: params.billId },
+        where: { id: billId },
       }),
     ]);
 
     return NextResponse.json({ message: "Bill deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting bill:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to delete bill",
-        ...(process.env.NODE_ENV === "development" && {
-          stack: error instanceof Error ? error.stack : undefined,
-          details: error,
-        }),
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

@@ -117,6 +117,7 @@ const formSchema = z.object({
     // StudentClass relationship - all optional
     levelId: z.string().optional(),
     classId: z.string().optional(),
+    section: z.string().optional(),
     sessionId: z.string().optional(),
     rollNumber: z.string().optional(),
 })
@@ -205,7 +206,9 @@ export function AddStudentModal({
             // Relationships
             departmentId: "",
             levelId: "",
+            levelId: "",
             classId: "",
+            section: "",
             sessionId: "",
             rollNumber: "",
         },
@@ -237,6 +240,7 @@ export function AddStudentModal({
                 departmentId: studentToEdit.departmentId || "",
                 levelId: studentToEdit.levelId || studentToEdit.class?.levelId || "",
                 classId: studentToEdit.classId || "",
+                section: studentToEdit.section || (studentToEdit.class?.section) || "", // Handle both direct section (new) or fallback
                 sessionId: studentToEdit.sessionId || "",
                 rollNumber: studentToEdit.rollNumber || "",
             });

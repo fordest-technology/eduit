@@ -15,6 +15,12 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [
+      { protocol: "https", hostname: "squadco.com" },
+      { protocol: "https", hostname: "habaripay.com" },
+      { protocol: "https", hostname: "upload.wikimedia.org" },
+      { protocol: "https", hostname: "logos-world.net" },
+    ],
   },
   experimental: {
     webpackBuildWorker: true,

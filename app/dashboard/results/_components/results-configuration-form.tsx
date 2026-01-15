@@ -175,10 +175,12 @@ export function ResultsConfigurationForm({
         try {
             setIsSubmitting(true);
             
-            // Get ID from URL path
-            const pathParts = window.location.pathname.split("/");
-            const schoolIdIndex = pathParts.indexOf("dashboard") + 1;
-            const schoolId = pathParts[schoolIdIndex];
+            // Get schoolId from initialData (passed from API)
+            const schoolId = initialData?.schoolId;
+            
+            if (!schoolId) {
+                throw new Error("School ID not found in configuration data");
+            }
 
             // Prepare data by removing composite info before sending to API
             const apiData = {
@@ -186,10 +188,11 @@ export function ResultsConfigurationForm({
                 assessmentComponents: data.assessmentComponents.map(({ isComposite, composedOf, ...rest }) => rest)
             };
 
+            const isNewConfig = (initialData as any)?.isNew === true;
             const response = await fetch(`/api/schools/${schoolId}/results/config`, {
-                method: initialData ? "PUT" : "POST",
+                method: isNewConfig ? "POST" : "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(initialData ? { id: initialData.id, ...apiData } : apiData),
+                body: JSON.stringify(isNewConfig ? apiData : { id: initialData.id, ...apiData }),
             });
 
             if (!response.ok) {

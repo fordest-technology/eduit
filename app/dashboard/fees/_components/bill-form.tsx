@@ -4,7 +4,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Info, CreditCard, Sparkles, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,9 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 // Zod schema for bill items with proper validation
 const billItemSchema = z.object({
@@ -52,9 +55,7 @@ const formSchema = z.object({
     items: z.array(billItemSchema).min(1, {
         message: "At least one bill item is required.",
     }),
-    accountId: z.string().trim().min(1, {
-        message: "Payment account is required.",
-    }),
+    accountId: z.string().optional(),
 });
 
 // Type for the form data
@@ -70,7 +71,7 @@ interface BillFormProps {
     paymentAccounts: PaymentAccount[];
     onSubmit: (data: {
         name: string;
-        accountId: string;
+        accountId?: string;
         items: Array<{
             name: string;
             amount: number;
@@ -87,7 +88,7 @@ export function BillForm({ paymentAccounts, onSubmit }: BillFormProps) {
         defaultValues: {
             name: "",
             items: [{ name: "", amount: "", description: "" }],
-            accountId: "",
+            accountId: "automated",
         },
     });
 
@@ -113,7 +114,7 @@ export function BillForm({ paymentAccounts, onSubmit }: BillFormProps) {
             // Transform the data to match API expectations
             await onSubmit({
                 name: data.name.trim(),
-                accountId: data.accountId,
+                accountId: data.accountId === "automated" ? undefined : data.accountId,
                 items: data.items.map((item) => ({
                     name: item.name.trim(),
                     amount: parseFloat(item.amount),
@@ -134,153 +135,204 @@ export function BillForm({ paymentAccounts, onSubmit }: BillFormProps) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                <div className="grid gap-6">
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-base font-semibold">Bill Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Enter bill name" {...field} className="h-10" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8 pb-10">
+                <div className="space-y-6">
+                    {/* Basic Info */}
+                    <Card className="border-none shadow-none bg-slate-50/50 p-4">
+                        <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                        <ReceiptText className="h-4 w-4 text-primary" />
+                                        General Information
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            placeholder="e.g., First Term Tuition 2024" 
+                                            {...field} 
+                                            className="h-11 bg-white border-slate-200 focus:ring-primary/20"
+                                        />
+                                    </FormControl>
+                                    <FormDescription className="text-xs">
+                                        This name will be visible to parents on their dashboard.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </Card>
 
-                    <Card className="border-dashed">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-semibold">Bill Items</CardTitle>
-                            <CardDescription>Add the items that make up this bill.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {form.getValues("items").map((_, index) => (
-                                <div key={index} className="grid gap-4 p-4 border rounded-lg bg-muted/30">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium">Item {index + 1}</span>
-                                        {index > 0 && (
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleRemoveItem(index)}
-                                                className="h-8 px-2 text-destructive"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <FormField
-                                            control={form.control}
-                                            name={`items.${index}.name`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm">Item Name</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} placeholder="Enter item name" className="h-9" />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
+                    {/* Bill Items Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <Plus className="h-4 w-4 text-primary" />
+                                Bill Line Items
+                            </h3>
+                            <Badge variant="outline" className="font-mono text-[10px] bg-white">
+                                {form.watch("items").length} {form.watch("items").length === 1 ? 'Item' : 'Items'}
+                            </Badge>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            {form.watch("items").map((_, index) => (
+                                <Card key={index} className="relative overflow-hidden border-slate-200 shadow-sm transition-all hover:shadow-md">
+                                    <CardContent className="p-4 pt-5 space-y-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.name`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Item Name</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} placeholder="Tuition Fee" className="h-9" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.amount`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Amount (₦)</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} type="number" placeholder="0.00" className="h-9 font-mono" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                            {index > 0 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleRemoveItem(index)}
+                                                    className="h-8 w-8 text-slate-400 hover:text-destructive hover:bg-destructive/10"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`items.${index}.amount`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm">Amount</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} placeholder="0.00" className="h-9" />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        </div>
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.description`}
                                             render={({ field }) => (
-                                                <FormItem className="md:col-span-2">
-                                                    <FormLabel className="text-sm">Description (Optional)</FormLabel>
+                                                <FormItem>
+                                                    <FormLabel className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Small Note (Optional)</FormLabel>
                                                     <FormControl>
-                                                        <Input {...field} placeholder="Enter item description" className="h-9" />
+                                                        <Input {...field} placeholder="Additional details..." className="h-9" />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
-                                    </div>
-                                </div>
+                                    </CardContent>
+                                </Card>
                             ))}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleAddItem}
-                                className="w-full h-9 mt-2"
-                                disabled={isSubmitting}
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Another Item
-                            </Button>
-                        </CardContent>
-                    </Card>
+                        </div>
 
-                    <FormField
-                        control={form.control}
-                        name="accountId"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-base font-semibold">Payment Account</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                    disabled={isSubmitting}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger className="h-10">
-                                            <SelectValue placeholder="Select payment account" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {paymentAccounts.map((account) => (
-                                            <SelectItem key={account.id} value={account.id}>
-                                                {account.name} ({account.bankName})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormDescription className="text-sm">
-                                    Select the payment account for this bill
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleAddItem}
+                            className="w-full h-11 border-dashed border-2 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2"
+                            disabled={isSubmitting}
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add Another Item
+                        </Button>
+                    </div>
+
+                    <Separator className="my-6" />
+
+                    {/* Payment Engine */}
+                    <div className="space-y-6">
+                        <div className="px-1">
+                            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-primary" />
+                                Payment Configuration
+                            </h3>
+                        </div>
+
+                        {form.watch("accountId") === "automated" ? (
+                            <Alert className="bg-amber-50 border-amber-200 text-amber-900">
+                                <Sparkles className="h-4 w-4 text-amber-600" />
+                                <AlertTitle className="text-sm font-bold flex items-center gap-2">
+                                    Automated Squad Flow Active
+                                </AlertTitle>
+                                <AlertDescription className="text-xs opacity-90 leading-relaxed mt-1">
+                                    You haven't selected a manual bank account. Payments will be processed automatically via Squad and deposited directly into your school's virtual wallet.
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <Alert className="bg-blue-50 border-blue-200 text-blue-900">
+                                <Info className="h-4 w-4 text-blue-600" />
+                                <AlertTitle className="text-sm font-bold">Manual Bank Transfer Active</AlertTitle>
+                                <AlertDescription className="text-xs opacity-90 leading-relaxed mt-1">
+                                    Payments will be directed to your selected bank account. Note that this requires manual reconciliation of receipts.
+                                </AlertDescription>
+                            </Alert>
                         )}
-                    />
+
+                        <FormField
+                            control={form.control}
+                            name="accountId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs font-bold text-slate-600 uppercase">Settlement Account (Optional)</FormLabel>
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                        disabled={isSubmitting}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 bg-white border-slate-200 focus:ring-primary/20">
+                                                <SelectValue placeholder="Select manual account (Optional)" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="automated">Use Automated Wallet (Recommended)</SelectItem>
+                                            {paymentAccounts.map((account) => (
+                                                <SelectItem key={account.id} value={account.id}>
+                                                    {account.name} ({account.bankName})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-4 pt-4 border-t">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => form.reset()}
-                        disabled={isSubmitting}
-                        className="h-9"
-                    >
-                        Reset
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting} className="h-9">
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Creating...
-                            </>
-                        ) : (
-                            "Create Bill"
-                        )}
-                    </Button>
+                <div className="sticky bottom-0 left-0 right-0 pt-6 bg-white border-t mt-10">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Total Bill Amount</p>
+                            <p className="text-xl font-black text-slate-900 font-mono">
+                                ₦{form.watch("items").reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0).toLocaleString()}
+                            </p>
+                        </div>
+                        <Button type="submit" disabled={isSubmitting} className="h-12 px-8 font-bold shadow-lg shadow-primary/20">
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Creating...
+                                </>
+                            ) : (
+                                "Generate Bill"
+                            )}
+                        </Button>
+                    </div>
                 </div>
             </form>
         </Form>

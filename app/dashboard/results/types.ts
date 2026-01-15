@@ -94,7 +94,7 @@ export interface BatchResultEntry {
   sessionId: string;
   classId?: string;
   componentScores: {
-    componentKey: string;
+    componentId: string;
     score: number;
   }[];
 }

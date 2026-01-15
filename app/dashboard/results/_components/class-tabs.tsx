@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useColors } from "@/contexts/color-context";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, GraduationCap } from "lucide-react";
 
 interface Class {
   id: string;
@@ -85,76 +85,106 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
     }
 
     return (
-      <ScrollArea className="w-full px-1">
-        <div className="flex space-x-1 pb-3">
-          <TabsTrigger
-            value="all"
-            className={`rounded-md flex items-center justify-center px-4 py-2 text-sm font-medium transition-all ${
-              !selectedClass ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-            }`}
+      <ScrollArea className="w-full whitespace-nowrap">
+        <div className="flex space-x-2 pb-2 px-1">
+          {/* All Classes Button */}
+          <button
             onClick={() => {
               setSelectedClass(null);
               const params = new URLSearchParams(searchParams.toString());
               params.delete("classId");
               router.push(`${pathname}?${params.toString()}`);
             }}
-            style={!selectedClass ? { 
-              backgroundColor: colors.primaryColor,
-              color: "#fff" 
-            } : {}}
+            className={`
+              flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+              ${!selectedClass 
+                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200' 
+                : 'bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600'
+              }
+            `}
           >
-            All Classes
-          </TabsTrigger>
+            <Users className="h-4 w-4" />
+            <span>All Classes</span>
+          </button>
           
           {classes.map((cls) => (
-            <TabsTrigger
+            <button
               key={cls.id}
-              value={cls.id}
-              className={`rounded-md flex items-center justify-center px-4 py-2 text-sm font-medium transition-all ${
-                selectedClass === cls.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              }`}
               onClick={() => handleClassChange(cls.id)}
-              style={selectedClass === cls.id ? { 
-                backgroundColor: colors.primaryColor,
-                color: "#fff" 
-              } : {}}
+              className={`
+                flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap
+                ${selectedClass === cls.id 
+                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200' 
+                  : 'bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600'
+                }
+              `}
             >
+              <GraduationCap className="h-4 w-4" />
               <span>{cls.name}</span>
               {cls.section && (
-                <span className="ml-1 text-xs">({cls.section})</span>
+                <span className={`text-xs ${selectedClass === cls.id ? 'text-orange-100' : 'text-slate-400'}`}>
+                  ({cls.section})
+                </span>
               )}
-              {cls.studentCount !== undefined && (
-                <Badge variant="secondary" className="ml-2 bg-background/50 text-2xs">
-                  {cls.studentCount} 
+              {cls.studentCount !== undefined && cls.studentCount > 0 && (
+                <Badge 
+                  variant="secondary" 
+                  className={`ml-1 text-xs ${selectedClass === cls.id ? 'bg-white/20 text-white' : 'bg-slate-100'}`}
+                >
+                  {cls.studentCount}
                 </Badge>
               )}
-            </TabsTrigger>
+            </button>
           ))}
         </div>
+        <ScrollBar orientation="horizontal" className="h-2" />
       </ScrollArea>
     );
   };
 
+  const selectedClassName = selectedClass 
+    ? classes.find(c => c.id === selectedClass)?.name 
+    : 'All Classes';
+
   return (
-    <Card className="border shadow-sm">
-      <CardContent className="p-4">
-        <Tabs defaultValue={selectedClass || "all"} className="w-full">
-          <TabsList className="justify-start w-full h-auto bg-card p-1 mb-6">
-            {renderClassTabs()}
-          </TabsList>
-          
-          {loading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-32 w-full" />
-            </div>
-          ) : (
-            <div className="mt-2">
-              {children(selectedClass)}
-            </div>
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-orange-500" />
+              Select Class
+            </CardTitle>
+            <CardDescription className="text-slate-500 mt-1">
+              Choose a class to view and manage student results
+            </CardDescription>
+          </div>
+          {selectedClass && (
+            <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
+              <Users className="h-3 w-3 mr-1" />
+              {selectedClassName}
+            </Badge>
           )}
-        </Tabs>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {/* Class Selection Pills */}
+        <div className="bg-slate-50/80 p-3 rounded-xl mb-6">
+          {renderClassTabs()}
+        </div>
+        
+        {loading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : (
+          <div>
+            {children(selectedClass)}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
-} 
+}
+ 

@@ -24,6 +24,7 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
+  Receipt,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -161,7 +162,8 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "SUPER_ADMIN":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
+          { title: "Wallet & Fees", href: "/dashboard/wallet", icon: Receipt },
+          { title: "Fees Management", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
           {
@@ -185,7 +187,8 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "SCHOOL_ADMIN":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
+          { title: "Wallet & Fees", href: "/dashboard/wallet", icon: Receipt },
+          { title: "Fees Management", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
           {
@@ -262,7 +265,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     // For admin roles, group the items by category
     const items = getNavigationItems()
     return {
-      main: items.filter((item) => ["/dashboard", "/dashboard/fees", "/dashboard/calendar"].includes(item.href)),
+      main: items.filter((item) => ["/dashboard", "/dashboard/wallet", "/dashboard/fees", "/dashboard/calendar"].includes(item.href)),
       users: items.filter((item) =>
         ["/dashboard/teachers", "/dashboard/students", "/dashboard/parents"].includes(item.href),
       ),
@@ -358,7 +361,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                     </div>
                   )}
                   <ul className="space-y-1">
-                    {items.map((item) => {
+                    {items.map((item: any) => {
                       const Icon = item.icon
                       const isItemActive = isActive(item.href)
 

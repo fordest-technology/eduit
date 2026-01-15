@@ -83,10 +83,15 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
         }
     })
 
-    // Fetch all bills and their assignments for the school
+    // Get all school IDs from the parent's children to fetch relevant bills
+    const childSchoolIds = Array.from(new Set(
+        parent?.children.map(child => child.student.user.schoolId).filter(Boolean) as string[]
+    ))
+
+    // Fetch all bills and their assignments for the relevant schools
     const bills = await prisma.bill.findMany({
         where: {
-            schoolId: session.schoolId,
+            schoolId: { in: childSchoolIds.length > 0 ? childSchoolIds : [session.schoolId as string] },
             // Get bills that have active assignments
             assignments: {
                 some: {
@@ -98,6 +103,7 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
             }
         },
         include: {
+            items: true,
             assignments: {
                 include: {
                     studentPayments: true
@@ -106,43 +112,61 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
         }
     }) as ExtendedBill[]
 
-    // Fetch the active payment account for the parent's school
-    const activeAccount = session.schoolId
-        ? await prisma.paymentAccount.findFirst({
+    // Fetch active payment accounts for the relevant schools
+    const paymentAccounts = childSchoolIds.length > 0 
+        ? await prisma.paymentAccount.findMany({
             where: {
-                schoolId: session.schoolId,
+                schoolId: { in: childSchoolIds },
                 isActive: true
             },
             orderBy: { updatedAt: "desc" }
         })
-        : null
+        : []
+    
+    const activeAccount = paymentAccounts[0] || null
 
     if (!parent?.children.length) {
         return (
             <div className="space-y-6">
-                {activeAccount && (
-                    <Alert className="bg-blue-50 border-blue-200 text-blue-900">
-                        <AlertTitle>Active Payment Account</AlertTitle>
-                        <AlertDescription>
-                            <div className="flex flex-col gap-1">
-                                <span><b>Account Name:</b> {activeAccount.name}</span>
-                                <span><b>Bank Name:</b> {activeAccount.bankName}</span>
-                                <span className="flex items-center gap-2">
-                                    <b>Account Number:</b> {activeAccount.accountNo}
-                                    <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() => navigator.clipboard.writeText(activeAccount.accountNo)}
-                                        className="h-6 w-6"
-                                        aria-label="Copy account number"
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
-                                </span>
-                            </div>
-                        </AlertDescription>
-                    </Alert>
+                {paymentAccounts.length > 0 && (
+                    <div className="space-y-4">
+                        {paymentAccounts.map((account) => (
+                            <Alert key={account.id} className="bg-blue-50 border-blue-200 text-blue-900 shadow-sm rounded-xl">
+                                <AlertTitle className="flex items-center gap-2 font-bold mb-2">
+                                    <CreditCard className="h-4 w-4" />
+                                    Active Payment Account - {childSchoolIds.length > 1 ? account.schoolId : "School Fees"}
+                                </AlertTitle>
+                                <AlertDescription>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Account Name</p>
+                                            <p className="font-bold">{account.name}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Bank Name</p>
+                                            <p className="font-bold">{account.bankName}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Account Number</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-lg tracking-wider">{account.accountNo}</p>
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="secondary"
+                                                    onClick={() => navigator.clipboard.writeText(account.accountNo)}
+                                                    className="h-8 w-8 rounded-lg bg-blue-100/50 hover:bg-blue-100 text-blue-600"
+                                                    aria-label="Copy account number"
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        ))}
+                    </div>
                 )}
                 <DashboardHeader
                     heading="Fee Management"
@@ -179,39 +203,42 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
             )
         )
 
-        // Calculate totals for this student
-        studentBills.forEach(bill => {
-            const assignment = bill.assignments.find(a =>
-                (a.targetType === "STUDENT" && a.targetId === studentId) ||
-                (a.targetType === "CLASS" && classIds.includes(a.targetId))
-            )
-            if (assignment) {
+            // Calculate totals for this student
+            studentBills.forEach(bill => {
+                // Add bill amount exactly once per student
                 totalBilled += bill.amount
-                totalPaid += assignment.studentPayments.reduce((sum: number, payment) => sum + payment.amountPaid, 0)
-            }
-        })
+                
+                // Sum all payments for this student across all assignments of this bill
+                bill.assignments.forEach(assignment => {
+                    const studentPayments = assignment.studentPayments.filter((p: any) => p.studentId === studentId)
+                    totalPaid += studentPayments.reduce((sum: number, payment) => sum + payment.amountPaid, 0)
+                })
+            })
 
-        return {
+            return {
             ...student,
             bills: studentBills
         }
     })
 
     // Transform data for the dashboard
+    const paymentRequests = parent.children.flatMap(c => c.student.paymentRequests)
+        .filter(p => p.status === "PENDING");
+    const paymentHistory = parent.children.flatMap(c => c.student.paymentRequests)
+        .filter(p => p.status === "APPROVED");
+
     const data = {
         children,
         bills,
-        paymentAccounts: activeAccount ? [activeAccount] : [],
-        paymentRequests: parent.children.flatMap(c => c.student.paymentRequests),
-        paymentHistory: parent.children.flatMap(c => c.student.paymentRequests),
+        paymentAccounts,
+        paymentRequests,
+        paymentHistory,
         stats: {
             totalBilled,
             totalPaid,
-            pendingPayments: parent.children.flatMap(c => c.student.paymentRequests)
-                .filter(p => p.status === "PENDING").length,
-            approvedPayments: parent.children.flatMap(c => c.student.paymentRequests)
-                .filter(p => p.status === "APPROVED").length,
-            remainingBalance: totalBilled - totalPaid
+            pendingPayments: paymentRequests.length,
+            approvedPayments: paymentHistory.length,
+            remainingBalance: Math.max(0, totalBilled - totalPaid),
         }
     }
 

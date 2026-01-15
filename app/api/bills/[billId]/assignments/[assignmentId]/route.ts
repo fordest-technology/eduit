@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
+import { prisma, withErrorHandling } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { billId: string; assignmentId: string } }
 ) {
-  try {
+  return withErrorHandling(async () => {
     // Get authenticated user
-    const session = await getSession(null);
-    if (!session) {
+    const auth = await requireAuth(req);
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch the assignment with related data
+    // Fetch the assignment basics
     const assignment = await prisma.billAssignment.findUnique({
       where: {
         id: params.assignmentId,
@@ -23,17 +23,7 @@ export async function GET(
         bill: {
           include: {
             items: true,
-            account: {
-              select: {
-                id: true,
-                name: true,
-                accountNo: true,
-                bankName: true,
-                branchCode: true,
-                description: true,
-                isActive: true,
-              },
-            },
+            account: true,
           },
         },
         studentPayments: {
@@ -41,10 +31,7 @@ export async function GET(
             student: {
               include: {
                 user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
+                  select: { name: true, email: true },
                 },
               },
             },
@@ -60,23 +47,50 @@ export async function GET(
       );
     }
 
-    // Check if user has access to this assignment
-    if (session.schoolId !== assignment.bill.schoolId) {
+    // Check school ID
+    if (auth.user.schoolId !== assignment.bill.schoolId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    return NextResponse.json(assignment);
-  } catch (error) {
-    console.error("[BILLS_ASSIGNMENT_GET]", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Error",
-        ...(process.env.NODE_ENV === "development" && {
-          stack: error instanceof Error ? error.stack : undefined,
-          details: error,
-        }),
-      },
-      { status: 500 }
-    );
-  }
+    // If it's a class assignment, manually fetch class and its students
+    let classData = null;
+    if (assignment.targetType === "CLASS") {
+      classData = await prisma.class.findUnique({
+        where: { id: assignment.targetId },
+        include: {
+          students: {
+            where: { status: "ACTIVE" },
+            include: {
+              student: {
+                include: {
+                  user: { select: { name: true, email: true } }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Flatten the student structure for the frontend
+      if (classData) {
+        (classData as any).students = classData.students.map(sc => ({
+          id: sc.student.id,
+          name: sc.student.user.name,
+          user: sc.student.user
+        }));
+      }
+    } else if (assignment.targetType === "STUDENT") {
+        // Find single student details if it's an individual assignment
+        const student = await prisma.student.findUnique({
+            where: { id: assignment.targetId },
+            include: { user: { select: { name: true } } }
+        });
+        (assignment as any).student = student;
+    }
+
+    return NextResponse.json({
+        ...assignment,
+        class: classData
+    });
+  });
 }

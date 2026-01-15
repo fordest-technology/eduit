@@ -89,8 +89,9 @@ const configurationSchema = z.object({
 
 export async function POST(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const { schoolId } = await params;
   try {
     const session = await getSession();
     if (!session) {
@@ -104,7 +105,7 @@ export async function POST(
     const academicSession = await prisma.academicSession.findFirst({
       where: {
         name: validatedData.academicYear,
-        schoolId: params.schoolId,
+        schoolId: schoolId,
       },
       select: {
         id: true,
@@ -123,7 +124,7 @@ export async function POST(
       INSERT INTO "ResultConfiguration" 
       ("id", "schoolId", "sessionId", "cumulativeEnabled", "cumulativeMethod", "showCumulativePerTerm", "createdAt", "updatedAt")
       VALUES 
-      (gen_random_uuid(), ${params.schoolId}, ${academicSession.id}, 
+      (gen_random_uuid(), ${schoolId}, ${academicSession.id}, 
        ${validatedData.cumulativeEnabled}, ${validatedData.cumulativeMethod}, 
        ${validatedData.showCumulativePerTerm}, NOW(), NOW())
       RETURNING id
@@ -227,8 +228,9 @@ export async function POST(
 
 export async function GET(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const { schoolId } = await params;
   try {
     // Authentication
     const session = await getSession();
@@ -243,7 +245,7 @@ export async function GET(
     // Verify school context matches route param for non-super admins
     if (
       session.role !== UserRole.SUPER_ADMIN &&
-      session.schoolId !== params.schoolId
+      session.schoolId !== schoolId
     ) {
       return forbidden();
     }
@@ -258,7 +260,7 @@ export async function GET(
         s."name" AS "academicYear" 
       FROM "ResultConfiguration" rc
       JOIN "AcademicSession" s ON rc."sessionId" = s."id"
-      WHERE rc."schoolId" = ${params.schoolId}
+      WHERE rc."schoolId" = ${schoolId}
       ORDER BY rc."createdAt" DESC
     `;
 
@@ -313,8 +315,9 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const { schoolId } = await params;
   try {
     // Authentication
     const session = await getSession();
@@ -329,7 +332,7 @@ export async function PUT(
     // Verify school context matches route param for non-super admins
     if (
       session.role !== UserRole.SUPER_ADMIN &&
-      session.schoolId !== params.schoolId
+      session.schoolId !== schoolId
     ) {
       return forbidden();
     }
@@ -352,7 +355,7 @@ export async function PUT(
     const existing = await prisma.resultConfiguration.findFirst({
       where: {
         id,
-        schoolId: params.schoolId,
+        schoolId: schoolId,
       },
     });
 

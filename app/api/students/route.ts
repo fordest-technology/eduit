@@ -11,6 +11,9 @@ import { uploadImage } from "@/lib/cloudinary";
 import { generatePassword } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { sendStudentCredentialsEmail } from "@/lib/email";
+import { billingService } from "@/lib/billing-service";
+import { BillingStatus } from "@prisma/client";
+import { withErrorHandling } from "@/lib/prisma";
 
 // Helper function to convert BigInt values to numbers for serialization
 function serializeBigInts(data: any): any {
@@ -61,18 +64,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the current academic session
-    const currentSession = await db.academicSession.findFirst({
-      where: {
-        schoolId,
-        isCurrent: true,
-      },
+    const currentSession = await withErrorHandling(async () => {
+      return await db.academicSession.findFirst({
+        where: {
+          schoolId,
+          isCurrent: true,
+        },
+      });
     });
 
     if (!currentSession) {
-      return NextResponse.json(
-        { message: "No current academic session found" },
-        { status: 404 }
-      );
+      return NextResponse.json([], { status: 200 });
     }
 
     // Base query to find students by school
@@ -111,108 +113,110 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const students = await db.student.findMany({
-      where: whereClause,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profileImage: true,
+    return await withErrorHandling(async () => {
+      const students = await db.student.findMany({
+        where: whereClause,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              profileImage: true,
+            },
           },
-        },
-        classes: {
-          where: {
-            sessionId: currentSession.id,
-            status: "ACTIVE",
+          classes: {
+            where: {
+              sessionId: currentSession.id,
+              status: "ACTIVE",
+            },
+            include: {
+              class: {
+                select: {
+                  id: true,
+                  name: true,
+                  section: true,
+                  level: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+              session: true,
+            },
           },
-          include: {
-            class: {
-              select: {
-                id: true,
-                name: true,
-                section: true,
-                level: {
-                  select: {
-                    id: true,
-                    name: true,
+          parents: {
+            select: {
+              parent: {
+                select: {
+                  user: {
+                    select: {
+                      name: true,
+                      email: true,
+                    },
                   },
                 },
               },
             },
-            session: true,
           },
         },
-        parents: {
-          select: {
-            parent: {
-              select: {
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
+        orderBy: {
+          user: {
+            name: "asc",
           },
         },
-      },
-      orderBy: {
-        user: {
-          name: "asc",
-        },
-      },
+      });
+
+      if (!students) {
+        return NextResponse.json(
+          { message: "No students found" },
+          { status: 404 }
+        );
+      }
+
+      // Transform the data to include current class information
+      const transformedStudents = students.map((student) => {
+        // Get current class from the classes array (should only have current active class)
+        const currentClass = student.classes.find((c) => c.status === "ACTIVE");
+
+        return {
+          id: student.id,
+          name: student.user.name,
+          email: student.user.email,
+          profileImage: student.user.profileImage,
+          rollNumber: currentClass?.rollNumber || "",
+          classes: student.classes.map((sc) => ({
+            id: sc.id,
+            class: sc.class,
+            status: sc.status,
+            rollNumber: sc.rollNumber,
+            session: sc.session,
+          })),
+          currentClass: currentClass
+            ? {
+              id: currentClass.class.id,
+              name: currentClass.class.name,
+              section: currentClass.section || currentClass.class.section,
+              level: currentClass.class.level,
+              rollNumber: currentClass.rollNumber,
+              status: currentClass.status,
+            }
+            : undefined,
+          hasParents: student.parents.length > 0,
+          parentNames: student.parents.map((p) => p.parent.user.name).join(", "),
+        };
+      });
+
+      const totalTime = Date.now() - startTime;
+      logger.api("Students API GET", totalTime, {
+        studentCount: transformedStudents.length,
+        schoolId: session.schoolId,
+      });
+
+      return NextResponse.json(transformedStudents);
     });
-
-    if (!students) {
-      return NextResponse.json(
-        { message: "No students found" },
-        { status: 404 }
-      );
-    }
-
-    // Transform the data to include current class information
-    const transformedStudents = students.map((student) => {
-      // Get current class from the classes array (should only have current active class)
-      const currentClass = student.classes.find((c) => c.status === "ACTIVE");
-
-      return {
-        id: student.id,
-        name: student.user.name,
-        email: student.user.email,
-        profileImage: student.user.profileImage,
-        rollNumber: currentClass?.rollNumber || "",
-        classes: student.classes.map((sc) => ({
-          id: sc.id,
-          class: sc.class,
-          status: sc.status,
-          rollNumber: sc.rollNumber,
-          session: sc.session,
-        })),
-        currentClass: currentClass
-          ? {
-            id: currentClass.class.id,
-            name: currentClass.class.name,
-            section: currentClass.class.section,
-            level: currentClass.class.level,
-            rollNumber: currentClass.rollNumber,
-            status: currentClass.status,
-          }
-          : undefined,
-        hasParents: student.parents.length > 0,
-        parentNames: student.parents.map((p) => p.parent.user.name).join(", "),
-      };
-    });
-
-    const totalTime = Date.now() - startTime;
-    logger.api("Students API GET", totalTime, {
-      studentCount: transformedStudents.length,
-      schoolId: session.schoolId,
-    });
-
-    return NextResponse.json(transformedStudents);
   } catch (error) {
     const totalTime = Date.now() - startTime;
     logger.error("Error fetching students", error, { totalTime });
@@ -234,6 +238,18 @@ export async function POST(req: Request) {
       );
     }
 
+    // Check billing status if adding student
+    const billingInfo = await billingService.getBillingInfo(session.schoolId);
+    if (billingInfo.billingStatus === BillingStatus.BLOCKED) {
+      return NextResponse.json(
+        { 
+          message: "Account Blocked: Please complete your usage payment to continue onboarding students.",
+          billingInfo 
+        },
+        { status: 403 }
+      );
+    }
+
     // 2. Parse and validate request body
     const formData = await req.formData();
     const name = formData.get("name") as string;
@@ -245,6 +261,7 @@ export async function POST(req: Request) {
     const levelId = formData.get("levelId") as string;
     const sessionId = formData.get("sessionId") as string;
     const rollNumber = formData.get("rollNumber") as string;
+    const section = formData.get("section") as string;
     const profileImage = formData.get("profileImage") as File;
     const dateOfBirth = formData.get("dateOfBirth") as string;
     const gender = formData.get("gender") as string;
@@ -405,6 +422,7 @@ export async function POST(req: Request) {
             classId: classId,
             sessionId: targetSessionId,
             rollNumber: rollNumber?.trim() || null,
+            section: section?.trim() || null,
           },
         });
       }
@@ -437,6 +455,9 @@ export async function POST(req: Request) {
 
       return completeStudent;
     });
+
+    // Update onboarding activity and check triggers
+    await billingService.updateOnboardingActivity(session.schoolId);
 
     // Always send credentials email to student
     try {

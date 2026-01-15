@@ -12,7 +12,14 @@ export type UserJwtPayload = JWTPayload & {
   [key: string]: unknown;
 };
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+const jwtSecret =
+  process.env.JWT_SECRET || "your-secret-key";
+if (!process.env.JWT_SECRET) {
+  console.warn(
+    "WARN: JWT_SECRET is not defined in .env. Using default secret for development."
+  );
+}
+const secret = new TextEncoder().encode(jwtSecret);
 
 // ---------- verify ----------
 export async function verifyJwt(token: string): Promise<UserJwtPayload | null> {

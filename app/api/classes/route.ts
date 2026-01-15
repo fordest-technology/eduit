@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withErrorHandling } from "@/lib/prisma";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -41,137 +41,141 @@ export async function GET(req: NextRequest) {
     });
 
     // Get current academic session
-    const currentSession = await prisma.academicSession.findFirst({
-      where: {
-        schoolId: user.schoolId,
-        isCurrent: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        startDate: true,
-        endDate: true,
-      },
+    const currentSession = await withErrorHandling(async () => {
+      return await prisma.academicSession.findFirst({
+        where: {
+          schoolId: user.schoolId,
+          isCurrent: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          startDate: true,
+          endDate: true,
+        },
+      });
     });
 
     // Get query parameters
     const { searchParams } = new URL(req.url);
     const levelId = searchParams.get("levelId");
 
-    // Optimized query with minimal includes and efficient counting
-    const classes = await prisma.class.findMany({
-      where: {
-        schoolId: user.schoolId,
-        ...(levelId ? { levelId } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        section: true,
-        level: {
-          select: {
-            id: true,
-            name: true,
-          },
+    return await withErrorHandling(async () => {
+      // Optimized query with minimal includes and efficient counting
+      const classes = await prisma.class.findMany({
+        where: {
+          schoolId: user.schoolId,
+          ...(levelId ? { levelId } : {}),
         },
-        teacher: {
-          select: {
-            id: true,
-            user: {
-              select: {
-                name: true,
-                email: true,
-                profileImage: true,
-              },
-            },
-            department: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            specialization: true,
-          },
-        },
-        _count: {
-          select: {
-            students: {
-              where: {
-                sessionId: currentSession?.id,
-                status: "ACTIVE",
-              },
-            },
-            subjects: true,
-          },
-        },
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
-
-    // Get subjects for all classes in a single query (if needed)
-    const classIds = classes.map((c) => c.id);
-    const classSubjects =
-      classIds.length > 0
-        ? await prisma.classSubject.findMany({
-            where: {
-              classId: { in: classIds },
-            },
+        select: {
+          id: true,
+          name: true,
+          section: true,
+          level: {
             select: {
-              classId: true,
-              subject: {
+              id: true,
+              name: true,
+            },
+          },
+          teacher: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  profileImage: true,
+                },
+              },
+              department: {
                 select: {
                   id: true,
                   name: true,
-                  code: true,
-                  department: {
-                    select: {
-                      id: true,
-                      name: true,
+                },
+              },
+              specialization: true,
+            },
+          },
+          _count: {
+            select: {
+              students: {
+                where: {
+                  sessionId: currentSession?.id,
+                  status: "ACTIVE",
+                },
+              },
+              subjects: true,
+            },
+          },
+        },
+        orderBy: {
+          name: "asc",
+        },
+      });
+
+      // Get subjects for all classes in a single query (if needed)
+      const classIds = classes.map((c) => c.id);
+      const classSubjects =
+        classIds.length > 0
+          ? await prisma.classSubject.findMany({
+              where: {
+                classId: { in: classIds },
+              },
+              select: {
+                classId: true,
+                subject: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                    department: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
                     },
                   },
                 },
               },
-            },
-          })
-        : [];
+            })
+          : [];
 
-    // Group subjects by class
-    const subjectsByClass = classSubjects.reduce((acc, cs) => {
-      if (!acc[cs.classId]) {
-        acc[cs.classId] = [];
-      }
-      acc[cs.classId].push({
-        id: cs.classId + "-" + cs.subject.id, // Create a unique ID
-        subject: cs.subject,
+      // Group subjects by class
+      const subjectsByClass = classSubjects.reduce((acc, cs) => {
+        if (!acc[cs.classId]) {
+          acc[cs.classId] = [];
+        }
+        acc[cs.classId].push({
+          id: cs.classId + "-" + cs.subject.id, // Create a unique ID
+          subject: cs.subject,
+        });
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      // Format the response
+      const formattedClasses = classes.map((classItem) => ({
+        id: classItem.id,
+        name: classItem.name,
+        section: classItem.section,
+        level: classItem.level,
+        teacher: classItem.teacher,
+        subjects: subjectsByClass[classItem.id] || [],
+        _count: {
+          students: classItem._count.students,
+          subjects: classItem._count.subjects,
+        },
+        currentSession: currentSession,
+      }));
+
+      const duration = Date.now() - startTime;
+      logger.api("GET /api/classes", duration, {
+        schoolId: user.schoolId,
+        count: formattedClasses.length,
+        levelId: levelId || null,
       });
-      return acc;
-    }, {} as Record<string, any[]>);
 
-    // Format the response
-    const formattedClasses = classes.map((classItem) => ({
-      id: classItem.id,
-      name: classItem.name,
-      section: classItem.section,
-      level: classItem.level,
-      teacher: classItem.teacher,
-      subjects: subjectsByClass[classItem.id] || [],
-      _count: {
-        students: classItem._count.students,
-        subjects: classItem._count.subjects,
-      },
-      currentSession: currentSession,
-    }));
-
-    const duration = Date.now() - startTime;
-    logger.api("GET /api/classes", duration, {
-      schoolId: user.schoolId,
-      count: formattedClasses.length,
-      levelId: levelId || null,
+      return NextResponse.json(formattedClasses);
     });
-
-    return NextResponse.json(formattedClasses);
   } catch (error) {
     const duration = Date.now() - startTime;
     logger.error("Error in GET /api/classes", error, { duration });

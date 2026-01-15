@@ -15,7 +15,12 @@ import {
     AlertCircle,
     CreditCard,
     FileText,
-    ChevronRight
+    ChevronRight,
+    ChevronDown,
+    Search,
+    Filter,
+    LayoutGrid,
+    ListFilter
 } from "lucide-react"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -24,6 +29,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
+import { formatCurrency } from '@/app/lib/utils'
+import { AssignBillDialog } from "../_components/assign-bill-dialog"
 
 interface BillDetails {
     id: string
@@ -94,6 +102,9 @@ export default function BillDetailsPage() {
     const [bill, setBill] = useState<BillDetails | null>(null)
     const [schoolTheme, setSchoolTheme] = useState<SchoolTheme | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
+    const [classes, setClasses] = useState<any[]>([])
+    const [students, setStudents] = useState<any[]>([])
 
     useEffect(() => {
         async function fetchData() {
@@ -110,6 +121,14 @@ export default function BillDetailsPage() {
                     const themeData = await themeRes.json()
                     setSchoolTheme(themeData)
                 }
+
+                // Fetch classes and students for assignment dialog
+                const [clsRes, stdRes] = await Promise.all([
+                    fetch('/api/classes'),
+                    fetch('/api/students')
+                ])
+                if (clsRes.ok) setClasses(await clsRes.json())
+                if (stdRes.ok) setStudents(await stdRes.json())
             } catch (err) {
                 setError(err instanceof Error ? err.message : "An error occurred")
             } finally {
@@ -165,7 +184,9 @@ export default function BillDetailsPage() {
 
     const getPaymentProgress = (assignment: BillDetails['assignments'][0]) => {
         const totalPaid = getTotalPaid(assignment)
-        return (totalPaid / bill.amount) * 100
+        const multiplier = assignment.targetType === "CLASS" ? (assignment.class?.students?.length || 1) : 1
+        const totalExpected = bill.amount * multiplier
+        return totalExpected > 0 ? (totalPaid / totalExpected) * 100 : 0
     }
 
     return (
@@ -214,7 +235,7 @@ export default function BillDetailsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-baseline space-x-2">
-                            <span className="text-2xl font-bold">${bill.amount.toFixed(2)}</span>
+                            <span className="text-2xl font-bold">{formatCurrency(bill.amount)}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                             {feeComponents.length} fee component{feeComponents.length !== 1 ? 's' : ''}
@@ -235,10 +256,10 @@ export default function BillDetailsPage() {
                     <CardContent>
                         <div className="flex items-center space-x-2">
                             <CreditCard className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{bill?.account.name}</span>
+                            <span className="font-medium">{bill?.account?.name || "Automated via Squad"}</span>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                            {bill?.account.bankName} ({bill?.account.accountNo})
+                            {bill?.account ? `${bill.account.bankName} (${bill.account.accountNo})` : "Direct digital settlements"}
                         </p>
                     </CardContent>
                     <div
@@ -301,7 +322,7 @@ export default function BillDetailsPage() {
                                     >
                                         <div className="flex items-center justify-between">
                                             <h3 className="font-medium">{item.name}</h3>
-                                            <span className="font-semibold">${item.amount.toFixed(2)}</span>
+                                            <span className="font-semibold">{formatCurrency(item.amount)}</span>
                                         </div>
                                         {item.description && (
                                             <p className="text-sm text-muted-foreground">
@@ -337,7 +358,11 @@ export default function BillDetailsPage() {
                                         Students
                                     </TabsTrigger>
                                 </TabsList>
-                                <Button variant="outline" size="sm">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => setIsAssignDialogOpen(true)}
+                                >
                                     <Users className="h-4 w-4 mr-2" />
                                     Assign Bill
                                 </Button>
@@ -395,6 +420,14 @@ export default function BillDetailsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <AssignBillDialog
+                isOpen={isAssignDialogOpen}
+                onClose={() => setIsAssignDialogOpen(false)}
+                bill={bill}
+                classes={classes}
+                students={students}
+            />
         </div>
     )
 }
@@ -416,78 +449,113 @@ function AssignmentCard({
     getTotalPaid: (assignment: BillDetails['assignments'][0]) => number
     getPaymentProgress: (assignment: BillDetails['assignments'][0]) => number
 }) {
-    const router = useRouter()
+    const [isExpanded, setIsExpanded] = useState(false)
     const totalPaid = getTotalPaid(assignment)
     const progress = getPaymentProgress(assignment)
 
-    const handleClick = () => {
-        if (assignment.targetType === "CLASS") {
-            router.push(`/dashboard/fees/${bill.id}/assignments/${assignment.id}`)
-        }
-    }
-
     return (
-        <div
-            className={`group relative border rounded-lg p-4 space-y-4 hover:bg-accent/5 transition-colors ${assignment.targetType === "CLASS" ? "cursor-pointer" : ""
+        <div className="space-y-2">
+            <div
+                className={`group relative border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all ${
+                    assignment.targetType === "CLASS" ? "cursor-pointer" : ""
                 }`}
-            onClick={handleClick}
-            style={{
-                borderLeft: schoolTheme ? `4px solid ${schoolTheme.primaryColor}` : undefined
-            }}
-        >
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    {assignment.targetType === "CLASS" ? (
-                        <School className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                        <Users className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                                {assignment.targetType === "CLASS"
-                                    ? `Class ${assignment.class?.name}${assignment.class?.section ? ` - ${assignment.class.section}` : ''}`
-                                    : assignment.student?.user.name}
-                            </p>
-                            <Badge
-                                className={`${statusColors[assignment.status]} text-white flex items-center gap-1`}
-                            >
-                                {statusIcons[assignment.status]}
-                                {assignment.status.replace("_", " ")}
-                            </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            Due: {format(new Date(assignment.dueDate), "PP")}
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Amount Paid</p>
-                        <p className="font-medium">${totalPaid.toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">of ${bill.amount.toFixed(2)}</p>
-                    </div>
-                    {assignment.targetType === "CLASS" && (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                    <span>Payment Progress</span>
-                    <span>{progress.toFixed(1)}%</span>
-                </div>
-                <Progress
-                    value={progress}
-                    className="h-2"
-                    style={{
-                        backgroundColor: schoolTheme?.secondaryColor,
-                        '--progress-foreground': schoolTheme?.primaryColor
-                    } as any}
+                onClick={() => assignment.targetType === "CLASS" && setIsExpanded(!isExpanded)}
+                style={{
+                    backgroundColor: isExpanded ? 'rgba(var(--primary-rgb), 0.02)' : 'white'
+                }}
+            >
+                <div 
+                    className="absolute top-0 left-0 bottom-0 w-1.5"
+                    style={{ backgroundColor: schoolTheme?.primaryColor }}
                 />
+                
+                <div className="p-5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={cn(
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                                isExpanded ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
+                            )}
+                            style={{ backgroundColor: isExpanded ? schoolTheme?.primaryColor : undefined }}
+                            >
+                                {assignment.targetType === "CLASS" ? (
+                                    <School className="h-5 w-5" />
+                                ) : (
+                                    <Users className="h-5 w-5" />
+                                )}
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold text-slate-800 tracking-tight">
+                                        {assignment.targetType === "CLASS"
+                                            ? `${assignment.class?.name || 'Unknown Class'}${assignment.class?.section ? ` - ${assignment.class.section}` : ''}`
+                                            : assignment.student?.user?.name || "Unknown Student"}
+                                    </p>
+                                    <Badge
+                                        className={cn(
+                                            "capitalize font-bold border-none",
+                                            assignment.status === "PAID" ? "bg-green-100 text-green-700" :
+                                            assignment.status === "PARTIALLY_PAID" ? "bg-amber-100 text-amber-700" :
+                                            "bg-slate-100 text-slate-600"
+                                        )}
+                                    >
+                                        {assignment.status.replace("_", " ")}
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center gap-3 mt-1 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    <div className="flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        Due {format(new Date(assignment.dueDate), "MMM d, yyyy")}
+                                    </div>
+                                    <span className="h-1 w-1 rounded-full bg-slate-300" />
+                                    <span>
+                                        {assignment.targetType === "CLASS" 
+                                            ? `${assignment.class?.students?.length || 0} Students` 
+                                            : "Individual"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-6">
+                            <div className="text-right">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Collection</p>
+                                <p className="font-black text-lg text-slate-900">{formatCurrency(totalPaid)}</p>
+                                <p className="text-[10px] font-bold text-slate-400">Total: {formatCurrency(bill.amount * (assignment.targetType === "CLASS" ? (assignment.class?.students?.length || 1) : 1))}</p>
+                            </div>
+                            {assignment.targetType === "CLASS" && (
+                                <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center transition-transform group-hover:bg-slate-100">
+                                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-4 space-y-1.5">
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span>Payment Progress</span>
+                            <span>{progress.toFixed(1)}%</span>
+                        </div>
+                        <Progress
+                            value={progress}
+                            className="h-1.5"
+                            style={{
+                                backgroundColor: schoolTheme?.secondaryColor + '40', // 25% opacity
+                                '--progress-foreground': schoolTheme?.primaryColor
+                            } as any}
+                        />
+                    </div>
+                </div>
             </div>
+            
+            {isExpanded && assignment.targetType === "CLASS" && (
+                <div className="px-1 animate-in slide-in-from-top-2 duration-300">
+                    <ClassPaymentDetails 
+                        assignment={assignment} 
+                        bill={bill} 
+                        schoolTheme={schoolTheme} 
+                    />
+                </div>
+            )}
         </div>
     )
 }
@@ -539,93 +607,47 @@ function ClassPaymentDetails({
     }
 
     return (
-        <div className="mt-6 space-y-6">
+        <div className="mt-2 space-y-4 rounded-2xl bg-slate-50 border border-slate-100 p-6 shadow-inner">
             <div className="grid gap-4 md:grid-cols-4">
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Total Expected
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-baseline space-x-2">
-                            <span className="text-2xl font-bold">${totalExpected.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-xs text-muted-foreground mt-1">
-                            <span>${perStudentAmount.toFixed(2)}</span>
-                            <span>×</span>
-                            <span>{totalStudents} students</span>
-                        </div>
-                    </CardContent>
-                    <div className="absolute top-0 right-0 h-full w-2" style={{ backgroundColor: schoolTheme?.primaryColor }} />
-                </Card>
+                <div className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Expected</p>
+                    <p className="text-xl font-black text-slate-800">{formatCurrency(totalExpected)}</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1">
+                        {formatCurrency(perStudentAmount)} × {totalStudents}
+                    </p>
+                </div>
 
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Total Collected
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-baseline space-x-2">
-                            <span className="text-2xl font-bold">${totalPaid.toFixed(2)}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {((totalPaid / totalExpected) * 100).toFixed(1)}% collected
-                        </p>
-                    </CardContent>
-                    <div className="absolute top-0 right-0 h-full w-2" style={{ backgroundColor: schoolTheme?.secondaryColor }} />
-                </Card>
+                <div className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Collected</p>
+                    <p className="text-xl font-black text-green-600">{formatCurrency(totalPaid)}</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1">
+                        {((totalPaid / totalExpected) * 100).toFixed(1)}% complete
+                    </p>
+                </div>
 
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Outstanding Balance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-baseline space-x-2">
-                            <span className="text-2xl font-bold">${totalPending.toFixed(2)}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {((totalPending / totalExpected) * 100).toFixed(1)}% remaining
-                        </p>
-                    </CardContent>
-                    <div className="absolute top-0 right-0 h-full w-2" style={{ backgroundColor: schoolTheme?.primaryColor }} />
-                </Card>
+                <div className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Balance</p>
+                    <p className="text-xl font-black text-amber-600">{formatCurrency(totalPending)}</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1">
+                        {((totalPending / totalExpected) * 100).toFixed(1)}% remaining
+                    </p>
+                </div>
 
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Payment Status
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-green-600">Paid in Full</span>
-                                <span>{paidStudents.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-yellow-600">Partial Payment</span>
-                                <span>{partialStudents.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-red-600">No Payment</span>
-                                <span>{unpaidStudents.length}</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                    <div className="absolute top-0 right-0 h-full w-2" style={{ backgroundColor: schoolTheme?.secondaryColor }} />
-                </Card>
+                <div className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Success Rate</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <Badge className="bg-green-100 text-green-700 border-none font-bold">{paidStudents.length} Paid</Badge>
+                        <Badge className="bg-amber-100 text-amber-700 border-none font-bold">{partialStudents.length} Part</Badge>
+                    </div>
+                </div>
             </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg font-semibold">Student Payment Status</CardTitle>
                     <CardDescription>
-                        Payment tracking for {totalStudents} students in {assignment.class.name}
-                        {assignment.class.section && ` - ${assignment.class.section}`}
+                        Payment tracking for {totalStudents} students in {assignment.class?.name || "Unknown Class"}
+                        {assignment.class?.section && ` - ${assignment.class.section}`}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -651,9 +673,9 @@ function ClassPaymentDetails({
                                             <div>
                                                 <p className="font-medium">{student.user.name}</p>
                                                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                                                    <span>Expected: ${perStudentAmount.toFixed(2)}</span>
+                                                    <span>Expected: {formatCurrency(perStudentAmount)}</span>
                                                     <span>•</span>
-                                                    <span>Paid: ${amountPaid.toFixed(2)}</span>
+                                                    <span>Paid: {formatCurrency(amountPaid)}</span>
                                                 </div>
                                             </div>
                                         </div>

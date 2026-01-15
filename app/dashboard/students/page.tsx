@@ -135,6 +135,7 @@ export default async function StudentsPage() {
                     ? {
                         id: currentClass.class.id,
                         name: currentClass.class.name,
+                        section: currentClass.section || currentClass.class.section || undefined,
                         level: currentClass.class.level || { id: "", name: "" }
                     }
                     : undefined,

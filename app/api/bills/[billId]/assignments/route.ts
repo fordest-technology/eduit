@@ -1,29 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
+import { prisma, withErrorHandling } from "@/lib/prisma";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { billId: string } }
+  { params }: { params: Promise<{ billId: string }> }
 ) {
-  try {
+  return withErrorHandling(async () => {
+    const { billId } = await params;
+    
     // 1. Authentication & Authorization
-    const session = await getSession(null);
-    if (!session) {
+    const auth = await requireAuth(req, ["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.id },
-      include: { admin: true },
-    });
-
-    if (!user?.schoolId) {
-      return NextResponse.json(
-        { error: "User not associated with a school" },
-        { status: 403 }
-      );
-    }
+    const { user } = auth;
 
     // 2. Validate request body
     const body = await req.json();
@@ -39,49 +31,42 @@ export async function POST(
     // 3. Verify bill exists and belongs to user's school
     const bill = await prisma.bill.findUnique({
       where: {
-        id: params.billId,
-        schoolId: user.schoolId,
+        id: billId,
+        schoolId: user.schoolId as string,
       },
+      include: {
+        assignments: true,
+      }
     });
 
     if (!bill) {
       return NextResponse.json({ error: "Bill not found" }, { status: 404 });
     }
 
-    // 4. Verify target exists (class or student)
+    // 4. Strict Idempotency Check
+    // Prevent duplicate assignment of the same type to the same target
+    const existingAssignment = bill.assignments.find(
+        a => a.targetType === targetType && a.targetId === targetId
+    );
+
+    if (existingAssignment) {
+        return NextResponse.json(
+            { error: `This bill is already assigned to this ${targetType === "CLASS" ? "class" : "student"}` },
+            { status: 400 }
+        );
+    }
+
+    // 5. Verify target exists and belongs to the same school
     if (targetType === "CLASS") {
       const classExists = await prisma.class.findUnique({
         where: {
           id: targetId,
-          schoolId: user.schoolId,
-        },
-        include: {
-          students: true,
+          schoolId: user.schoolId as string,
         },
       });
       if (!classExists) {
         return NextResponse.json({ error: "Class not found" }, { status: 404 });
       }
-
-      // Create bill assignments for each student in the class
-      const assignments = await Promise.all(
-        classExists.students.map(async (student) => {
-          return prisma.billAssignment.create({
-            data: {
-              billId: params.billId,
-              targetType: "STUDENT",
-              targetId: student.id,
-              dueDate: new Date(dueDate),
-              status: "PENDING",
-            },
-            include: {
-              studentPayments: true,
-            },
-          });
-        })
-      );
-
-      return NextResponse.json(assignments, { status: 201 });
     } else if (targetType === "STUDENT") {
       const student = await prisma.student.findUnique({
         where: { id: targetId },
@@ -93,6 +78,23 @@ export async function POST(
           { status: 404 }
         );
       }
+      
+      // Also check if student is already covered by a CLASS assignment for this bill
+      const studentClasses = await prisma.studentClass.findMany({
+          where: { studentId: targetId, status: "ACTIVE" },
+          select: { classId: true }
+      });
+      const classIds = studentClasses.map(sc => sc.classId);
+      const isCoveredByClassAssignment = bill.assignments.some(
+          a => a.targetType === "CLASS" && classIds.includes(a.targetId)
+      );
+
+      if (isCoveredByClassAssignment) {
+          return NextResponse.json(
+              { error: "This student is already covered by a class assignment for this bill" },
+              { status: 400 }
+          );
+      }
     } else {
       return NextResponse.json(
         { error: "Invalid target type" },
@@ -100,34 +102,17 @@ export async function POST(
       );
     }
 
-    // 5. Create bill assignment
+    // 6. Create bill assignment
     const assignment = await prisma.billAssignment.create({
       data: {
-        billId: params.billId,
+        billId: billId,
         targetType,
         targetId,
         dueDate: new Date(dueDate),
-      },
-      include: {
-        studentPayments: true,
+        status: "PENDING",
       },
     });
 
     return NextResponse.json(assignment, { status: 201 });
-  } catch (error) {
-    console.error("Error creating bill assignment:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to create bill assignment",
-        ...(process.env.NODE_ENV === "development" && {
-          stack: error instanceof Error ? error.stack : undefined,
-          details: error,
-        }),
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

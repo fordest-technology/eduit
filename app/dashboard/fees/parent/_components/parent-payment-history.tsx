@@ -10,8 +10,11 @@ import {
     X,
     Check,
     Clock,
-    AlertCircle
+    AlertCircle,
+    FileText,
+    ExternalLink as LinkIcon
 } from "lucide-react";
+import Link from "next/link";
 
 import {
     Table,
@@ -106,9 +109,9 @@ export function ParentPaymentHistory({ paymentRequests, children }: ParentPaymen
 
     // Format currency values
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("en-NG", {
             style: "currency",
-            currency: "USD",
+            currency: "NGN",
         }).format(amount);
     };
 
@@ -351,16 +354,28 @@ export function ParentPaymentHistory({ paymentRequests, children }: ParentPaymen
                                                                 </>
                                                             )}
                                                             <div className="flex justify-end gap-2 mt-4">
-                                                                {request.receiptUrl && (
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => window.open(request.receiptUrl!, "_blank")}
-                                                                    >
-                                                                        <ExternalLink className="h-4 w-4 mr-2" />
-                                                                        View Receipt
-                                                                    </Button>
-                                                                )}
+                                                                    {request.receiptUrl?.startsWith("/") ? (
+                                                                        <Link href={request.receiptUrl} target="_blank">
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                className="rounded-xl border-slate-200 hover:bg-slate-50"
+                                                                            >
+                                                                                <FileText className="h-4 w-4 mr-2 text-green-600" />
+                                                                                Official Receipt
+                                                                            </Button>
+                                                                        </Link>
+                                                                    ) : request.receiptUrl ? (
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="rounded-xl border-slate-200 hover:bg-slate-50"
+                                                                            onClick={() => window.open(request.receiptUrl!, "_blank")}
+                                                                        >
+                                                                            <ExternalLink className="h-4 w-4 mr-2" />
+                                                                            View Uploaded Receipt
+                                                                        </Button>
+                                                                    ) : null}
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
                                                                         <Button variant="outline" size="sm">

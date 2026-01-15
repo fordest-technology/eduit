@@ -157,8 +157,50 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Background decoration */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(255,237,213,0.4)_0%,rgba(255,255,255,0)_60%)]"></div>
+        </section>
+
+        {/* Strategic Partners (Powered By) */}
+        <section className="py-10 border-b border-slate-100 bg-white">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">
+              Secured & Powered By Industry Leaders
+            </p>
+            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+               {/* GTBank */}
+               <div className="h-12 w-auto flex items-center">
+                  <Image 
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" 
+                    alt="GTBank" 
+                    width={150} 
+                    height={50} 
+                    className="h-10 w-auto object-contain"
+                  />
+               </div>
+               
+               {/* HabariPay - now local */}
+               <div className="h-12 w-auto flex items-center">
+                  <Image 
+                    src="/habaripay.jpg" 
+                    alt="HabariPay" 
+                    width={150} 
+                    height={50} 
+                    className="h-10 w-auto object-contain"
+                  />
+               </div>
+
+               {/* Squad - now local */}
+               <div className="h-12 w-auto flex items-center">
+                  <Image 
+                    src="/squad.png" 
+                    alt="Squad" 
+                    width={120} 
+                    height={40} 
+                    className="h-8 w-auto object-contain"
+                  />
+               </div>
+            </div>
+          </div>
         </section>
 
         {/* Product Proof (Quick Metrics) */}
@@ -637,6 +679,36 @@ export default function Home() {
               <p className="text-slate-500 font-medium leading-relaxed max-w-xs text-sm italic">
                 Empowering institutions through intelligent education infrastructure.
               </p>
+              
+              <div className="pt-4 border-t border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Powered By</p>
+                <div className="flex items-center gap-4 opacity-70 grayscale hover:grayscale-0 transition-opacity">
+                    <Image 
+                        src="/squad.png" 
+                        alt="Squad" 
+                        width={80} 
+                        height={30} 
+                        className="h-6 w-auto object-contain"
+                    />
+                    <div className="h-4 w-px bg-slate-200"></div>
+                     <Image 
+                        src="/habaripay.jpg" 
+                        alt="HabariPay" 
+                        width={80} 
+                        height={30} 
+                        className="h-6 w-auto object-contain"
+                    />
+                     <div className="h-4 w-px bg-slate-200"></div>
+                     <Image 
+                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" 
+                        alt="GTBank" 
+                        width={80} 
+                        height={30} 
+                        className="h-6 w-auto object-contain"
+                    />
+                </div>
+              </div>
+
               <div className="flex gap-4">
                 {["Twitter", "LinkedIn", "YouTube"].map((s) => (
                   <div key={s} className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center hover:bg-orange-600 hover:border-orange-600 hover:text-white transition-all cursor-pointer">

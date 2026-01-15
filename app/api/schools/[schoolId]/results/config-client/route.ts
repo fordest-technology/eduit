@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth"; // Assuming getSession can be used in route handlers
+import prisma from "@/lib/db";
+import { getSession } from "@/lib/auth";
 import {
   ResultConfiguration,
-  Period,
-  AssessmentComponent,
-  GradeScale,
-} from "@/app/dashboard/results/types"; // Adjust path as needed
+} from "@/app/dashboard/results/types";
 
-// Helper function to simulate withErrorHandling if not directly usable here
+// Helper function for error handling
 async function handleApiError(fn: () => Promise<NextResponse>) {
   try {
     return await fn();
@@ -25,12 +22,43 @@ async function handleApiError(fn: () => Promise<NextResponse>) {
   }
 }
 
+// Default configuration template
+const getDefaultConfig = (schoolId: string, sessionName: string): ResultConfiguration => ({
+  id: "",
+  schoolId,
+  academicYear: sessionName,
+  periods: [
+    { id: "1", name: "First Term", weight: 1 },
+    { id: "2", name: "Second Term", weight: 1 },
+    { id: "3", name: "Third Term", weight: 1 },
+  ],
+  assessmentComponents: [
+    { id: "1", name: "First CA", key: "ca1", maxScore: 10 },
+    { id: "2", name: "Second CA", key: "ca2", maxScore: 10 },
+    { id: "3", name: "Assignment", key: "assignment", maxScore: 10 },
+    { id: "4", name: "Project", key: "project", maxScore: 10 },
+    { id: "5", name: "Exam", key: "exam", maxScore: 60 },
+  ],
+  gradingScale: [
+    { id: "1", minScore: 70, maxScore: 100, grade: "A", remark: "Excellent" },
+    { id: "2", minScore: 60, maxScore: 69, grade: "B", remark: "Very Good" },
+    { id: "3", minScore: 50, maxScore: 59, grade: "C", remark: "Good" },
+    { id: "4", minScore: 45, maxScore: 49, grade: "D", remark: "Fair" },
+    { id: "5", minScore: 40, maxScore: 44, grade: "E", remark: "Pass" },
+    { id: "6", minScore: 0, maxScore: 39, grade: "F", remark: "Fail" },
+  ],
+  cumulativeEnabled: true,
+  cumulativeMethod: "progressive_average",
+  showCumulativePerTerm: true,
+});
+
 export async function GET(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const { schoolId } = await params;
   return handleApiError(async () => {
-    const session = await getSession(); // Get user session
+    const session = await getSession();
 
     if (!session) {
       return new NextResponse(
@@ -39,12 +67,9 @@ export async function GET(
       );
     }
 
-    // Validate if the logged-in user's schoolId matches the request, if applicable
-    // This depends on how your session object stores schoolId and your security model.
-    // For instance, if session.schoolId should match params.schoolId for non-super-admins:
     if (
       session.role !== "SUPER_ADMIN" &&
-      session.schoolId !== params.schoolId
+      session.schoolId !== schoolId
     ) {
       return new NextResponse(
         JSON.stringify({ message: "Forbidden: Access denied for this school" }),
@@ -52,34 +77,55 @@ export async function GET(
       );
     }
 
-    const schoolId = params.schoolId;
+    console.log("[CONFIG_CLIENT] Fetching config for schoolId:", schoolId);
 
     // 1. Get the current active academic session for the school
-    const currentAcademicSession = await prisma.academicSession.findFirst({
+    let currentAcademicSession = await prisma.academicSession.findFirst({
       where: {
         schoolId: schoolId,
-        isCurrent: true, // Assuming 'isCurrent' field exists on AcademicSession
+        isCurrent: true,
       },
       select: {
         id: true,
-        name: true, // For academicYear field in ResultConfiguration
+        name: true,
       },
     });
 
+    console.log("[CONFIG_CLIENT] Current session (isCurrent=true):", currentAcademicSession);
+
+    // If no current session, try to get the most recent one
     if (!currentAcademicSession) {
-      return new NextResponse(
-        JSON.stringify({
-          message: "No active academic session found for this school.",
-        }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      console.log("[CONFIG_CLIENT] No current session found, getting most recent...");
+      currentAcademicSession = await prisma.academicSession.findFirst({
+        where: {
+          schoolId: schoolId,
+        },
+        orderBy: {
+          startDate: "desc",
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+      console.log("[CONFIG_CLIENT] Most recent session:", currentAcademicSession);
+    }
+
+    // If still no session, return default config with placeholder
+    if (!currentAcademicSession) {
+      const defaultConfig = getDefaultConfig(schoolId, "2024/2025");
+      return NextResponse.json({
+        ...defaultConfig,
+        isNew: true,
+        message: "No academic session found. Please create one first.",
+      }, { status: 200 });
     }
 
     // 2. Fetch the result configuration for that school and current session
     const existingConfig = await prisma.resultConfiguration.findFirst({
       where: {
         schoolId: schoolId,
-        sessionId: currentAcademicSession.id, // Link configuration to the current session
+        sessionId: currentAcademicSession.id,
       },
       include: {
         periods: true,
@@ -87,27 +133,25 @@ export async function GET(
         gradingScale: true,
       },
       orderBy: {
-        createdAt: "desc", // Get the latest one if multiple exist (though ideally should be unique per session)
+        createdAt: "desc",
       },
     });
 
+    // If no config exists, return default template
     if (!existingConfig) {
-      // Return a default or empty structure if no config exists, or a 404
-      // For now, let's return 404 if no config is explicitly set up for the current session.
-      return new NextResponse(
-        JSON.stringify({
-          message:
-            "No result configuration found for the current academic session.",
-        }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      const defaultConfig = getDefaultConfig(schoolId, currentAcademicSession.name);
+      return NextResponse.json({
+        ...defaultConfig,
+        isNew: true,
+        sessionId: currentAcademicSession.id,
+      }, { status: 200 });
     }
 
     // 3. Format the data to match ResultConfiguration type
-    const formattedConfig: ResultConfiguration = {
+    const formattedConfig: ResultConfiguration & { isNew?: boolean } = {
       id: existingConfig.id,
       schoolId: existingConfig.schoolId,
-      academicYear: currentAcademicSession.name, // Use session name as academic year
+      academicYear: currentAcademicSession.name,
       periods: existingConfig.periods.map((p) => ({
         ...p,
         weight: Number(p.weight),
@@ -122,11 +166,12 @@ export async function GET(
         maxScore: Number(gs.maxScore),
       })),
       cumulativeEnabled: existingConfig.cumulativeEnabled,
-      cumulativeMethod: existingConfig.cumulativeMethod as string, // Add type assertion if necessary
+      cumulativeMethod: existingConfig.cumulativeMethod as string,
       showCumulativePerTerm: existingConfig.showCumulativePerTerm,
-      // sessionId: existingConfig.sessionId, // Optional: if you need to return it
+      isNew: false,
     };
 
     return NextResponse.json(formattedConfig, { status: 200 });
   });
 }
+

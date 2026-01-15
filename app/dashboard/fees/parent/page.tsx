@@ -166,7 +166,6 @@ export default async function ParentFeePage() {
             <ParentPaymentForm
                 children={parentData.children}
                 bills={parentData.bills}
-                paymentAccounts={parentData.paymentAccounts}
             />
         </div>
     );

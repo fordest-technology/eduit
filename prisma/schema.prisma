@@ -105,6 +105,7 @@ model Student {
   parents         StudentParent[]
   payments        StudentPayment[]
   subjects        StudentSubject[]
+  squadPayments   SquadPayment[]
 }
 
 model Parent {
@@ -135,18 +136,30 @@ model School {
   secondaryColor  String?
   shortName       String                @unique
   createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  sessions        AcademicSession[]
-  bills           Bill[]
-  classes         Class[]
-  departments     Department[]
-  events          Event[]
-  paymentAccounts PaymentAccount[]
-  resultConfigs   ResultConfiguration[]
-  resultPublications ResultPublication[]
-  levels          SchoolLevel[]
-  subjects        Subject[]
-  users           User[]
+  updatedAt             DateTime              @updatedAt
+  sessions              AcademicSession[]
+  bills                 Bill[]
+  classes               Class[]
+  departments           Department[]
+  events                Event[]
+  paymentAccounts       PaymentAccount[]
+  resultConfigs         ResultConfiguration[]
+  resultPublications    ResultPublication[]
+  levels                SchoolLevel[]
+  subjects              Subject[]
+  users                 User[]
+  
+  // Billing and Squad integration
+  squadWalletId         String?               @unique
+  bankAccountNumber     String?
+  bankCode              String?
+  paidStudentCount      Int                   @default(0)
+  lastOnboardingActivity DateTime?
+  billingStatus         BillingStatus         @default(ACTIVE)
+  
+  wallet                SchoolWallet?
+  squadPayments         SquadPayment[]
+  usagePayments         UsagePayment[]
 
   @@index([subdomain])
 }
@@ -234,6 +247,7 @@ model StudentClass {
   classId    String
   sessionId  String
   rollNumber String?
+  section    String?   // The specific arm the student belongs to (e.g., "A", "B", "Gold")
   status     EnrollmentStatus @default(ACTIVE)
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
@@ -391,8 +405,8 @@ model Bill {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   schoolId        String
-  accountId       String
-  account         PaymentAccount   @relation(fields: [accountId], references: [id])
+  accountId       String?
+  account         PaymentAccount?  @relation(fields: [accountId], references: [id])
   school          School           @relation(fields: [schoolId], references: [id])
   assignments     BillAssignment[]
   items           BillItem[]
@@ -650,4 +664,58 @@ enum PaymentStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum BillingStatus {
+  ACTIVE
+  BLOCKED
+}
+
+enum SquadPaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model SchoolWallet {
+  id        String   @id @default(cuid())
+  schoolId  String   @unique
+  balance   Decimal  @default(0) @db.Decimal(20, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  school    School   @relation(fields: [schoolId], references: [id])
+}
+
+model SquadPayment {
+  id               String             @id @default(cuid())
+  schoolId         String
+  studentId        String
+  feeId            String?
+  squadReference   String             @unique
+  amount           Decimal            @db.Decimal(20, 2)
+  platformFee      Decimal            @db.Decimal(20, 2)
+  netAmount        Decimal            @db.Decimal(20, 2)
+  status           SquadPaymentStatus @default(PENDING)
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  paidAt           DateTime?
+  school           School             @relation(fields: [schoolId], references: [id])
+  student          Student            @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([squadReference])
+}
+
+model UsagePayment {
+  id             String             @id @default(cuid())
+  schoolId       String
+  amount         Decimal            @db.Decimal(20, 2)
+  studentCount   Int
+  status         SquadPaymentStatus @default(PENDING)
+  squadReference String?            @unique
+  createdAt      DateTime           @default(now())
+  paidAt         DateTime?
+  school         School             @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
 }

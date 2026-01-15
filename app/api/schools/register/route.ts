@@ -7,7 +7,9 @@ import { UserRole, AdminType } from "@prisma/client";
 import { checkCloudinaryConfig } from "@/lib/env-check";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { join } from "path";
 import { randomUUID } from "crypto";
+import { applySchoolTemplate } from "@/lib/school-templates";
 
 // Helper function to handle file uploads locally if Cloudinary is not available
 async function handleFileUpload(file: File): Promise<string | null> {
@@ -66,6 +68,7 @@ export async function POST(request: NextRequest) {
         adminName: formData.get("adminName") as string,
         adminEmail: formData.get("adminEmail") as string,
         adminPassword: formData.get("adminPassword") as string,
+        schoolType: formData.get("schoolType") as string,
       };
 
       // Handle logo upload
@@ -203,6 +206,11 @@ export async function POST(request: NextRequest) {
             },
           },
         });
+
+        // Apply School Template (Levels, Classes, Session)
+        // Default to "combined" if not specified
+        const schoolType = body.schoolType || "combined";
+        await applySchoolTemplate(tx, school.id, schoolType);
 
         return { school, admin };
       });
