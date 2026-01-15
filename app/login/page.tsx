@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Eye, EyeOff, AlertCircle, School, GraduationCap, Users, BookOpen } from "lucide-react"
+import { Loader2, Eye, EyeOff, AlertCircle, School, GraduationCap, Users, BookOpen, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const { school, setSchool } = useSchoolStore()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [isRegistered, setIsRegistered] = useState(false)
 
   // Check authentication status using API endpoint
   const checkAuth = async () => {
@@ -47,6 +48,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     checkAuth();
+
+    // Check for registration success
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("registered") === "true") {
+      setIsRegistered(true)
+    }
   }, []);
 
   useEffect(() => {
@@ -54,9 +61,12 @@ export default function LoginPage() {
       setIsSchoolLoading(true)
       try {
         const host = window.location.host
-        const subdomain = host.split(".")[0]
+        // Remove port from host if present (e.g., localhost:3000 -> localhost)
+        const hostname = host.split(":")[0]
+        const subdomain = hostname.split(".")[0]
 
-        if (!subdomain || subdomain === 'localhost' || subdomain === 'eduit') {
+        // Skip school fetch for localhost or main domain
+        if (!subdomain || subdomain === 'localhost' || subdomain.includes('localhost') || subdomain === 'eduit' || subdomain === '127') {
           setIsSchoolLoading(false)
           return
         }
@@ -214,6 +224,25 @@ export default function LoginPage() {
             </div>
 
             <AnimatePresence mode="wait">
+              {isRegistered && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="bg-emerald-50 border border-emerald-100 p-6 rounded-[2rem] space-y-2 mb-8 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 text-emerald-700">
+                    <CheckCircle2 className="h-6 w-6 shrink-0" />
+                    <h4 className="font-black font-sora text-lg tracking-tight leading-none text-emerald-800">Registration Success!</h4>
+                  </div>
+                  <p className="text-xs text-emerald-600 font-bold leading-relaxed opacity-80 uppercase tracking-wide">
+                    Your institutional portal is ready. Please check your email for credentials.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence mode="wait">
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -244,7 +273,7 @@ export default function LoginPage() {
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between ml-1">
                   <Label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 font-sora">Password</Label>
-                  <Link href="/forgot-password" size="sm" className="text-[12px] font-bold text-orange-600 hover:text-orange-700 underline underline-offset-4 decoration-orange-200">
+                  <Link href="/forgot-password" className="text-[12px] font-bold text-orange-600 hover:text-orange-700 underline underline-offset-4 decoration-orange-200">
                     Forgot password?
                   </Link>
                 </div>

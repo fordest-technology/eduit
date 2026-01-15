@@ -13,6 +13,7 @@ interface DashboardContentProps {
         role: UserRole
         name: string
         profileImage?: string | null
+        permissions?: any
     }
 }
 

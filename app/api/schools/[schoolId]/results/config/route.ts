@@ -93,6 +93,7 @@ export async function POST(
 ) {
   const { schoolId } = await params;
   try {
+    const { schoolId } = await params;
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -232,6 +233,7 @@ export async function GET(
 ) {
   const { schoolId } = await params;
   try {
+    const { schoolId } = await params;
     // Authentication
     const session = await getSession();
     if (!session) return unauthorized();
@@ -319,6 +321,7 @@ export async function PUT(
 ) {
   const { schoolId } = await params;
   try {
+    const { schoolId } = await params;
     // Authentication
     const session = await getSession();
     if (!session) return unauthorized();

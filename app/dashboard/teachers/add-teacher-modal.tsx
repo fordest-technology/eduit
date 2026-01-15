@@ -6,13 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import {
     Form,
     FormControl,
@@ -29,6 +29,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Loader2, Camera, Upload, X, Mail, CheckCircle, AlertCircle, XCircle, Copy, RefreshCw } from "lucide-react"
 import { UserRole } from "@prisma/client"
@@ -351,19 +352,19 @@ export function AddTeacherModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[725px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[725px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="pb-6">
+                    <SheetTitle>
                         {isEditMode ? 'Edit Teacher' : 'Add New Teacher'}
-                    </DialogTitle>
-                    <DialogDescription>
+                    </SheetTitle>
+                    <SheetDescription>
                         {isEditMode
                             ? 'Update the teacher\'s information. When you\'re done, click save.'
                             : 'Add a new teacher to your school. They will receive an email with login credentials.'
                         }
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <div className="flex justify-center mb-6">
@@ -461,7 +462,7 @@ export function AddTeacherModal({
                                                             mode="single"
                                                             selected={field.value}
                                                             onSelect={field.onChange}
-                                                            disabled={(date) =>
+                                                            disabled={(date: Date) =>
                                                                 date > new Date() || date < new Date("1940-01-01")
                                                             }
                                                             initialFocus
@@ -592,8 +593,7 @@ export function AddTeacherModal({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Password</FormLabel>
-                                            <Input
-                                                type="text"
+                                            <PasswordInput
                                                 placeholder="Set a password for the teacher"
                                                 {...field}
                                                 required
@@ -666,7 +666,7 @@ export function AddTeacherModal({
                             </div>
                         </div>
 
-                        <DialogFooter className="mt-6">
+                        <SheetFooter className="mt-8 pb-4">
                             <Button
                                 variant="outline"
                                 type="button"
@@ -691,10 +691,10 @@ export function AddTeacherModal({
                                     </>
                                 )}
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 

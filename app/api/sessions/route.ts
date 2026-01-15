@@ -12,6 +12,10 @@ function serializeBigInts(data: any): any {
     return Number(data);
   }
 
+  if (data instanceof Date) {
+    return data;
+  }
+
   if (Array.isArray(data)) {
     return data.map((item) => serializeBigInts(item));
   }
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const schoolId =
-      session.role === "super_admin"
+      session.role === "SUPER_ADMIN"
         ? searchParams.get("schoolId") || undefined
         : session.schoolId;
     const isCurrent =
@@ -57,6 +61,17 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
           },
+        },
+        resultConfigurations: {
+          include: {
+            periods: {
+              select: {
+                id: true,
+                name: true,
+                weight: true,
+              }
+            }
+          }
         },
         _count: {
           select: {
@@ -141,32 +156,86 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new session
-    const newSession = await prisma.academicSession.create({
-      data: {
-        name,
-        startDate: startDateObj,
-        endDate: endDateObj,
-        isCurrent: body.isCurrent || false,
-        school: {
-          connect: { id: effectiveSchoolId },
+    // Create new session with terms if provided
+    console.log("[API/Sessions] Starting transaction for session creation...");
+    const newSession = await prisma.$transaction(async (tx) => {
+      // 1. Unset any other active sessions for this school
+      console.log(`[API/Sessions] Unsetting existing active sessions for school ${effectiveSchoolId}...`);
+      await tx.academicSession.updateMany({
+        where: {
+          schoolId: effectiveSchoolId,
+          isCurrent: true,
         },
-      },
-      include: {
-        school: {
-          select: {
-            id: true,
-            name: true,
+        data: {
+          isCurrent: false,
+        },
+      });
+
+      // 2. Create the new academic session and set it as ACTIVE
+      console.log("[API/Sessions] Creating new academic session as ACTIVE...");
+      const session = await tx.academicSession.create({
+        data: {
+          name,
+          startDate: startDateObj,
+          endDate: endDateObj,
+          isCurrent: true, // Automatically set to true by default
+          school: {
+            connect: { id: effectiveSchoolId },
           },
         },
-        _count: {
-          select: {
-            studentClasses: true,
-            attendance: true,
-            results: true,
+        include: {
+          school: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              studentClasses: true,
+              attendance: true,
+              results: true,
+            },
           },
         },
-      },
+      });
+
+      // 2. Create terms if provided, or default terms
+      const termsToCreate = body.terms && Array.isArray(body.terms) && body.terms.length > 0
+        ? body.terms
+        : ["First Term", "Second Term", "Third Term"];
+
+      console.log(`[API/Sessions] Creating result configuration for session ${session.id}...`);
+      // 3. Create result configuration for this session
+      const config = await tx.resultConfiguration.create({
+        data: {
+          schoolId: effectiveSchoolId,
+          sessionId: session.id,
+          cumulativeEnabled: true,
+          cumulativeMethod: "progressive_average",
+          showCumulativePerTerm: true,
+        }
+      });
+
+      console.log(`[API/Sessions] Creating ${termsToCreate.length} terms...`);
+      // 4. Create terms (ResultPeriods) linked to the configuration
+      await Promise.all(
+        termsToCreate.map((termName: string, index: number) =>
+          tx.resultPeriod.create({
+            data: {
+              name: typeof termName === 'string' ? termName : (termName as any).name,
+              weight: typeof termName === 'string' ? 1 : ((termName as any).weight || 1),
+              configurationId: config.id,
+            }
+          })
+        )
+      );
+
+      console.log("[API/Sessions] Transaction completed successfully");
+      return session;
+    }, {
+      maxWait: 15000, // Wait up to 15s to start the transaction
+      timeout: 30000, // Total transaction timeout of 30s
     });
 
     // Add isActive field for backward compatibility

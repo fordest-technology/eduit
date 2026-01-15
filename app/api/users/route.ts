@@ -83,6 +83,12 @@ export async function GET(request: NextRequest) {
               name: true,
             },
           },
+          admin: {
+            select: {
+              adminType: true,
+              permissions: true,
+            },
+          },
         },
         orderBy: {
           createdAt: "desc",
@@ -108,25 +114,87 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const formData = await request.formData();
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const role = formData.get("role") as UserRole;
-    const profileImage = formData.get("profileImage") as string;
+    const contentType = request.headers.get("content-type") || "";
+    let name, email, password, role, profileImage;
+    let teacherData = null;
+    let studentData = null;
+    let parentData = null;
+    let adminData = null;
 
-    const teacherData = formData.get("teacherData")
-      ? JSON.parse(formData.get("teacherData") as string)
-      : null;
-    const studentData = formData.get("studentData")
-      ? JSON.parse(formData.get("studentData") as string)
-      : null;
-    const parentData = formData.get("parentData")
-      ? JSON.parse(formData.get("parentData") as string)
-      : null;
-    const adminData = formData.get("adminData")
-      ? JSON.parse(formData.get("adminData") as string)
-      : null;
+    if (contentType.includes("application/json")) {
+      const body = await request.json();
+      name = body.name;
+      email = body.email;
+      password = body.password;
+      role = body.role;
+      profileImage = body.profileImage;
+
+      // Handle both flat and nested structure for JSON
+      if (role === UserRole.TEACHER) {
+        teacherData = body.teacherData || {
+          phone: body.phone,
+          gender: body.gender,
+          dateOfBirth: body.dateOfBirth,
+          address: body.address,
+          city: body.city,
+          state: body.state,
+          country: body.country,
+          qualifications: body.qualifications,
+          specialization: body.specialization,
+          employeeId: body.employeeId,
+          departmentId: body.departmentId,
+        };
+      } else if (role === UserRole.STUDENT) {
+        studentData = body.studentData || {
+          phone: body.phone,
+          gender: body.gender,
+          dateOfBirth: body.dateOfBirth,
+          address: body.address,
+          city: body.city,
+          state: body.state,
+          country: body.country,
+          religion: body.religion,
+          bloodGroup: body.bloodGroup,
+        };
+      } else if (role === UserRole.PARENT) {
+        parentData = body.parentData || {
+          phone: body.phone,
+          alternatePhone: body.alternatePhone,
+          occupation: body.occupation,
+          address: body.address,
+          city: body.city,
+          state: body.state,
+          country: body.country,
+        };
+      } else if (role === UserRole.SCHOOL_ADMIN || role === UserRole.SUPER_ADMIN) {
+        adminData = body.adminData || {
+          adminType: body.adminType,
+          permissions: body.permissions,
+        };
+      }
+    } else if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+      const formData = await request.formData();
+      name = formData.get("name") as string;
+      email = formData.get("email") as string;
+      password = formData.get("password") as string;
+      role = formData.get("role") as UserRole;
+      profileImage = formData.get("profileImage") as string;
+
+      teacherData = formData.get("teacherData")
+        ? JSON.parse(formData.get("teacherData") as string)
+        : null;
+      studentData = formData.get("studentData")
+        ? JSON.parse(formData.get("studentData") as string)
+        : null;
+      parentData = formData.get("parentData")
+        ? JSON.parse(formData.get("parentData") as string)
+        : null;
+      adminData = formData.get("adminData")
+        ? JSON.parse(formData.get("adminData") as string)
+        : null;
+    } else {
+      return new NextResponse("Unsupported Content-Type", { status: 415 });
+    }
 
     if (!name || !email || !password || !role) {
       return new NextResponse("Missing required fields", { status: 400 });

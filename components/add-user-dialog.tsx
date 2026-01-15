@@ -6,13 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -29,15 +29,16 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import { Role } from "@prisma/client"
+import { UserRole } from "@prisma/client"
 
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters").optional(),
-    role: z.nativeEnum(Role),
+    role: z.nativeEnum(UserRole),
     schoolId: z.string().optional(),
     gender: z.string().optional(),
     dateOfBirth: z.string().optional(),
@@ -52,12 +53,12 @@ const formSchema = z.object({
 interface AddUserDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    initialRole?: Role | null
+    initialRole?: UserRole | null
     user?: {
         id: string
         name: string
         email: string
-        role: Role
+        role: UserRole
         schoolId?: string | null
         gender?: string
         dateOfBirth?: string
@@ -87,7 +88,7 @@ export function AddUserDialog({
             name: user?.name || "",
             email: user?.email || "",
             password: "",
-            role: user?.role || initialRole || Role.STUDENT,
+            role: user?.role || initialRole || UserRole.STUDENT,
             schoolId: user?.schoolId || undefined,
             gender: user?.gender || "",
             dateOfBirth: user?.dateOfBirth || "",
@@ -140,14 +141,14 @@ export function AddUserDialog({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{user ? "Edit User" : "Add New User"}</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[540px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>{user ? "Edit User" : "Add New User"}</SheetTitle>
+                    <SheetDescription>
                         {user ? "Update user information and settings." : "Create a new user account with the specified role."}
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -190,7 +191,7 @@ export function AddUserDialog({
                                         <FormLabel>{user ? "Password (leave blank to keep current)" : "Password"}</FormLabel>
                                         <div className="flex gap-2">
                                             <FormControl>
-                                                <Input placeholder="Enter password" type="password" {...field} />
+                                                <PasswordInput placeholder="Enter password" {...field} />
                                             </FormControl>
                                             <Button type="button" variant="outline" size="sm" onClick={generatePassword}>
                                                 Generate
@@ -218,10 +219,10 @@ export function AddUserDialog({
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value={Role.SCHOOL_ADMIN}>School Admin</SelectItem>
-                                                <SelectItem value={Role.TEACHER}>Teacher</SelectItem>
-                                                <SelectItem value={Role.STUDENT}>Student</SelectItem>
-                                                <SelectItem value={Role.PARENT}>Parent</SelectItem>
+                                                <SelectItem value={UserRole.SCHOOL_ADMIN}>School Admin</SelectItem>
+                                                <SelectItem value={UserRole.TEACHER}>Teacher</SelectItem>
+                                                <SelectItem value={UserRole.STUDENT}>Student</SelectItem>
+                                                <SelectItem value={UserRole.PARENT}>Parent</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
@@ -357,7 +358,7 @@ export function AddUserDialog({
                             />
                         </div>
 
-                        <DialogFooter>
+                        <SheetFooter className="pt-6">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -370,10 +371,10 @@ export function AddUserDialog({
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {user ? "Update User" : "Add User"}
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 

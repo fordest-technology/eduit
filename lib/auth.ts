@@ -24,6 +24,7 @@ export interface UserJwtPayload {
   role: UserRole;
   schoolId?: string;
   profileImage?: string;
+  permissions?: any;
   [key: string]: any;
 }
 
@@ -167,6 +168,11 @@ export async function createSession(userId: string) {
       role: true,
       schoolId: true,
       profileImage: true,
+      admin: {
+        select: {
+          permissions: true
+        }
+      }
     },
   });
 
@@ -193,6 +199,7 @@ export async function createSession(userId: string) {
     role: role,
     schoolId: user.schoolId || undefined,
     profileImage: user.profileImage || undefined,
+    permissions: user.admin?.permissions || undefined
   };
 
   // Sign and return the JWT

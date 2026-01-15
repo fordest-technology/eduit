@@ -24,6 +24,7 @@ import {
     FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Loader2, Mail, CheckCircle, AlertCircle, X, Upload, Copy, RefreshCw } from "lucide-react"
 import { generatePassword } from "@/lib/utils"
@@ -450,7 +451,7 @@ export function AddParentModal({
                                             </FormLabel>
                                             <div className="flex space-x-2">
                                                 <FormControl>
-                                                    <Input type="text" {...field} />
+                                                    <PasswordInput {...field} />
                                                 </FormControl>
                                                 <Button
                                                     type="button"

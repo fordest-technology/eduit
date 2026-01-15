@@ -764,15 +764,15 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Add Student Dialog */}
-            <AlertDialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Add Student to Class</AlertDialogTitle>
-                        <AlertDialogDescription>
+            {/* Add Student Sheet */}
+            <Sheet open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
+                <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+                    <SheetHeader>
+                        <SheetTitle>Add Student to Class</SheetTitle>
+                        <SheetDescription>
                             Select a student to add to {currentClass?.name}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
                     <div className="space-y-4">
                         <div>
                             <label className="text-sm font-medium">Student</label>
@@ -805,18 +805,18 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                             </Select>
                         </div>
                     </div>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
+                    <SheetFooter className="mt-6">
+                        <Button variant="outline" onClick={() => setShowAddStudentDialog(false)}>Cancel</Button>
+                        <Button
                             onClick={handleAddStudent}
                             disabled={isLoading.addStudent}
                         >
                             {isLoading.addStudent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Add Student
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                        </Button>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
         </div>
     )
 } 

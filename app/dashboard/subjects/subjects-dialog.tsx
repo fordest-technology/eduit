@@ -7,13 +7,13 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import {
     Form,
     FormControl,
@@ -108,14 +108,14 @@ export function SubjectsDialog({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Add Subject</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>Add Subject</SheetTitle>
+                    <SheetDescription>
                         Create a new subject for your curriculum.
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
@@ -231,18 +231,18 @@ export function SubjectsDialog({
                                 </FormItem>
                             )}
                         />
-                        <DialogFooter>
+                        <SheetFooter className="mt-8">
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="bg-[#E11D48] hover:bg-[#BE123C] text-white"
+                                className="bg-[#E11D48] hover:bg-[#BE123C] text-white w-full"
                             >
                                 Create Subject
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 } 

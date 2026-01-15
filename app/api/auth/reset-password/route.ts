@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
-import { generatePassword } from "@/lib/utils";
-import { sendEmail } from "@/lib/email";
+import { generateResetCode } from "@/lib/utils";
+import { sendPasswordResetEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,11 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
-        parent: true,
+        school: {
+          select: {
+            name: true,
+          }
+        }
       },
     });
 
@@ -26,82 +30,55 @@ export async function POST(request: NextRequest) {
         {
           success: true,
           message:
-            "If your email is registered, you will receive password reset instructions shortly.",
+            "If your email is registered, you will receive a verification code shortly.",
         },
         { status: 200 }
       );
     }
 
-    // Generate new secure password
-    const newPassword = generatePassword(12);
-    const hashedPassword = await hash(newPassword, 10);
+    // Generate 4-digit reset code
+    const resetCode = generateResetCode();
 
-    // Update user password
+    // Hash the code and store it in the password field temporarily
+    // This avoids the Prisma sync issues we've been having on Windows
+    const hashedCode = await hash(resetCode, 10);
+
+    // Update user: use the password field to store the code temporarily
     await prisma.user.update({
       where: { id: user.id },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedCode,
+      },
     });
 
-    // Get school info for email branding
-    const school = user.schoolId
-      ? await prisma.school.findUnique({
-          where: { id: user.schoolId },
-          select: { name: true },
-        })
-      : null;
+    const schoolName = user.school?.name || "EduIT Institution";
 
-    const schoolName = school?.name || "School";
-
-    // Send email with new password
-    const emailResult = await sendEmail({
-      to: email,
-      subject: `${schoolName} Password Reset`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Password Reset</h2>
-          <p>Dear ${user.name},</p>
-          <p>Your password has been reset as requested. Here are your new login credentials:</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>New Password:</strong> ${newPassword}</p>
-          <p><a href="${
-            process.env.NEXT_PUBLIC_APP_URL || "https://school-domain.com"
-          }/auth/signin" 
-                style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
-             Login to Your Account
-          </a></p>
-          <p>For security reasons, please change your password after logging in.</p>
-          <p>If you did not request this password reset, please contact the school administrator immediately.</p>
-          <p>Thank you,<br>${schoolName} Team</p>
-        </div>
-      `,
+    // Send email with the reset code
+    const emailResult = await sendPasswordResetEmail({
+      userName: user.name || "User",
+      userEmail: email,
+      resetCode: resetCode,
+      schoolName: schoolName,
     });
 
-    // If email sending failed, log the error but don't expose it to the user
     if (!emailResult.success) {
       console.error(
-        `Failed to send password reset email to ${email}:`,
+        `Failed to send password reset code to ${email}:`,
         emailResult.error
       );
-
-      // In development, provide the password for testing purposes
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`DEV MODE - New password for ${email}: ${newPassword}`);
-      }
     }
 
     return NextResponse.json(
       {
         success: true,
-        message:
-          "If your email is registered, you will receive password reset instructions shortly.",
-        // Only in development, include the new password if email failed
+        message: "Verification code sent. Please check your email.",
         ...(process.env.NODE_ENV !== "production" && !emailResult.success
-          ? { devNote: `Email sending failed. New password: ${newPassword}` }
+          ? { devNote: `Email sending failed locally. Reset Code: ${resetCode}` }
           : {}),
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Password reset error:", error);
     return NextResponse.json(
       { error: "An unexpected error occurred. Please try again later." },

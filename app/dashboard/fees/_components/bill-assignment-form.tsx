@@ -33,13 +33,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+    SheetFooter,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
@@ -92,15 +93,15 @@ export function BillAssignmentDialog({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Assign Bill</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>{trigger}</SheetTrigger>
+            <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
+                <SheetHeader>
+                    <SheetTitle>Assign Bill</SheetTitle>
+                    <SheetDescription>
                         Assign this bill to a class or individual student
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(handleSubmit)}
@@ -218,7 +219,7 @@ export function BillAssignmentDialog({
                                                 mode="single"
                                                 selected={field.value}
                                                 onSelect={field.onChange}
-                                                disabled={(date) =>
+                                                disabled={(date: Date) =>
                                                     date < new Date()
                                                 }
                                                 initialFocus
@@ -233,7 +234,7 @@ export function BillAssignmentDialog({
                             )}
                         />
 
-                        <div className="flex justify-end space-x-2">
+                        <SheetFooter className="mt-6">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -242,10 +243,10 @@ export function BillAssignmentDialog({
                                 Cancel
                             </Button>
                             <Button type="submit">Assign Bill</Button>
-                        </div>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     );
 } 

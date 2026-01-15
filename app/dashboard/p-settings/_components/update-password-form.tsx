@@ -13,6 +13,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { toast } from "sonner"
 import { useState } from "react"
 
@@ -69,7 +70,7 @@ export function UpdatePasswordForm() {
                         <FormItem>
                             <FormLabel>Current Password</FormLabel>
                             <FormControl>
-                                <Input type="password" {...field} disabled={isLoading} />
+                                <PasswordInput {...field} disabled={isLoading} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -82,7 +83,7 @@ export function UpdatePasswordForm() {
                         <FormItem>
                             <FormLabel>New Password</FormLabel>
                             <FormControl>
-                                <Input type="password" {...field} disabled={isLoading} />
+                                <PasswordInput {...field} disabled={isLoading} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -95,7 +96,7 @@ export function UpdatePasswordForm() {
                         <FormItem>
                             <FormLabel>Confirm New Password</FormLabel>
                             <FormControl>
-                                <Input type="password" {...field} disabled={isLoading} />
+                                <PasswordInput {...field} disabled={isLoading} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>

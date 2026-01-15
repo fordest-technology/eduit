@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Loader2, Plus, X } from "lucide-react"
 import {
@@ -102,14 +103,14 @@ export function ManageSubjectsModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Manage Subjects</DialogTitle>
-                    <DialogDescription>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
+                <SheetHeader className="mb-6">
+                    <SheetTitle>Manage Subjects</SheetTitle>
+                    <SheetDescription>
                         Add or remove subjects this teacher will teach.
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <div className="space-y-4 py-4">
                     {/* Selected Subjects */}
@@ -165,7 +166,7 @@ export function ManageSubjectsModal({
                     )}
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <SheetFooter className="mt-8">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
@@ -179,8 +180,8 @@ export function ManageSubjectsModal({
                             "Save Changes"
                         )}
                     </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
     )
 } 

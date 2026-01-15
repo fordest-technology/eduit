@@ -14,7 +14,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import { Plus, Pencil, Trash2, Loader2, Users, BookOpen, GraduationCap, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -287,16 +294,16 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
                 </Table>
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{isEditMode ? 'Edit Department' : 'Create Department'}</DialogTitle>
-                        <DialogDescription>
+            <Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <SheetContent side="right">
+                    <SheetHeader className="pb-6">
+                        <SheetTitle>{isEditMode ? 'Edit Department' : 'Create Department'}</SheetTitle>
+                        <SheetDescription>
                             {isEditMode
                                 ? "Update the department's information below."
                                 : "Add a new department by filling out the information below."}
-                        </DialogDescription>
-                    </DialogHeader>
+                        </SheetDescription>
+                    </SheetHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-4">
                             <div>
@@ -320,7 +327,7 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
                                 />
                             </div>
                         </div>
-                        <DialogFooter>
+                        <SheetFooter className="mt-8">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -339,10 +346,10 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
                                     isEditMode ? 'Update Department' : 'Create Department'
                                 )}
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
         </div>
     )
 } 

@@ -7,6 +7,7 @@ import { DashboardHeader } from "@/app/components/dashboard-header"
 import { TeachersClient } from "./teachers-client"
 import { Button } from "@/components/ui/button"
 import { Teacher, User, Department, UserRole } from "@prisma/client"
+import { hasPermission } from "@/lib/permissions"
 
 interface TeacherData {
     id: string;
@@ -62,6 +63,7 @@ interface SessionData {
     role: UserRole;
     schoolId: string | null;
     profileImage: string | null;
+    permissions?: any;
 }
 
 interface TeachersResponse {
@@ -98,10 +100,18 @@ export default function TeachersPage() {
                 setSession(sessionData)
 
                 // If no session or not allowed role, redirect
-                if (!sessionData ||
-                    (sessionData.role !== UserRole.SUPER_ADMIN &&
-                        sessionData.role !== UserRole.SCHOOL_ADMIN)) {
+                if (!sessionData) {
                     router.push("/login")
+                    return
+                }
+
+                const isSuperAdmin = sessionData.role === UserRole.SUPER_ADMIN;
+                const isSchoolAdmin = sessionData.role === UserRole.SCHOOL_ADMIN;
+                const canViewTeachers = isSuperAdmin || (isSchoolAdmin && (!sessionData.permissions || hasPermission(sessionData.permissions, "view_teachers")));
+
+                if (!canViewTeachers) {
+                    router.push("/dashboard")
+                    toast.error("You don't have permission to view teachers")
                     return
                 }
 

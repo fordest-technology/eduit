@@ -6,13 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import {
     Form,
     FormControl,
@@ -396,17 +396,17 @@ export function AddStudentModal({
     };
 
     return (
-        <Dialog
+        <Sheet
             open={open}
             onOpenChange={onOpenChange}
         >
-            <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle>{studentToEdit ? "Edit Student" : "Add New Student"}</DialogTitle>
-                    <DialogDescription>
+            <SheetContent className="max-w-2xl w-full overflow-y-auto" side="right">
+                <SheetHeader className="pb-6">
+                    <SheetTitle>{studentToEdit ? "Edit Student" : "Add New Student"}</SheetTitle>
+                    <SheetDescription>
                         {studentToEdit ? "Update student details in the system." : "Enter student details to add them to the system."}
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 <div className="mb-6">
                     <div className="flex items-center gap-6">
@@ -886,7 +886,7 @@ export function AddStudentModal({
                             </div>
                         </div>
 
-                        <DialogFooter>
+                        <SheetFooter className="mt-8 pb-4">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -904,10 +904,10 @@ export function AddStudentModal({
                                     studentToEdit ? "Update Student" : "Add Student"
                                 )}
                             </Button>
-                        </DialogFooter>
+                        </SheetFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     )
 }

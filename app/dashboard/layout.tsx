@@ -17,7 +17,8 @@ export default async function DashboardLayout({
   const userData = {
     role: session.role,
     name: session.name,
-    profileImage: session.profileImage
+    profileImage: session.profileImage,
+    permissions: session.permissions
   }
 
   return <DashboardContent session={userData}>{children}</DashboardContent>

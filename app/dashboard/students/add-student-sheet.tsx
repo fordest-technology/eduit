@@ -29,6 +29,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Loader2, Camera, Upload, X, CalendarIcon, Mail, Send } from "lucide-react"
 import { UserRole } from "@prisma/client"
@@ -658,8 +659,7 @@ export function AddStudentSheet({
                                                             <FormItem className="flex-1">
                                                                 <FormLabel>Password</FormLabel>
                                                                 <FormControl>
-                                                                    <Input
-                                                                        type="password"
+                                                                    <PasswordInput
                                                                         placeholder="Enter password"
                                                                         {...field}
                                                                     />
