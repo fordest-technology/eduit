@@ -8,31 +8,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { UserRole } from "@/lib/auth"
-import { toast } from "@/components/ui/use-toast"
-import { ColorPicker } from "@/app/dashboard/settings/_components/color-picker"
 import {
   LogOut,
-  ShieldCheck,
-  LayoutDashboard,
-  Wallet,
-  Coins,
-  UserCog,
-  GraduationCap,
-  ClipboardCheck,
-  ArrowRightLeft,
-  Calendar,
-  UserCircle,
   School,
-  BookText,
-  Layers,
-  Building2,
+  Coins,
+  Calendar,
   Settings,
+  UserCircle,
+  GraduationCap,
+  UserCog,
+  LayoutDashboard,
+  BookText,
+  Building2,
+  ClipboardCheck,
+  Layers,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Receipt,
 } from "lucide-react"
-import { hasPermission, type Permission } from "@/lib/permissions"
-import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
 interface DashboardSidebarProps {
@@ -40,7 +33,6 @@ interface DashboardSidebarProps {
     role: UserRole
     name: string
     profileImage?: string | null
-    permissions?: any
   }
 }
 
@@ -170,19 +162,18 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "SUPER_ADMIN":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { title: "Wallet", href: "/dashboard/wallet", icon: Wallet },
-          { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
+          { title: "Wallet & Fees", href: "/dashboard/wallet", icon: Receipt },
+          { title: "Fees Management", href: "/dashboard/fees", icon: Coins },
           { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
           {
             title: "Results",
             href: "/dashboard/results",
             icon: ClipboardCheck,
-          },
-          {
-            title: "Promotion Engine",
-            href: "/dashboard/students/promotions",
-            icon: ArrowRightLeft,
+            children: [
+              { title: "Results Management", href: "/dashboard/results" },
+              { title: "Results Configuration", href: "/dashboard/results/configuration" },
+            ]
           },
           { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
           { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
@@ -191,92 +182,46 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Departments", href: "/dashboard/departments", icon: Layers },
           { title: "School Levels", href: "/dashboard/school-levels", icon: Building2 },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
-          { title: "Admins", href: "/dashboard/admins", icon: ShieldCheck },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "SCHOOL_ADMIN":
-        const perms = user.permissions;
-
-        // If no permissions defined, assume legacy school admin (full access)
-        if (!perms) {
-          return [
-            { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-            { title: "Wallet", href: "/dashboard/wallet", icon: Wallet },
-            { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
-            { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
-            { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-            { title: "Results", href: "/dashboard/results", icon: ClipboardCheck },
-            { title: "Promotion Engine", href: "/dashboard/students/promotions", icon: ArrowRightLeft },
-            { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
-            { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
-            { title: "Classes", href: "/dashboard/classes", icon: School },
-            { title: "Subjects", href: "/dashboard/subjects", icon: BookText },
-            { title: "Departments", href: "/dashboard/departments", icon: Layers },
-            { title: "School Levels", href: "/dashboard/school-levels", icon: Building2 },
-            { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
-            { title: "Admins", href: "/dashboard/admins", icon: ShieldCheck },
-            { title: "Settings", href: "/dashboard/settings", icon: Settings },
-          ]
-        }
-
-        const items = [{ title: "Dashboard", href: "/dashboard", icon: LayoutDashboard }];
-
-        if (hasPermission(perms, "view_wallet") || hasPermission(perms, "manage_wallet"))
-          items.push({ title: "Wallet", href: "/dashboard/wallet", icon: Wallet });
-
-        if (hasPermission(perms, "view_fees") || hasPermission(perms, "manage_fees"))
-          items.push({ title: "Fees Payment", href: "/dashboard/fees", icon: Coins });
-
-        if (hasPermission(perms, "view_teachers") || hasPermission(perms, "manage_teachers"))
-          items.push({ title: "Teachers", href: "/dashboard/teachers", icon: UserCog });
-
-        if (hasPermission(perms, "view_students") || hasPermission(perms, "manage_students")) {
-          items.push({ title: "Students", href: "/dashboard/students", icon: GraduationCap });
-          if (hasPermission(perms, "manage_students")) {
-            items.push({ title: "Promotion Engine", href: "/dashboard/students/promotions", icon: ArrowRightLeft });
-          }
-        }
-
-        if (hasPermission(perms, "view_results") || hasPermission(perms, "enter_results") || hasPermission(perms, "approve_results"))
-          items.push({ title: "Results", href: "/dashboard/results", icon: ClipboardCheck });
-
-        if (hasPermission(perms, "manage_sessions"))
-          items.push({ title: "Academic Session", href: "/dashboard/sessions", icon: Calendar });
-
-        if (hasPermission(perms, "view_parents") || hasPermission(perms, "manage_parents"))
-          items.push({ title: "Parents", href: "/dashboard/parents", icon: UserCircle });
-
-        if (hasPermission(perms, "manage_classes"))
-          items.push({ title: "Classes", href: "/dashboard/classes", icon: School });
-
-        if (hasPermission(perms, "manage_subjects"))
-          items.push({ title: "Subjects", href: "/dashboard/subjects", icon: BookText });
-
-        if (hasPermission(perms, "manage_departments"))
-          items.push({ title: "Departments", href: "/dashboard/departments", icon: Layers });
-
-        if (hasPermission(perms, "manage_levels"))
-          items.push({ title: "School Levels", href: "/dashboard/school-levels", icon: Building2 });
-
-        if (hasPermission(perms, "manage_calendar") || hasPermission(perms, "manage_events"))
-          items.push({ title: "Calendar", href: "/dashboard/calendar", icon: Calendar });
-
-        if (hasPermission(perms, "manage_admins"))
-          items.push({ title: "Admins", href: "/dashboard/admins", icon: ShieldCheck });
-
-        if (hasPermission(perms, "manage_settings"))
-          items.push({ title: "Settings", href: "/dashboard/settings", icon: Settings });
-
-        return items;
+        return [
+          { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { title: "Wallet & Fees", href: "/dashboard/wallet", icon: Receipt },
+          { title: "Fees Management", href: "/dashboard/fees", icon: Coins },
+          { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
+          { title: "Students", href: "/dashboard/students", icon: GraduationCap },
+          {
+            title: "Results",
+            href: "/dashboard/results",
+            icon: ClipboardCheck,
+            children: [
+              { title: "Results Management", href: "/dashboard/results" },
+              { title: "Results Configuration", href: "/dashboard/results/configuration" },
+            ]
+          },
+          { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
+          { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
+          { title: "Classes", href: "/dashboard/classes", icon: School },
+          { title: "Subjects", href: "/dashboard/subjects", icon: BookText },
+          { title: "Departments", href: "/dashboard/departments", icon: Layers },
+          { title: "School Levels", href: "/dashboard/school-levels", icon: Building2 },
+          { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+          { title: "Settings", href: "/dashboard/settings", icon: Settings },
+        ]
       case "TEACHER":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
           { title: "My Classes", href: "/dashboard/my-classes", icon: School },
           { title: "Students", href: "/dashboard/students", icon: GraduationCap },
           {
-            title: "Results Entry",
-            href: "/dashboard/teachers/results",
+            title: "Results",
+            href: "/dashboard/results",
             icon: ClipboardCheck,
+            children: [
+              { title: "Results Management", href: "/dashboard/results" },
+              { title: "Results Configuration", href: "/dashboard/results/configuration" },
+            ]
           },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
@@ -322,7 +267,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     return {
       main: items.filter((item) => ["/dashboard", "/dashboard/wallet", "/dashboard/fees", "/dashboard/calendar"].includes(item.href)),
       users: items.filter((item) =>
-        ["/dashboard/teachers", "/dashboard/students", "/dashboard/parents", "/dashboard/admins"].includes(item.href),
+        ["/dashboard/teachers", "/dashboard/students", "/dashboard/parents"].includes(item.href),
       ),
       academics: items.filter((item) =>
         [
@@ -332,7 +277,6 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           "/dashboard/school-levels",
           "/dashboard/sessions",
           "/dashboard/results",
-          "/dashboard/students/promotions",
         ].includes(item.href),
       ),
       system: items.filter((item) => ["/dashboard/settings"].includes(item.href)),
@@ -362,7 +306,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         {/* Header */}
         <div className="flex h-20 items-center px-6 z-50 flex-shrink-0 relative">
           {schoolInfo?.logo ? (
-            <div className={cn("flex items-center gap-3 transition-all duration-300 min-w-0 w-full", collapsed && "justify-center")}>
+            <div className={cn("flex items-center gap-3 transition-all duration-300", collapsed && "justify-center w-full")}>
               <div className="h-10 w-10 rounded-xl bg-white shadow-xl shadow-black/5 ring-1 ring-black/5 p-1.5 flex items-center justify-center overflow-hidden flex-shrink-0 z-50">
                 <img
                   src={schoolInfo.logo || "/placeholder.svg"}
@@ -371,11 +315,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                 />
               </div>
               {!collapsed && (
-                <div className="flex flex-col min-w-0 w-full">
-                  <span className="text-base font-bold font-sora truncate tracking-tight text-slate-800 leading-none block" title={schoolInfo.name}>
+                <div className="flex flex-col">
+                  <span className="text-base font-bold font-sora truncate tracking-tight text-slate-800 leading-none">
                     {schoolInfo.name}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-[0.2em] mt-1 truncate">Management</span>
+                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-[0.2em] mt-1">Management</span>
                 </div>
               )}
             </div>
@@ -428,7 +372,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                               <Link
                                 href={item.href}
                                 className={cn(
-                                  "group flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden min-w-0",
+                                  "group flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden",
                                   isItemActive
                                     ? "text-white shadow-lg"
                                     : "text-slate-600 hover:bg-white/80 hover:text-slate-900 border border-transparent hover:border-slate-200/60",
@@ -446,7 +390,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                                   "h-5 w-5 flex-shrink-0 transition-transform duration-300 group-hover:scale-110",
                                   isItemActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"
                                 )} />
-                                {!collapsed && <span className="truncate block flex-1">{item.title}</span>}
+                                {!collapsed && <span className="truncate">{item.title}</span>}
                               </Link>
                             </TooltipTrigger>
                             {collapsed && <TooltipContent side="right" className="font-poppins">{item.title}</TooltipContent>}
@@ -465,9 +409,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         <div className="p-4 flex-shrink-0 bg-white/40 backdrop-blur-sm border-t border-slate-200/60">
           <div className={cn("flex items-center rounded-2xl p-2 transition-all duration-300 bg-white/60 ring-1 ring-black/5 shadow-sm", collapsed ? "flex-col gap-2" : "gap-3")}>
             <div className="relative group">
-              <Avatar className={cn("rounded-xl transition-all duration-300 ring-2 ring-white bg-white", collapsed ? "h-10 w-10" : "h-10 w-10 shadow-md p-1")}>
-                <AvatarImage src={schoolInfo?.logo || user?.profileImage || undefined} className="object-contain" />
-                <AvatarFallback className="bg-slate-100 text-slate-700 font-bold">{(schoolInfo?.name || user?.name || 'U')[0].toUpperCase()}</AvatarFallback>
+              <Avatar className={cn("rounded-xl transition-all duration-300 ring-2 ring-white", collapsed ? "h-10 w-10" : "h-10 w-10 shadow-md")}>
+                <AvatarImage src={user?.profileImage || undefined} className="object-cover" />
+                <AvatarFallback className="bg-slate-100 text-slate-700 font-bold">{(user?.name || 'U')[0].toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-white" />
             </div>
