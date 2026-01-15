@@ -191,6 +191,7 @@ model Class {
   teacher   Teacher?       @relation("ClassTeacher", fields: [teacherId], references: [id])
   subjects  ClassSubject[]
   students  StudentClass[]
+  sessions  AcademicSession[] @relation("SessionClasses")
 
   @@index([schoolId])
   @@index([teacherId])
@@ -236,6 +237,7 @@ model AcademicSession {
   resultConfigurations ResultConfiguration[]
   resultPublications   ResultPublication[]
   studentClasses       StudentClass[]
+  classes              Class[]               @relation("SessionClasses")
 
   @@index([schoolId])
   @@index([schoolId, isCurrent])

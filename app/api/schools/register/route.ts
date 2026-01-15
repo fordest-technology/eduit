@@ -7,7 +7,6 @@ import { UserRole, AdminType } from "@prisma/client";
 import { checkCloudinaryConfig } from "@/lib/env-check";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { join } from "path";
 import { randomUUID } from "crypto";
 import { applySchoolTemplate } from "@/lib/school-templates";
 
@@ -68,7 +67,6 @@ export async function POST(request: NextRequest) {
         adminName: formData.get("adminName") as string,
         adminEmail: formData.get("adminEmail") as string,
         adminPassword: formData.get("adminPassword") as string,
-        schoolType: formData.get("schoolType") as string,
       };
 
       // Handle logo upload
@@ -166,10 +164,8 @@ export async function POST(request: NextRequest) {
 
     // Create school and admin in a transaction
     try {
-      // Create school with only the fields that exist in your schema
       const result = await prisma.$transaction(async (tx) => {
-        // Create school with only the fields that exist in your schema
-        // IMPORTANT: We're only including fields that are in your Prisma schema
+        // Create school
         const school = await tx.school.create({
           data: {
             name: schoolName,
@@ -177,9 +173,8 @@ export async function POST(request: NextRequest) {
             address: address || null,
             phone: phone || null,
             email,
-            logo: logoUrl,
-            subdomain,
-            // Add the color fields from the form
+            logo: logoUrl || null,
+            subdomain: subdomain,
             primaryColor: body.primaryColor || "#22c55e",
             secondaryColor: body.secondaryColor || "#f59e0b",
           },
@@ -193,26 +188,21 @@ export async function POST(request: NextRequest) {
             password: hashedPassword,
             role: UserRole.SCHOOL_ADMIN,
             schoolId: school.id,
-            // Create the admin profile with a nested create
             admin: {
               create: {
                 adminType: AdminType.SCHOOL_ADMIN,
-                permissions: JSON.stringify({
-                  canManageUsers: true,
-                  canManageClasses: true,
-                  canManageDepartments: true,
-                }),
+                permissions: "[]", // Empty array means full access in our sidebar logic
               },
             },
           },
         });
 
-        // Apply School Template (Levels, Classes, Session)
-        // Default to "combined" if not specified
-        const schoolType = body.schoolType || "combined";
-        await applySchoolTemplate(tx, school.id, schoolType);
+        // Apply school template
+        await applySchoolTemplate(tx, school.id, "combined");
 
         return { school, admin };
+      }, {
+        timeout: 20000 // 20 seconds for template application
       });
 
       // Send welcome email to school admin (and copy school email)

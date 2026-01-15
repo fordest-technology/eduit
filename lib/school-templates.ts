@@ -85,9 +85,9 @@ export async function applySchoolTemplate(
                 name: className,
                 schoolId,
                 levelId: level.id,
-                // We do NOT create sections here.
-                // The 'Section' field in Class model is left null.
-                // Students will be assigned 'arms' via StudentClass.section
+                sessions: {
+                  connect: [{ id: session.id }]
+                }
             }
         });
     }

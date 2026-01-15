@@ -77,6 +77,7 @@ interface Session {
         studentClasses: number
         attendance: number
         results: number
+        classes: number
     }
     createdAt: string
     updatedAt: string
@@ -241,6 +242,28 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                     </div>
                 );
             }
+        },
+        {
+            accessorKey: "_count.classes",
+            header: "Total Classes",
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono">
+                        {row.original._count?.classes || 0}
+                    </Badge>
+                </div>
+            ),
+        },
+        {
+            accessorKey: "_count.studentClasses",
+            header: "Enrolled Students",
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="font-mono">
+                        {row.original._count?.studentClasses || 0}
+                    </Badge>
+                </div>
+            ),
         },
         {
             accessorKey: "endDate",
