@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Receipt,
+  ShieldCheck,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -182,6 +183,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Departments", href: "/dashboard/departments", icon: Layers },
           { title: "School Levels", href: "/dashboard/school-levels", icon: Building2 },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+          { title: "Admins", href: "/dashboard/admins", icon: ShieldCheck },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "SCHOOL_ADMIN":
@@ -207,6 +209,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Departments", href: "/dashboard/departments", icon: Layers },
           { title: "School Levels", href: "/dashboard/school-levels", icon: Building2 },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+          { title: "Admins", href: "/dashboard/admins", icon: ShieldCheck },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "TEACHER":
