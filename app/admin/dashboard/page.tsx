@@ -13,6 +13,8 @@ export const metadata: Metadata = {
     description: "Administrative dashboard for managing schools and system-wide settings",
 };
 
+export const dynamic = "force-dynamic";
+
 interface UserGrowthData {
     date: Date;
     count: number;

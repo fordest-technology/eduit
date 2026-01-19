@@ -8,6 +8,8 @@ export const metadata: Metadata = {
     description: "Administrative dashboard for managing schools and system-wide settings",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
     const session = await getSession();
 
