@@ -11,37 +11,45 @@ export function cn(...inputs: ClassValue[]) {
  * @returns A secure random password
  */
 export function generatePassword(length: number = 10): string {
-  const charset =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-  let password = "";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*";
+  
+  let result = "";
+  
+  // Use crypto.getRandomValues for cryptographic security
+  const getRandomChar = (src: string) => {
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    return src.charAt(array[0] % src.length);
+  };
 
   // Ensure password has at least one of each character type
-  password += charset.substring(0, 26).charAt(Math.floor(Math.random() * 26)); // lowercase
-  password += charset.substring(26, 52).charAt(Math.floor(Math.random() * 26)); // uppercase
-  password += charset.substring(52, 62).charAt(Math.floor(Math.random() * 10)); // number
-  password += charset
-    .substring(62)
-    .charAt(Math.floor(Math.random() * (charset.length - 62))); // special
+  result += getRandomChar(lowercase);
+  result += getRandomChar(uppercase);
+  result += getRandomChar(numbers);
+  result += getRandomChar(special);
 
-  // Fill the rest of the password
+  // Fill the rest
   for (let i = 4; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * charset.length);
-    password += charset.charAt(randomIndex);
+    result += getRandomChar(charset);
   }
 
-  // Shuffle the password characters
-  return password
-    .split("")
-    .sort(() => 0.5 - Math.random())
-    .join("");
+  // Shuffle using secure values
+  return shuffleString(result);
 }
 
-// Fisher-Yates shuffle algorithm to randomize the password
+// Fisher-Yates shuffle algorithm using crypto.getRandomValues
 function shuffleString(str: string): string {
   const array = str.split("");
+  const randomValues = new Uint32Array(array.length);
+  crypto.getRandomValues(randomValues);
+
   for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    const j = randomValues[i] % (i + 1);
+    [array[i], array[j]] = [array[j], array[i]];
   }
   return array.join("");
 }
@@ -52,19 +60,13 @@ function shuffleString(str: string): string {
  */
 export function generateEmailDebugId(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const array = new Uint32Array(8);
+  crypto.getRandomValues(array);
+  
   let id = "E-";
-
-  // Generate first group of 4 characters
-  for (let i = 0; i < 4; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-
+  for (let i = 0; i < 4; i++) id += chars.charAt(array[i] % chars.length);
   id += "-";
-
-  // Generate second group of 4 characters
-  for (let i = 0; i < 4; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
+  for (let i = 4; i < 8; i++) id += chars.charAt(array[i] % chars.length);
 
   return id;
 }
@@ -73,5 +75,7 @@ export function generateEmailDebugId(): string {
  * Generates a 4-digit numeric verification code
  */
 export function generateResetCode(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return (1000 + (array[0] % 9000)).toString();
 }

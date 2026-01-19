@@ -116,39 +116,56 @@ export function TeachersClient({ teachers: initialTeachers, stats, error }: Teac
         setFilteredTeachers(filtered)
     }, [searchQuery, filterDepartment, initialTeachers])
 
-    const fetchTeachers = async () => {
-        try {
+    const fetchTeachers = async (silent = false) => {
+        const promise = (async () => {
             setIsLoading(true);
             const response = await fetch("/api/teachers")
             if (!response.ok) {
                 throw new Error("Failed to fetch teachers")
             }
             const data = await response.json()
-            // IMPORTANT: Update the state with the newly fetched data
             if (data && Array.isArray(data.teachers)) {
-                setFilteredTeachers(data.teachers as Teacher[]); // Cast to Teacher[]
+                setFilteredTeachers(data.teachers as Teacher[]);
             } else {
-                console.error("Invalid data format received:", data)
-                toast.error("Received invalid data format. Please refresh.")
+                throw new Error("Invalid data format received")
             }
-        } catch (error) {
-            console.error("Error fetching teachers:", error)
-            toast.error("Failed to fetch teachers")
+            return true;
+        })();
+
+        if (!silent) {
+            toast.promise(promise, {
+                loading: 'Accessing institutional staff registry...',
+                success: '✅ Teacher directory synchronized',
+                error: (err) => err instanceof Error ? err.message : '❌ Failed to fetch teachers',
+            });
+        }
+
+        try {
+            await promise;
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
     }
 
     const handleSuccess = async () => {
         setIsRefreshing(true)
-        try {
-            await fetchTeachers()
+        const promise = (async () => {
+            await fetchTeachers(true)
             router.refresh()
             setIsAddModalOpen(false)
-            toast.success("Teachers updated successfully")
-        } catch (error) {
-            console.error("Error refreshing teachers:", error)
-            toast.error("Failed to refresh teachers data")
+            // Wait for refresh
+            await new Promise(resolve => setTimeout(resolve, 800));
+            return true;
+        })();
+
+        toast.promise(promise, {
+            loading: 'Reconciling staff updates across systems...',
+            success: '✅ Academic records updated successfully!',
+            error: '❌ Failed to refresh teachers data',
+        });
+
+        try {
+            await promise;
         } finally {
             setIsRefreshing(false)
         }

@@ -9,6 +9,7 @@ const createSubjectSchema = z.object({
   description: z.string().nullable().optional(),
   departmentId: z.string().nullable().optional(),
   levelId: z.string().nullable().optional(),
+  classIds: z.array(z.string()).optional(), // Added classIds support
   schoolId: z.string().optional(),
 });
 
@@ -109,6 +110,17 @@ export async function POST(req: Request) {
     const json = await req.json();
     const body = createSubjectSchema.parse(json);
 
+    // Auto-assign to all classes in the level if provided
+    let finalClassIds = body.classIds || [];
+    if (body.levelId) {
+      const levelClasses = await prisma.class.findMany({
+        where: { levelId: body.levelId, schoolId: session.schoolId! },
+        select: { id: true }
+      });
+      const levelClassIds = levelClasses.map(c => c.id);
+      finalClassIds = Array.from(new Set([...finalClassIds, ...levelClassIds]));
+    }
+
     const subject = await prisma.subject.create({
       data: {
         name: body.name,
@@ -117,6 +129,12 @@ export async function POST(req: Request) {
         departmentId: body.departmentId || null,
         levelId: body.levelId || null,
         schoolId: session.schoolId!,
+        // Create class assignments
+        classes: finalClassIds.length > 0 ? {
+          create: finalClassIds.map((id) => ({
+            classId: id
+          }))
+        } : undefined
       },
       include: {
         department: true,

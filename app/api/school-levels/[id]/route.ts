@@ -39,9 +39,10 @@ function serializeBigInts(data: any): any {
 // GET a specific level
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const auth = await requireAuth(request);
 
     if (!auth.authenticated || !auth.user || !auth.user.schoolId) {
@@ -50,7 +51,7 @@ export async function GET(
 
     const level = await prisma.schoolLevel.findUnique({
       where: {
-        id: params.id,
+        id: id,
         schoolId: auth.user.schoolId,
       },
       include: {
@@ -106,9 +107,10 @@ export async function GET(
 // PUT to update a level
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const auth = await requireAuth(request, [
       UserRole.SUPER_ADMIN,
       UserRole.SCHOOL_ADMIN,
@@ -136,7 +138,7 @@ export async function PUT(
     // Check if level exists and belongs to the school
     const existingLevel = await prisma.schoolLevel.findUnique({
       where: {
-        id: params.id,
+        id: id,
         schoolId: user.schoolId,
       },
     });
@@ -148,7 +150,7 @@ export async function PUT(
     // Check if another level with the same name exists
     const duplicateLevel = await prisma.schoolLevel.findFirst({
       where: {
-        id: { not: params.id },
+        id: { not: id },
         schoolId: user.schoolId,
         name: validatedData.data.name,
       },
@@ -164,7 +166,7 @@ export async function PUT(
     // Update the level
     const updatedLevel = await prisma.schoolLevel.update({
       where: {
-        id: params.id,
+        id: id,
       },
       data: validatedData.data,
       include: {
@@ -190,9 +192,10 @@ export async function PUT(
 // DELETE a level
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const auth = await requireAuth(request, [
       UserRole.SUPER_ADMIN,
       UserRole.SCHOOL_ADMIN,
@@ -210,7 +213,7 @@ export async function DELETE(
     // Check if level exists and belongs to the school
     const level = await prisma.schoolLevel.findUnique({
       where: {
-        id: params.id,
+        id: id,
         schoolId: user.schoolId,
       },
       include: {
@@ -240,7 +243,7 @@ export async function DELETE(
     // Delete the level
     await prisma.schoolLevel.delete({
       where: {
-        id: params.id,
+        id: id,
       },
     });
 

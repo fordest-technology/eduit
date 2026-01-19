@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { UserRole as PrismaUserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-// In a real app, you would store this in an environment variable
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "your-secret-key"
-);
+// JWT Secret management
+const secretKey = process.env.JWT_SECRET;
+if (!secretKey && process.env.NODE_ENV === 'production') {
+  console.warn("⚠️ CRITICAL SECURITY WARNING: JWT_SECRET is not defined in production environment!");
+}
+const JWT_SECRET = new TextEncoder().encode(secretKey || "dev-fallback-secret-key-change-me");
 
 export type UserRole =
   | "SUPER_ADMIN"
@@ -64,14 +66,34 @@ export async function getSession(context?: unknown) {
   }
 }
 
-export async function setSessionCookie(response: NextResponse, token: string) {
+export async function setSessionCookie(
+  response: NextResponse,
+  token: string,
+  requestHost?: string
+) {
   const isSecure = process.env.NODE_ENV === "production";
   const sameSite = isSecure ? ("none" as const) : ("lax" as const);
 
-  // Get the domain from environment variable or request
-  const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
+  // Auto-detect cookie domain for subdomains
+  let cookieDomain: string | undefined = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
 
-  response.cookies.set({
+  // If no explicit domain is set and we have a host, extract the root domain
+  if (!cookieDomain && requestHost) {
+    const hostname = requestHost.split(":")[0]; // Remove port
+    const parts = hostname.split(".");
+
+    // For localhost/127.0.0.1, DO NOT set domain - let browser handle it
+    // This allows cookies to work on both localhost:3000 and zed.localhost:3000
+    const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1");
+
+    if (!isLocalhost && parts.length > 2) {
+      // For production subdomains like zed.eduit.com, set domain to .eduit.com
+      cookieDomain = `.${parts.slice(-2).join(".")}`;
+    }
+    // If localhost or simple domain, don't set domain (undefined)
+  }
+
+  const cookieOptions: any = {
     name: "session",
     value: token,
     httpOnly: true,
@@ -79,8 +101,14 @@ export async function setSessionCookie(response: NextResponse, token: string) {
     secure: isSecure,
     sameSite: sameSite,
     maxAge: 60 * 60 * 8, // 8 hours
-    domain: cookieDomain, // This will allow the cookie to work across subdomains
-  });
+  };
+
+  // Only add domain if we have one (don't set for localhost)
+  if (cookieDomain) {
+    cookieOptions.domain = cookieDomain;
+  }
+
+  response.cookies.set(cookieOptions);
 
   return response;
 }

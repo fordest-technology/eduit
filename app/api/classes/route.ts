@@ -108,9 +108,16 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        orderBy: {
-          name: "asc",
-        },
+        orderBy: [
+          {
+            level: {
+              order: "asc",
+            },
+          },
+          {
+            section: "asc",
+          },
+        ],
       });
 
       // Get subjects for all classes in a single query (if needed)
@@ -258,42 +265,65 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create the class
-    const newClass = await prisma.class.create({
-      data: {
-        name: name.trim(),
-        section: section?.trim() || null,
-        teacherId: teacherId || null,
-        levelId: levelId || null,
-        schoolId,
-      },
-      include: {
-        level: true,
-        teacher: {
-          include: {
-            user: {
-              select: {
-                name: true,
-                email: true,
-                profileImage: true,
+    // Create the class and auto-assign subjects in a transaction
+    const createdClass = await prisma.$transaction(async (tx) => {
+      // 1. Create the class
+      const cls = await tx.class.create({
+        data: {
+          name: name.trim(),
+          section: section?.trim() || null,
+          teacherId: teacherId || null,
+          levelId: levelId || null,
+          schoolId,
+        },
+        include: {
+          level: true,
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  profileImage: true,
+                },
               },
             },
           },
         },
-      },
+      });
+
+      // 2. If levelId provided, find and assign level-wide subjects
+      if (levelId) {
+        const levelSubjects = await tx.subject.findMany({
+          where: { levelId, schoolId },
+          select: { id: true }
+        });
+
+        if (levelSubjects.length > 0) {
+          await tx.classSubject.createMany({
+            data: levelSubjects.map(s => ({
+              classId: cls.id,
+              subjectId: s.id
+            }))
+          });
+        }
+      }
+
+      return cls;
     });
 
     const duration = Date.now() - startTime;
     logger.api("POST /api/classes", duration, {
       schoolId,
-      classId: newClass.id,
-      className: newClass.name,
+      classId: createdClass.id,
+      className: createdClass.name,
     });
 
-    return NextResponse.json(newClass, { status: 201 });
-  } catch (error) {
+    return NextResponse.json(createdClass, { status: 201 });
+  } catch (error: any) {
     const duration = Date.now() - startTime;
     logger.error("Error in POST /api/classes", error, { duration });
+
     return NextResponse.json(
       { error: "Failed to create class" },
       { status: 500 }

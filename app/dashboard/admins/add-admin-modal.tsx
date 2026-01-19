@@ -151,7 +151,7 @@ export function AddAdminModal({
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
                         <SheetHeader className="p-6 pb-2 border-b flex-none">
                             <SheetTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5 text-blue-600" />
+                                <Shield className="h-5 w-5 text-primary" />
                                 {admin ? "Edit Administrator" : "Add New Administrator"}
                             </SheetTitle>
                             <SheetDescription>
@@ -210,7 +210,7 @@ export function AddAdminModal({
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h3 className="text-lg font-medium flex items-center gap-2">
-                                                <Lock className="h-4 w-4 text-blue-600" />
+                                                <Lock className="h-4 w-4 text-primary" />
                                                 Permissions & Access Control
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
@@ -229,7 +229,7 @@ export function AddAdminModal({
 
                                     {PERMISSION_GROUPS.map((group) => (
                                         <div key={group.name} className="space-y-3 pt-2">
-                                            <h4 className="font-semibold text-sm text-blue-600 uppercase tracking-wider">{group.name}</h4>
+                                            <h4 className="font-semibold text-sm text-primary uppercase tracking-wider">{group.name}</h4>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border rounded-lg p-4 bg-gray-50/50">
                                                 {group.permissions.map((permission) => (
                                                     <FormField
@@ -272,7 +272,7 @@ export function AddAdminModal({
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                            <Button type="submit" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {admin ? "Update Admin" : "Create Admin"}
                             </Button>

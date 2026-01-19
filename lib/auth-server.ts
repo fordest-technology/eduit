@@ -1,85 +1,65 @@
 // lib/auth-server.ts
-import { jwtVerify, SignJWT, type JWTPayload } from "jose";
-import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
+// Secure wrapper around lib/auth for server-side usage
+import { verifyJwt as verify, signJwt, UserJwtPayload as Payload } from "./auth";
 import { UserRole as PrismaUserRole } from "@prisma/client";
+import { NextResponse } from "next/server";
 
-export type UserJwtPayload = JWTPayload & {
-  id: string;
-  email: string;
-  role: PrismaUserRole;
-  schoolId?: string;
-  [key: string]: unknown;
-};
+export type UserJwtPayload = Payload;
 
-const jwtSecret =
-  process.env.JWT_SECRET || "your-secret-key";
-if (!process.env.JWT_SECRET) {
-  console.warn(
-    "WARN: JWT_SECRET is not defined in .env. Using default secret for development."
-  );
-}
-const secret = new TextEncoder().encode(jwtSecret);
-
-// ---------- verify ----------
+/**
+ * Verifies a JWT token
+ */
 export async function verifyJwt(token: string): Promise<UserJwtPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, secret);
-    return payload as UserJwtPayload;
-  } catch {
-    return null;
-  }
+    return verify(token);
 }
 
-// ---------- get current session ----------
-export async function getSession() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
+/**
+ * Gets the current session from cookies
+ */
+export { getSession } from "./auth";
 
-  try {
-    const { payload } = await jwtVerify(token, secret);
-    return payload as UserJwtPayload;
-  } catch {
-    return null;
-  }
-}
+/**
+ * Creates a new session and returns a response with the session cookie
+ */
+export async function createSession(
+  user: {
+    id: string;
+    email: string;
+    role: PrismaUserRole;
+    schoolId?: string;
+    name?: string;
+  },
+  requestHost?: string
+) {
+  // Map Prisma role if needed (though they should align)
+  const payload: UserJwtPayload = {
+    id: user.id,
+    email: user.email,
+    name: user.name || "",
+    role: user.role as any,
+    schoolId: user.schoolId,
+  };
 
-// ---------- create session ----------
-export async function createSession(user: {
-  id: string;
-  email: string;
-  role: PrismaUserRole;
-  schoolId?: string;
-}) {
-  const token = await new SignJWT(user)
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("7d")
-    .sign(secret);
-
+  const token = await signJwt(payload);
   const isProduction = process.env.NODE_ENV === "production";
 
-  const response = new Response(JSON.stringify({ success: true }), {
+  const response = new NextResponse(JSON.stringify({ success: true, token }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
 
-  // Host-only cookie: omit Domain entirely
-  response.headers.append(
-    "Set-Cookie",
-    `session=${token}; ` +
-      `Path=/; ` +
-      `HttpOnly; ` +
-      `SameSite=${isProduction ? "None" : "Lax"}; ` +
-      `${isProduction ? "Secure; " : ""}` +
-      `Max-Age=${60 * 60 * 24 * 7}` // 7 days
-  );
+  // Use standardized cookie setting from lib/auth with host for subdomain support
+  const { setSessionCookie } = await import("./auth");
+  await setSessionCookie(response, token, requestHost);
 
   return response;
 }
 
-// ---------- logout ----------
+/**
+ * Deletes the session cookie
+ */
 export async function deleteSession() {
-  const cookieStore = await cookies();
-  cookieStore.delete("session");
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    cookieStore.delete("session");
 }

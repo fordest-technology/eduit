@@ -5,14 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import {
     Form,
     FormControl,
@@ -31,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
-import { Loader2, Camera, Upload, X, Mail, CheckCircle, AlertCircle, XCircle, Copy, RefreshCw } from "lucide-react"
+import { Loader2, Camera, Upload, X, Mail, CheckCircle, AlertCircle, Sparkles, UserPlus, BookOpen, GraduationCap, MapPin, Phone, Briefcase } from "lucide-react"
 import { UserRole } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { generatePassword } from "@/lib/utils"
@@ -45,8 +38,9 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Teacher } from "./columns"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-// Enhanced form schema with date of birth and password
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
@@ -57,6 +51,8 @@ const formSchema = z.object({
     dateOfBirth: z.date().optional(),
     gender: z.enum(["MALE", "FEMALE", "OTHER", "none"]).default("none"),
     address: z.string().optional(),
+    departmentId: z.string().optional(),
+    classId: z.string().optional(),
     password: z.string().min(6, "Password is required and must be at least 6 characters"),
 })
 
@@ -75,252 +71,70 @@ export function AddTeacherModal({
 }: AddTeacherModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [image, setImage] = useState<string | null>(null)
-    const [session, setSession] = useState<any>(null)
+    const [viewingImage, setViewingImage] = useState<string | null>(null)
+    const [allClasses, setAllClasses] = useState<any[]>([])
+    const [allDepartments, setAllDepartments] = useState<any[]>([])
+    const [allLevels, setAllLevels] = useState<any[]>([])
+    
     const fileInputRef = useRef<HTMLInputElement>(null)
     const router = useRouter()
-    const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
-    const [emailError, setEmailError] = useState<string | null>(null);
-    const [emailRetryCount, setEmailRetryCount] = useState(0);
-    const MAX_RETRIES = 3;
     const isEditMode = Boolean(teacherToEdit);
-    const [copySuccess, setCopySuccess] = useState(false);
-
-    // Fetch session on component mount
-    useEffect(() => {
-        async function fetchSession() {
-            try {
-                const response = await fetch('/api/auth/session');
-                if (response.ok) {
-                    const data = await response.json();
-                    setSession(data);
-                }
-            } catch (error) {
-                console.error('Error fetching session:', error);
-            }
-        }
-        fetchSession();
-    }, []);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: teacherToEdit?.name || "",
-            email: teacherToEdit?.email || "",
-            phone: teacherToEdit?.phone || "",
+            name: "",
+            email: "",
+            phone: "",
             employeeId: "",
             qualifications: "",
             specialization: "",
             address: "",
             gender: "none",
+            departmentId: "",
+            classId: "",
             password: "",
         },
     })
 
-    // Update form values when teacherToEdit changes
-    useEffect(() => {
-        if (teacherToEdit) {
-            form.reset({
-                name: teacherToEdit.name || "",
-                email: teacherToEdit.email || "",
-                phone: teacherToEdit.phone || "",
-                employeeId: "",
-                qualifications: "",
-                specialization: "",
-                address: "",
-                gender: "none",
-            });
-
-            // If teacher has a profile image, set it
-            if (teacherToEdit.profileImage) {
-                setImage(teacherToEdit.profileImage);
-            }
-        } else {
-            // Reset form when not in edit mode
-            form.reset({
-                name: "",
-                email: "",
-                phone: "",
-                employeeId: "",
-                qualifications: "",
-                specialization: "",
-                address: "",
-                gender: "none",
-                password: "",
-            });
-            setImage(null);
-        }
-    }, [teacherToEdit, form]);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (file) {
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setImage(reader.result as string)
-            }
-            reader.readAsDataURL(file)
-        }
-    }
-
-    const handleResendCredentials = async () => {
-        if (!teacherToEdit) return;
-
+    async function fetchMetadata() {
         try {
-            setIsLoading(true);
-            const password = generatePassword(); // Generate a new temporary password
-            await sendLoginCredentials(teacherToEdit.name, teacherToEdit.email, password);
-            toast.success("Login credentials have been resent.");
+            const [classesRes, deptsRes, levelsRes] = await Promise.all([
+                fetch("/api/classes"),
+                fetch("/api/departments"),
+                fetch("/api/school-levels")
+            ])
+            const classesData = await classesRes.json()
+            const deptsData = await deptsRes.json()
+            const levelsData = await levelsRes.json()
+            
+            setAllClasses(Array.isArray(classesData) ? classesData : [])
+            setAllDepartments(Array.isArray(deptsData) ? deptsData : [])
+            setAllLevels(Array.isArray(levelsData) ? levelsData : [])
         } catch (error) {
-            console.error("Failed to resend credentials:", error);
-            toast.error("Failed to resend credentials. Please try again later.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    async function sendLoginCredentials(teacherName: string, teacherEmail: string, userPassword: string) {
-        try {
-            setEmailStatus('sending');
-            setEmailError(null);
-
-            // Get school information including name and URL
-            let schoolName = "School";
-            const schoolId = session?.schoolId;
-            let schoolUrl = window.location.origin;
-
-            try {
-                // Try to get school info from the session's schoolId
-                if (schoolId) {
-                    const schoolResponse = await fetch(`/api/schools/${schoolId}`);
-                    if (schoolResponse.ok) {
-                        const schoolData = await schoolResponse.json();
-                        schoolName = schoolData.name || schoolName;
-                        if (schoolData.subdomain) {
-                            schoolUrl = `https://${schoolData.subdomain}.eduit.app`;
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching school info:", err);
-            }
-
-            // Ensure all required fields are included
-            const emailPayload = {
-                name: teacherName,
-                email: teacherEmail,
-                password: userPassword,
-                role: "teacher",
-                schoolName: schoolName,
-                schoolId: schoolId,
-                schoolUrl: schoolUrl,
-            };
-
-            console.info("Sending credentials payload:", emailPayload);
-
-            const emailResponse = await fetch("/api/send-credentials", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(emailPayload),
-            });
-
-            const responseData = await emailResponse.json();
-            console.info("Send credentials response:", responseData);
-
-            if (!emailResponse.ok) {
-                throw new Error(responseData.error || "Failed to send login credentials");
-            }
-
-            setEmailStatus('success');
-            setEmailRetryCount(0);
-            return true;
-        } catch (emailError) {
-            console.error("Failed to send email:", emailError);
-            setEmailStatus('error');
-            if (emailError instanceof Error) {
-                setEmailError(emailError.message);
-            } else {
-                setEmailError("Failed to send login credentials");
-            }
-            return false;
+            console.error("Error fetching metadata:", error)
         }
     }
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
-        try {
-            setIsLoading(true);
-            setEmailStatus('idle');
-            setEmailError(null);
-
-            // Create FormData to handle file uploads
-            const formData = new FormData();
-            formData.append("name", values.name);
-            formData.append("email", values.email);
-            formData.append("phone", values.phone || "");
-            formData.append("password", values.password);
-
-            if (values.employeeId) formData.append("employeeId", values.employeeId);
-            if (values.qualifications) formData.append("qualifications", values.qualifications);
-            if (values.specialization) formData.append("specialization", values.specialization);
-            if (values.dateOfBirth) formData.append("dateOfBirth", values.dateOfBirth.toISOString());
-            if (values.gender !== "none") formData.append("gender", values.gender);
-            if (values.address) formData.append("address", values.address);
-
-            // If we have a new image, append it to the form
-            if (image && image.startsWith("data:")) {
-                const blob = await (await fetch(image)).blob();
-                formData.append("profileImage", blob, "profile.jpg");
-            }
-
-            // Set the teacher role
-            formData.append("role", "TEACHER");
-
-            // Add the current session's school ID
-            try {
-                const sessionResponse = await fetch('/api/auth/session');
-                if (sessionResponse.ok) {
-                    const sessionData = await sessionResponse.json();
-                    if (sessionData.schoolId) {
-                        formData.append("schoolId", sessionData.schoolId);
-                    }
-                }
-            } catch (err) {
-                console.error("Error getting current session:", err);
-            }
-
-            const response = await fetch("/api/teachers", {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const error = await response.text();
-                throw new Error(error || "Failed to create teacher");
-            }
-
-            // Get the result from the response
-            const result = await response.json();
-
-            // Send email credentials if it's a new teacher
-            if (!isEditMode) {
-                const emailSent = await sendLoginCredentials(values.name, values.email, values.password);
-                if (emailSent) {
-                    toast.success("Login credentials sent successfully.");
-                } else {
-                    toast.warning("Teacher created but failed to send login credentials. Please try sending them again.");
-                }
-            }
-
-            toast.success(`Teacher ${isEditMode ? 'updated' : 'created'} successfully!`);
-
-            // Call onSuccess callback to trigger a data refetch in the parent component
-            if (onSuccess) {
-                onSuccess();
-            }
-
-            // Reset form if not in edit mode
-            if (!isEditMode) {
+    useEffect(() => {
+        if (open) {
+            fetchMetadata()
+            if (teacherToEdit) {
+                form.reset({
+                    name: teacherToEdit.name || "",
+                    email: teacherToEdit.email || "",
+                    phone: teacherToEdit.phone || "",
+                    employeeId: teacherToEdit.employeeId || "",
+                    qualifications: teacherToEdit.qualifications || "",
+                    specialization: teacherToEdit.specialization || "",
+                    address: teacherToEdit.address || "",
+                    gender: (teacherToEdit.gender as any) || "none",
+                    departmentId: teacherToEdit.departmentId || "",
+                    classId: "", // Classes are complex to pre-fill on first load without a specific teacher-class junction fetch
+                    password: "dummy-password", // Not needed for edit
+                })
+                setViewingImage(teacherToEdit.profileImage)
+            } else {
                 form.reset({
                     name: "",
                     email: "",
@@ -328,373 +142,230 @@ export function AddTeacherModal({
                     employeeId: "",
                     qualifications: "",
                     specialization: "",
-                    dateOfBirth: undefined,
-                    gender: "none",
                     address: "",
-                    password: "",
-                });
-                setImage(null);
+                    gender: "none",
+                    departmentId: "",
+                    classId: "",
+                    password: generatePassword(),
+                })
+                setViewingImage(null)
+                setImage(null)
+            }
+        }
+    }, [open, teacherToEdit, form])
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setImage(reader.result as string)
+                setViewingImage(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        try {
+            setIsLoading(true);
+            const formData = new FormData();
+            Object.entries(values).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== "") {
+                    if (value instanceof Date) {
+                        formData.append(key, value.toISOString());
+                    } else {
+                        formData.append(key, value as string);
+                    }
+                }
+            });
+
+            if (image && image.startsWith("data:")) {
+                const blob = await (await fetch(image)).blob();
+                formData.append("profileImage", blob, "profile.jpg");
             }
 
-            // Close the modal
+            const response = await fetch(isEditMode ? `/api/teachers/${teacherToEdit?.id}` : "/api/teachers", {
+                method: isEditMode ? "PUT" : "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || "Failed to save teacher");
+            }
+
+            toast.success(isEditMode ? "Teacher profile updated!" : "New teacher successfully onboarded!");
+            onSuccess?.();
             onOpenChange(false);
-
-        } catch (error) {
-            console.error("Failed to save teacher:", error);
-            if (error instanceof Error) {
-                toast.error(error.message);
-            } else {
-                toast.error("An unexpected error occurred");
-            }
+        } catch (error: any) {
+            toast.error(error.message);
         } finally {
             setIsLoading(false);
         }
     }
 
+    // Grouping classes by name/base for better selection
+    const groupedClasses = allClasses.reduce((acc: any, cls: any) => {
+        if (!acc[cls.name]) acc[cls.name] = [];
+        acc[cls.name].push(cls);
+        return acc;
+    }, {});
+
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-[725px] w-full overflow-y-auto" side="right">
-                <SheetHeader className="pb-6">
-                    <SheetTitle>
-                        {isEditMode ? 'Edit Teacher' : 'Add New Teacher'}
-                    </SheetTitle>
-                    <SheetDescription>
-                        {isEditMode
-                            ? 'Update the teacher\'s information. When you\'re done, click save.'
-                            : 'Add a new teacher to your school. They will receive an email with login credentials.'
-                        }
-                    </SheetDescription>
-                </SheetHeader>
+        <ResponsiveSheet 
+            open={open} 
+            onOpenChange={onOpenChange}
+            title={isEditMode ? "Edit Profile" : "Staff Onboarding"}
+            description={isEditMode ? "Update faculty member credentials and assignments." : "Provision a new academic educator for your institution."}
+            className="sm:max-w-[750px]"
+        >
+            <div className="flex flex-col gap-8">
+                {/* Profile Portrait Selection */}
+                <div className="flex flex-col items-center group relative z-10 self-center">
+                    <div 
+                        className="h-28 w-28 rounded-[2rem] bg-slate-100 border-4 border-white shadow-xl overflow-hidden cursor-pointer hover:scale-105 transition-all relative"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        {viewingImage ? (
+                            <Image src={viewingImage} alt="Profile" fill className="object-cover" />
+                        ) : (
+                            <div className="h-full w-full flex items-center justify-center text-slate-400">
+                                <Camera className="h-8 w-8" />
+                            </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Upload className="h-6 w-6 text-white" />
+                        </div>
+                    </div>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                    <Badge variant="secondary" className="mt-[-12px] relative z-20 px-3 py-1 bg-white border-slate-100 shadow-md font-black text-[10px] uppercase tracking-widest text-indigo-600">
+                        Portrait
+                    </Badge>
+                </div>
+
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="flex justify-center mb-6">
-                            {image ? (
-                                <div className="relative">
-                                    <Image
-                                        src={image}
-                                        alt="Profile"
-                                        width={120}
-                                        height={120}
-                                        className="rounded-full object-cover"
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="icon"
-                                        className="absolute -top-2 -right-2"
-                                        onClick={() => setImage(null)}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div>
-                                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        Upload Profile Photo
-                                    </Button>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={handleFileChange}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-4">
-                            {/* Personal Information Section */}
-                            <div className="border p-4 rounded-md">
-                                <h3 className="font-medium mb-3">Personal Information</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Full Name</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Enter teacher's full name (e.g., John Smith)" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="email"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Email Address</FormLabel>
-                                                <FormControl>
-                                                    <Input type="email" placeholder="Enter professional email address" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="dateOfBirth"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col">
-                                                <FormLabel>Date of Birth</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button
-                                                                variant={"outline"}
-                                                                className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"}`}
-                                                            >
-                                                                {field.value ? (
-                                                                    format(field.value, "PPP")
-                                                                ) : (
-                                                                    <span>Select date of birth</span>
-                                                                )}
-                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar
-                                                            mode="single"
-                                                            selected={field.value}
-                                                            onSelect={field.onChange}
-                                                            disabled={(date: Date) =>
-                                                                date > new Date() || date < new Date("1940-01-01")
-                                                            }
-                                                            initialFocus
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="gender"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Gender</FormLabel>
-                                                <Select
-                                                    onValueChange={field.onChange}
-                                                    defaultValue={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select gender" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">Not specified</SelectItem>
-                                                        <SelectItem value="MALE">Male</SelectItem>
-                                                        <SelectItem value="FEMALE">Female</SelectItem>
-                                                        <SelectItem value="OTHER">Other</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="phone"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Phone Number</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Enter contact number with country code" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="address"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Address</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Enter residential address" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                    <form className="space-y-12">
+                        {/* Section: Identity */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-2">
+                                <div className="h-1 w-8 bg-indigo-600 rounded-full" />
+                                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Faculty Identity</h3>
                             </div>
-
-                            {/* Professional Information Section */}
-                            <div className="border p-4 rounded-md">
-                                <h3 className="font-medium mb-3">Professional Information</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="employeeId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="flex items-center gap-2">
-                                                    Employee ID
-                                                    <span className="text-xs text-muted-foreground">(Auto-generated)</span>
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        value={field.value || ""}
-                                                        disabled
-                                                        className="bg-muted cursor-not-allowed"
-                                                        placeholder="Will be automatically assigned"
-                                                    />
-                                                </FormControl>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    A unique ID will be automatically generated when you save
-                                                </p>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="qualifications"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Qualifications</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Enter academic qualifications (e.g., BSc, MSc, PhD)" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="specialization"
-                                        render={({ field }) => (
-                                            <FormItem className="md:col-span-2">
-                                                <FormLabel>Specialization</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Enter teaching specialization (e.g., Mathematics, Physics)" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Password Field (only for add mode) */}
-                            {!isEditMode && (
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Password</FormLabel>
-                                            <PasswordInput
-                                                placeholder="Set a password for the teacher"
-                                                {...field}
-                                                required
-                                            />
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-
-                            <div className="bg-muted/50 p-4 rounded-md mt-4">
-                                <div className="flex items-center text-sm">
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    <p>A welcome email with login credentials will be sent automatically to the provided email address.</p>
-                                </div>
-
-                                {emailStatus === 'sending' && (
-                                    <div className="flex items-center mt-2 text-sm text-amber-600">
-                                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                        <p>Sending login credentials to {form.getValues("email")}...</p>
-                                    </div>
-                                )}
-
-                                {emailStatus === 'success' && (
-                                    <div className="flex items-center mt-2 text-sm text-green-600">
-                                        <CheckCircle className="h-3 w-3 mr-2" />
-                                        <p>Login credentials sent successfully to {form.getValues("email")}!</p>
-                                    </div>
-                                )}
-
-                                {emailStatus === 'error' && (
-                                    <div className="space-y-2 mt-2">
-                                        <div className="flex items-center text-sm text-red-600">
-                                            <AlertCircle className="h-3 w-3 mr-2" />
-                                            <p>Failed to send login credentials: {emailError}</p>
-                                        </div>
-                                        {emailRetryCount < MAX_RETRIES && (
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setEmailRetryCount(prev => prev + 1);
-                                                        sendLoginCredentials(
-                                                            form.getValues("name"),
-                                                            form.getValues("email"),
-                                                            form.getValues("password")
-                                                        );
-                                                    }}
-                                                >
-                                                    <Mail className="h-3 w-3 mr-2" />
-                                                    Retry Sending
-                                                </Button>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Attempt {emailRetryCount + 1} of {MAX_RETRIES}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {emailRetryCount >= MAX_RETRIES && (
-                                            <div className="text-xs text-muted-foreground">
-                                                Please contact the teacher directly to provide their login credentials:
-                                                <br />
-                                                Email: {form.getValues("email")}
-                                                <br />
-                                                Password: {form.getValues("password")}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="name" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-500">Legal Name</FormLabel>
+                                        <FormControl><Input placeholder="Johnathan Doe" className="h-14 rounded-2xl bg-white border-slate-100 shadow-sm focus:border-indigo-600 focus:ring-1 focus:ring-indigo-100 transition-all font-bold text-lg" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="email" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-500">Corporate Email</FormLabel>
+                                        <FormControl><Input type="email" placeholder="j.doe@eduit.edu" className="h-14 rounded-2xl bg-white border-slate-100 shadow-sm transition-all font-bold" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="phone" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-500">Primary Contact</FormLabel>
+                                        <FormControl><Input placeholder="+234 ..." className="h-14 rounded-2xl bg-white border-slate-100 shadow-sm font-bold" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="gender" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-500">Gender Identity</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger className="h-14 rounded-2xl bg-white border-slate-100 font-bold"><SelectValue placeholder="Identify gender" /></SelectTrigger></FormControl>
+                                            <SelectContent className="rounded-2xl border-slate-50 shadow-2xl"><SelectItem value="MALE">Male</SelectItem><SelectItem value="FEMALE">Female</SelectItem><SelectItem value="OTHER">Other</SelectItem><SelectItem value="none">Prefer not to say</SelectItem></SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                )} />
                             </div>
                         </div>
 
-                        <SheetFooter className="mt-8 pb-4">
-                            <Button
-                                variant="outline"
-                                type="button"
-                                onClick={() => onOpenChange(false)}
+                        {/* Section: Academic Routing */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-2">
+                                <div className="h-1 w-8 bg-indigo-600 rounded-full" />
+                                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Institutional Assignment</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="departmentId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-500">Academic Department</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger className="h-14 rounded-2xl bg-white border-slate-100 font-bold"><SelectValue placeholder="Assign Department" /></SelectTrigger></FormControl>
+                                            <SelectContent className="rounded-2xl border-slate-50 shadow-2xl">
+                                                {allDepartments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                )} />
+                                
+                                {/* Class Assignment with Section/Arm logic built in */}
+                                <FormField control={form.control} name="classId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-500">Primary Form Class (Arm/Section)</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger className="h-14 rounded-2xl bg-white border-slate-100 font-bold"><SelectValue placeholder="Assign specific arm" /></SelectTrigger></FormControl>
+                                            <SelectContent className="rounded-2xl border-slate-50 shadow-2xl">
+                                                {Object.entries(groupedClasses).map(([name, arms]: [string, any]) => (
+                                                    <div key={name}>
+                                                        <div className="px-2 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/50">Level: {name}</div>
+                                                        {arms.map((arm: any) => (
+                                                            <SelectItem key={arm.id} value={arm.id} className="rounded-xl px-4 py-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-slate-700">{arm.name} {arm.section}</span>
+                                                                    {arm.level?.name && <Badge variant="outline" className="text-[9px] font-black h-4 px-1">{arm.level.name}</Badge>}
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">Selection defines the teacher's primary form responsibility.</p>
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </div>
+
+                        {/* Section: Credentials (New Only) */}
+                        {!isEditMode && (
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-1 w-8 bg-indigo-600 rounded-full" />
+                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Security Access</h3>
+                                </div>
+                                <FormField control={form.control} name="password" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-500">Generated Passkey (Temporary)</FormLabel>
+                                        <FormControl><PasswordInput className="h-14 rounded-2xl bg-white border-slate-100 font-mono font-bold" {...field} /></FormControl>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 italic flex items-center gap-1">
+                                            <Mail className="h-3 w-3" /> Credentials will be dispatched to the corporate email automatically.
+                                        </p>
+                                    </FormItem>
+                                )} />
+                            </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="h-16 px-8 rounded-2xl font-bold text-slate-500 hover:text-slate-800">Discard Changes</Button>
+                            <Button 
+                                onClick={form.handleSubmit(onSubmit)} 
                                 disabled={isLoading}
+                                className="h-16 px-10 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 flex items-center gap-2 transition-all active:scale-[0.98]"
                             >
-                                Cancel
+                                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+                                {isEditMode ? "Update Faculty Record" : "Finalize Staff Onboarding"}
                             </Button>
-                            <Button
-                                type="submit"
-                                disabled={isLoading}
-                                className="relative"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {isEditMode ? 'Saving...' : 'Adding...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        {isEditMode ? 'Save Changes' : 'Add Teacher'}
-                                    </>
-                                )}
-                            </Button>
-                        </SheetFooter>
+                        </div>
                     </form>
                 </Form>
-            </SheetContent>
-        </Sheet>
+            </div>
+        </ResponsiveSheet>
     )
 } 

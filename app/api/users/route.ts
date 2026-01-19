@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { uploadImage } from "@/lib/cloudinary";
 import { UserRole } from "@prisma/client";
 import { sendTeacherCredentialsEmail } from "@/lib/email";
+import { sanitizeInput } from "@/lib/security";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -115,89 +116,52 @@ export async function POST(request: NextRequest) {
     }
 
     const contentType = request.headers.get("content-type") || "";
-    let name, email, password, role, profileImage;
-    let teacherData = null;
-    let studentData = null;
-    let parentData = null;
-    let adminData = null;
+    let body: any;
 
     if (contentType.includes("application/json")) {
-      const body = await request.json();
-      name = body.name;
-      email = body.email;
-      password = body.password;
-      role = body.role;
-      profileImage = body.profileImage;
-
-      // Handle both flat and nested structure for JSON
-      if (role === UserRole.TEACHER) {
-        teacherData = body.teacherData || {
-          phone: body.phone,
-          gender: body.gender,
-          dateOfBirth: body.dateOfBirth,
-          address: body.address,
-          city: body.city,
-          state: body.state,
-          country: body.country,
-          qualifications: body.qualifications,
-          specialization: body.specialization,
-          employeeId: body.employeeId,
-          departmentId: body.departmentId,
-        };
-      } else if (role === UserRole.STUDENT) {
-        studentData = body.studentData || {
-          phone: body.phone,
-          gender: body.gender,
-          dateOfBirth: body.dateOfBirth,
-          address: body.address,
-          city: body.city,
-          state: body.state,
-          country: body.country,
-          religion: body.religion,
-          bloodGroup: body.bloodGroup,
-        };
-      } else if (role === UserRole.PARENT) {
-        parentData = body.parentData || {
-          phone: body.phone,
-          alternatePhone: body.alternatePhone,
-          occupation: body.occupation,
-          address: body.address,
-          city: body.city,
-          state: body.state,
-          country: body.country,
-        };
-      } else if (role === UserRole.SCHOOL_ADMIN || role === UserRole.SUPER_ADMIN) {
-        adminData = body.adminData || {
-          adminType: body.adminType,
-          permissions: body.permissions,
-        };
-      }
-    } else if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
-      const formData = await request.formData();
-      name = formData.get("name") as string;
-      email = formData.get("email") as string;
-      password = formData.get("password") as string;
-      role = formData.get("role") as UserRole;
-      profileImage = formData.get("profileImage") as string;
-
-      teacherData = formData.get("teacherData")
-        ? JSON.parse(formData.get("teacherData") as string)
-        : null;
-      studentData = formData.get("studentData")
-        ? JSON.parse(formData.get("studentData") as string)
-        : null;
-      parentData = formData.get("parentData")
-        ? JSON.parse(formData.get("parentData") as string)
-        : null;
-      adminData = formData.get("adminData")
-        ? JSON.parse(formData.get("adminData") as string)
-        : null;
+      body = sanitizeInput(await request.json());
     } else {
-      return new NextResponse("Unsupported Content-Type", { status: 415 });
+      const formData = await request.formData();
+      body = sanitizeInput(Object.fromEntries(formData.entries()));
+      
+      // Parse nested objects that might be stringified in FormData
+      ['teacherData', 'studentData', 'parentData', 'adminData'].forEach(key => {
+        if (body[key] && typeof body[key] === 'string') {
+          try {
+            body[key] = JSON.parse(body[key]);
+          } catch (e) {
+            // Ignore parse errors, use as is or null
+          }
+        }
+      });
+    }
+
+    const { name, email, password, role, profileImage } = body;
+    let teacherData = body.teacherData;
+    let studentData = body.studentData;
+    let parentData = body.parentData;
+    let adminData = body.adminData;
+
+    // Provide default nested structure if flat data was sent
+    if (!teacherData && role === UserRole.TEACHER) {
+      teacherData = { ...body };
+    } else if (!studentData && role === UserRole.STUDENT) {
+      studentData = { ...body };
+    } else if (!parentData && role === UserRole.PARENT) {
+      parentData = { ...body };
+    } else if (!adminData && (role === UserRole.SCHOOL_ADMIN || role === UserRole.SUPER_ADMIN)) {
+      adminData = { ...body };
     }
 
     if (!name || !email || !password || !role) {
       return new NextResponse("Missing required fields", { status: 400 });
+    }
+
+    // Role-based privilege escalation prevention
+    if (session.role === UserRole.SCHOOL_ADMIN) {
+      if (role === UserRole.SUPER_ADMIN || role === UserRole.SCHOOL_ADMIN) {
+        return new NextResponse("Unauthorized to create this role type", { status: 403 });
+      }
     }
 
     const finalSchoolId = session.schoolId;

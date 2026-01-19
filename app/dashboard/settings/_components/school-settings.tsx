@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
-import { useToast } from "@/components/ui/use-toast"
-import { ColorPicker } from "./color-picker"
+import { toast } from "sonner"
+import { ColorPicker } from "@/components/color-picker"
 import { Loader2, Upload, Trash2, Camera, Settings2, School, Mail, Phone } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -31,7 +31,6 @@ type SchoolSettingsFormData = z.infer<typeof schoolSettingsSchema>
 export function SchoolSettings() {
     const [isLoading, setIsLoading] = useState(false)
     const [logoFile, setLogoFile] = useState<File | null>(null)
-    const { toast } = useToast()
 
     const form = useForm<SchoolSettingsFormData>({
         resolver: zodResolver(schoolSettingsSchema),
@@ -56,36 +55,24 @@ export function SchoolSettings() {
                     form.reset(data)
                 }
             } catch (error) {
-                toast({
-                    title: "Error",
-                    description: "Failed to load school settings",
-                    variant: "destructive"
-                })
+                toast.error("Failed to load school settings");
             }
         }
         fetchSchoolData()
-    }, [form, toast])
+    }, [form])
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
             // Validate file type
             if (!file.type.startsWith('image/')) {
-                toast({
-                    title: "Error",
-                    description: "Please select a valid image file",
-                    variant: "destructive"
-                })
+                toast.error("Please select a valid image file");
                 return
             }
 
             // Validate file size (max 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                toast({
-                    title: "Error",
-                    description: "Image size should be less than 5MB",
-                    variant: "destructive"
-                })
+                toast.error("Image size should be less than 5MB");
                 return
             }
 
@@ -101,13 +88,12 @@ export function SchoolSettings() {
     }
 
     async function onSubmit(data: SchoolSettingsFormData) {
-        try {
-            setIsLoading(true)
+        setIsLoading(true)
 
-            // Create FormData
+        try {
             const formData = new FormData()
 
-            // Append all form fields
+            // Append all string fields
             Object.entries(data).forEach(([key, value]) => {
                 if (key !== 'logo') {
                     formData.append(key, value || '')
@@ -119,33 +105,31 @@ export function SchoolSettings() {
                 formData.append('logo', logoFile)
             }
 
-            const response = await fetch('/api/schools/settings', {
+            const promise = fetch('/api/schools/settings', {
                 method: 'PUT',
                 // Don't set Content-Type header - browser will set it automatically with boundary
                 body: formData,
-            })
+            }).then(async (response) => {
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    throw new Error(errorData.error || 'Failed to update school settings')
+                }
+                return response.json()
+            }).then((responseData) => {
+                // Update form with new data
+                form.reset(responseData)
+                return responseData
+            });
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || 'Failed to update school settings')
-            }
+            toast.promise(promise, {
+                loading: 'Updating school configuration...',
+                success: '✅ School settings updated successfully',
+                error: (err) => err instanceof Error ? err.message : '❌ Failed to update settings',
+            });
 
-            const responseData = await response.json()
-
-            // Update form with new data
-            form.reset(responseData)
-
-            toast({
-                title: "Success",
-                description: "School settings updated successfully"
-            })
+            await promise;
         } catch (error) {
             console.error('Form submission error:', error)
-            toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "Failed to update school settings",
-                variant: "destructive"
-            })
         } finally {
             setIsLoading(false)
         }
@@ -353,7 +337,7 @@ export function SchoolSettings() {
                                             <FormItem>
                                                 <FormLabel>Primary Color</FormLabel>
                                                 <FormControl>
-                                                    <ColorPicker value={field.value} onChange={field.onChange} />
+                                                    <ColorPicker color={field.value} onChange={field.onChange} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -367,7 +351,7 @@ export function SchoolSettings() {
                                             <FormItem>
                                                 <FormLabel>Secondary Color</FormLabel>
                                                 <FormControl>
-                                                    <ColorPicker value={field.value} onChange={field.onChange} />
+                                                    <ColorPicker color={field.value} onChange={field.onChange} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

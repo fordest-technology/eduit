@@ -18,6 +18,7 @@ const sora = Sora({
 });
 
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "EduIT",
@@ -77,8 +78,13 @@ function hexToHSL(hex: string) {
 
 // Helper function to generate CSS variables from hex colors
 function generateColorVariables(primaryColor: string, secondaryColor: string) {
-  const primaryHSL = hexToHSL(primaryColor);
-  const secondaryHSL = hexToHSL(secondaryColor);
+  // Validate hex format before processing to prevent CSS injection
+  const hexRegex = /^#([A-Fa-f0-9]{3}){1,2}$/;
+  const validPrimary = hexRegex.test(primaryColor) ? primaryColor : "#22c55e";
+  const validSecondary = hexRegex.test(secondaryColor) ? secondaryColor : "#f59e0b";
+
+  const primaryHSL = hexToHSL(validPrimary);
+  const secondaryHSL = hexToHSL(validSecondary);
 
   return `
     :root {
@@ -134,6 +140,20 @@ export default function RootLayout({
           </ColorProvider>
         </CustomSessionProvider>
         <Toaster />
+        <SonnerToaster 
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(226, 232, 240, 0.8)',
+              borderRadius: '12px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            },
+          }}
+          expand={true}
+          richColors
+        />
       </body>
     </html>
   );

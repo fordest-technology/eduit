@@ -87,10 +87,8 @@ export function TeacherAssignmentModal({
         try {
             await onAssignTeachers(subject.id, selectedTeachers)
             onOpenChange(false)
-            toast.success("Teachers assigned successfully")
         } catch (error) {
             console.error("Error assigning teachers:", error)
-            toast.error("Failed to assign teachers")
         } finally {
             setIsLoading(false)
         }

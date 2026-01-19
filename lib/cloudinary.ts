@@ -1,4 +1,8 @@
 import { v2 as cloudinary } from "cloudinary";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { randomUUID } from "crypto";
+import { checkCloudinaryConfig } from "./env-check";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -9,15 +13,43 @@ cloudinary.config({
 
 export async function uploadImage(file: string): Promise<string> {
   try {
-    // Upload the image
-    const result = await cloudinary.uploader.upload(file, {
-      folder: "eduit",
-    });
+    // Check if Cloudinary is configured
+    if (checkCloudinaryConfig()) {
+      // Upload the image to Cloudinary
+      const result = await cloudinary.uploader.upload(file, {
+        folder: "eduit",
+      });
 
-    // Return the secure URL
-    return result.secure_url;
+      // Return the secure URL
+      return result.secure_url;
+    } else {
+      // Fallback to local storage if Cloudinary is not configured
+      console.log("Cloudinary not configured, falling back to local storage");
+      
+      // Extract base64 data
+      const base64Data = file.split(",")[1];
+      if (!base64Data) {
+        throw new Error("Invalid base64 data");
+      }
+      
+      const buffer = Buffer.from(base64Data, "base64");
+      
+      // Create relative path and filename
+      const filename = `${randomUUID()}.png`;
+      const uploadDir = join(process.cwd(), "public", "uploads");
+      
+      // Ensure directory exists
+      await mkdir(uploadDir, { recursive: true });
+      
+      // Write file
+      const filePath = join(uploadDir, filename);
+      await writeFile(filePath, buffer);
+      
+      // Return public path
+      return `/uploads/${filename}`;
+    }
   } catch (error) {
-    console.error("Error uploading to Cloudinary:", error);
+    console.error("Error in uploadImage:", error);
     throw new Error("Failed to upload image");
   }
 }

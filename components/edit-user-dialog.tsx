@@ -5,14 +5,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet"
+import { Sparkles } from "lucide-react"
 import {
     Form,
     FormControl,
@@ -102,103 +96,105 @@ export function EditUserDialog({
     }
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-[540px] w-full overflow-y-auto" side="right">
-                <SheetHeader className="mb-6">
-                    <SheetTitle>Edit User</SheetTitle>
-                    <SheetDescription>
-                        Update user information and settings.
-                    </SheetDescription>
-                </SheetHeader>
+        <ResponsiveSheet 
+            open={open} 
+            onOpenChange={onOpenChange}
+            title="Profile Synchronization"
+            description="Update the academic and security credentials for this institutional member."
+            className="sm:max-w-xl"
+        >
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem className="space-y-2">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">Legal Full Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Enter user's name" {...field} className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold transition-all" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Name</FormLabel>
+                    <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem className="space-y-2">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">Institutional Email</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Enter user's email" type="email" {...field} className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold transition-all" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem className="space-y-2">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">Security Credential (Update)</FormLabel>
+                                <FormControl>
+                                    <PasswordInput placeholder="Leave blank to maintain current" {...field} className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold transition-all" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="role"
+                        render={({ field }) => (
+                            <FormItem className="space-y-2">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">Institutional Rank</FormLabel>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                >
                                     <FormControl>
-                                        <Input placeholder="Enter user's name" {...field} />
+                                        <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold transition-all">
+                                            <SelectValue placeholder="Select a role" />
+                                        </SelectTrigger>
                                     </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                    <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
+                                        <SelectItem value={UserRole.SCHOOL_ADMIN} className="font-bold">School Admin</SelectItem>
+                                        <SelectItem value={UserRole.TEACHER} className="font-bold">Teacher</SelectItem>
+                                        <SelectItem value={UserRole.STUDENT} className="font-bold">Student</SelectItem>
+                                        <SelectItem value={UserRole.PARENT} className="font-bold">Parent</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                        <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Email</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Enter user's email" type="email" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="password"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Password (leave blank to keep current)</FormLabel>
-                                    <FormControl>
-                                        <PasswordInput placeholder="Enter new password" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="role"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Role</FormLabel>
-                                    <Select
-                                        onValueChange={field.onChange}
-                                        defaultValue={field.value}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a role" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value={UserRole.SCHOOL_ADMIN}>School Admin</SelectItem>
-                                            <SelectItem value={UserRole.TEACHER}>Teacher</SelectItem>
-                                            <SelectItem value={UserRole.STUDENT}>Student</SelectItem>
-                                            <SelectItem value={UserRole.PARENT}>Parent</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <SheetFooter className="pt-6">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => onOpenChange(false)}
-                                disabled={loading}
-                            >
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={loading}>
-                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Update User
-                            </Button>
-                        </SheetFooter>
-                    </form>
-                </Form>
-            </SheetContent>
-        </Sheet>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            disabled={loading}
+                            className="flex-1 h-14 rounded-2xl font-bold text-slate-500 hover:text-slate-800"
+                        >
+                            Discard
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            disabled={loading}
+                            className="flex-[2] h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            Sync Member Profile
+                        </Button>
+                    </div>
+                </form>
+            </Form>
+        </ResponsiveSheet>
     )
 } 

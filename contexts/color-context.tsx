@@ -21,6 +21,50 @@ const DEFAULT_COLORS = {
     secondaryColor: "#1f2937", // Default gray
 }
 
+// Color conversion helpers
+function hexToHSL(hex: string): string {
+    let c = hex.substring(1).split('');
+    if (c.length === 3) {
+        c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+    }
+    const rCr = parseInt(c.slice(0, 2).join(''), 16) / 255;
+    const gCr = parseInt(c.slice(2, 4).join(''), 16) / 255;
+    const bCr = parseInt(c.slice(4, 6).join(''), 16) / 255;
+
+    const max = Math.max(rCr, gCr, bCr), min = Math.min(rCr, gCr, bCr);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case rCr: h = (gCr - bCr) / d + (gCr < bCr ? 6 : 0); break;
+            case gCr: h = (bCr - rCr) / d + 2; break;
+            case bCr: h = (rCr - gCr) / d + 4; break;
+        }
+        h /= 6;
+    }
+    s = s * 100;
+    s = Math.round(s * 10) / 10;
+    l = l * 100;
+    l = Math.round(l * 10) / 10;
+    h = Math.round(h * 360);
+
+    return `${h} ${s}% ${l}%`;
+}
+
+function getContrastYIQ(hexcolor: string) {
+    hexcolor = hexcolor.replace("#", "");
+    if (hexcolor.length === 3) {
+        hexcolor = hexcolor.split('').map(c => c + c).join('');
+    }
+    const r = parseInt(hexcolor.substr(0, 2), 16);
+    const g = parseInt(hexcolor.substr(2, 2), 16);
+    const b = parseInt(hexcolor.substr(4, 2), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '222.2 84% 4.9%' : '210 40% 98%'; // Foreground: Dark or Light (matching globals.css defaults)
+}
+
 // Cache configuration
 const CACHE_CONFIG = {
     LOCAL_STORAGE_KEY: 'eduit_school_colors',
@@ -144,6 +188,20 @@ const cacheUtils = {
         try {
             if (typeof document === 'undefined') return
 
+            const primaryHSL = hexToHSL(colors.primaryColor)
+            const primaryForegroundHSL = getContrastYIQ(colors.primaryColor)
+            const secondaryHSL = hexToHSL(colors.secondaryColor)
+            const secondaryForegroundHSL = getContrastYIQ(colors.secondaryColor)
+
+            // Update standard ShadCN variables
+            document.documentElement.style.setProperty('--primary', primaryHSL)
+            document.documentElement.style.setProperty('--primary-foreground', primaryForegroundHSL)
+            document.documentElement.style.setProperty('--ring', primaryHSL)
+            
+            document.documentElement.style.setProperty('--secondary', secondaryHSL)
+            document.documentElement.style.setProperty('--secondary-foreground', secondaryForegroundHSL)
+
+            // Update custom variables
             document.documentElement.style.setProperty('--primary-color', colors.primaryColor)
             document.documentElement.style.setProperty('--secondary-color', colors.secondaryColor)
 

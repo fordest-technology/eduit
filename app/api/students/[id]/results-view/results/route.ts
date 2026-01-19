@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth-client';
+import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
+import { UserRole } from '@prisma/client';
 
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params;
-        const session = await getSession(null);
+        const { id: studentId } = await params;
+        const session = await getSession();
 
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,11 +18,18 @@ export async function GET(
         const sessionId = searchParams.get('sessionId');
         const periodId = searchParams.get('periodId');
 
-        // Verify access - user must be the student or parent of the student
-        const hasAccess = await verifyResultAccess(
-            session.id,
-            params.id
-        );
+        // Fetch student for access verification
+        const student = await prisma.student.findUnique({
+            where: { id: studentId },
+            select: { id: true, userId: true, schoolId: true }
+        });
+
+        if (!student) {
+            return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+        }
+
+        // Verify access - user must be student, parent, or school staff
+        const hasAccess = await verifyResultAccess(session, student);
 
         if (!hasAccess) {
             return NextResponse.json(
@@ -33,7 +40,7 @@ export async function GET(
 
         // Build query filters
         const where: any = {
-            studentId: params.id,
+            studentId: studentId,
             published: true, // Only show published results
         };
 
@@ -92,7 +99,7 @@ export async function GET(
         // Calculate additional metrics if results exist
         if (results.length > 0 && sessionId && periodId) {
             const metrics = await calculateStudentMetrics(
-                params.id,
+                studentId,
                 sessionId,
                 periodId
             );
@@ -114,30 +121,38 @@ export async function GET(
 }
 
 async function verifyResultAccess(
-    userId: string,
-    studentId: string
+    session: any,
+    student: any
 ): Promise<boolean> {
-    // Check if user is the student
-    const student = await prisma.student.findUnique({
-        where: { id: studentId },
-        select: { userId: true },
-    });
+    const { id: userId, role, schoolId: userSchoolId } = session;
+    const studentId = student.id;
 
-    if (student?.userId === userId) {
-        return true;
+    // 1. Super Admin access
+    if (role === UserRole.SUPER_ADMIN) return true;
+
+    // 2. School Admin access (same school)
+    if (role === UserRole.SCHOOL_ADMIN && userSchoolId === student.schoolId) return true;
+
+    // 3. Teacher access (same school)
+    if (role === UserRole.TEACHER && userSchoolId === student.schoolId) return true;
+
+    // 4. Student access (own results)
+    if (role === UserRole.STUDENT && student.userId === userId) return true;
+
+    // 5. Parent access (if linked)
+    if (role === UserRole.PARENT) {
+        const parentRelation = await prisma.studentParent.findFirst({
+            where: {
+                studentId,
+                parent: {
+                    userId,
+                },
+            },
+        });
+        return !!parentRelation;
     }
 
-    // Check if user is a parent of the student
-    const parentRelation = await prisma.studentParent.findFirst({
-        where: {
-            studentId,
-            parent: {
-                userId,
-            },
-        },
-    });
-
-    return !!parentRelation;
+    return false;
 }
 
 async function calculateStudentMetrics(

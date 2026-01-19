@@ -135,7 +135,8 @@ export function SubjectsTable({
         code: "",
         description: "",
         departmentId: "none",
-        levelId: "none"
+        levelId: "none",
+        targetClassName: "none"
     })
     const [departments, setDepartments] = useState<Department[]>(initialDepartments)
     const [levels, setLevels] = useState<SchoolLevel[]>(initialLevels)
@@ -246,7 +247,7 @@ export function SubjectsTable({
 
     const openAddDialog = () => {
         setEditingSubject(null)
-        setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none" })
+        setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none", targetClassName: "none" })
         setIsDialogOpen(true)
     }
 
@@ -255,71 +256,89 @@ export function SubjectsTable({
         setIsLoading(true)
 
         try {
+            // Find all class IDs for the selected class group name
+            const classIds = formData.targetClassName !== "none" 
+                ? classes.filter(c => c.name === formData.targetClassName).map(c => c.id)
+                : []
+
             const payload = {
                 name: formData.name,
                 code: formData.code || null,
                 description: formData.description || null,
                 departmentId: formData.departmentId === "none" ? null : formData.departmentId,
                 levelId: formData.levelId === "none" ? null : formData.levelId,
+                classIds,
                 schoolId
             }
 
-            const response = await fetch(editingSubject ? `/api/subjects/${editingSubject.id}` : "/api/subjects", {
+            const promise = fetch(editingSubject ? `/api/subjects/${editingSubject.id}` : "/api/subjects", {
                 method: editingSubject ? "PATCH" : "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(payload),
+            }).then(async (response) => {
+                const data = await response.json()
+                if (!response.ok) {
+                    throw new Error(data.error || "Failed to save subject")
+                }
+                return data
             })
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || "Failed to save subject")
-            }
+            toast.promise(promise, {
+                loading: editingSubject ? 'Broadcasting curriculum updates...' : 'Inscribing new subject into registry...',
+                success: (savedSubject) => {
+                    if (editingSubject) {
+                        setSubjects(subjects.map(s => s.id === editingSubject.id ? savedSubject : s))
+                    } else {
+                        setSubjects([...subjects, savedSubject])
+                    }
+                    setIsDialogOpen(false)
+                    setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none", targetClassName: "none" })
+                    setEditingSubject(null)
+                    return `✅ Subject "${payload.name}" ${editingSubject ? 'updated' : 'created'} successfully!`
+                },
+                error: (err) => err instanceof Error ? err.message : "❌ Failed to save subject",
+            })
 
-            const savedSubject = await response.json()
-
-            if (editingSubject) {
-                setSubjects(subjects.map(s => s.id === editingSubject.id ? savedSubject : s))
-                toast.success("Subject updated successfully")
-            } else {
-                setSubjects([...subjects, savedSubject])
-                toast.success("Subject created successfully")
-            }
-
-            setIsDialogOpen(false)
-            setFormData({ name: "", code: "", description: "", departmentId: "none", levelId: "none" })
-            setEditingSubject(null)
-        } catch (error: any) {
+            await promise
+        } catch (error) {
             console.error("Error saving subject:", error)
-            toast.error(error.message || "Failed to save subject")
         } finally {
             setIsLoading(false)
         }
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this subject?")) {
+        if (!confirm("Are you sure you want to decommission this subject?")) {
             return
         }
 
         setIsDeleting(id)
 
         try {
-            const response = await fetch(`/api/subjects/${id}`, {
+            const promise = fetch(`/api/subjects/${id}`, {
                 method: "DELETE",
+            }).then(async (response) => {
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    throw new Error(errorData.error || "Failed to delete subject")
+                }
+                return response.json()
             })
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || "Failed to delete subject")
-            }
+            toast.promise(promise, {
+                loading: 'Removing subject from institutional curriculum...',
+                success: () => {
+                    setSubjects(subjects.filter(s => s.id !== id))
+                    return '✅ Subject decommissioned successfully'
+                },
+                error: (err) => err instanceof Error ? err.message : '❌ Failed to delete subject',
+            })
 
-            setSubjects(subjects.filter(s => s.id !== id))
-            toast.success("Subject deleted")
-        } catch (error: any) {
+            await promise
+        } catch (error) {
             console.error("Error deleting subject:", error)
-            toast.error(error.message || "Failed to delete subject")
         } finally {
             setIsDeleting(null)
         }
@@ -347,48 +366,54 @@ export function SubjectsTable({
 
     const handleAssignTeachers = async (subjectId: string, teacherIds: string[]) => {
         try {
-            const response = await fetch(`/api/subjects/${subjectId}/teachers`, {
+            const promise = fetch(`/api/subjects/${subjectId}/teachers`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ teacherIds }),
+            }).then(async (response) => {
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    throw new Error(errorData.error || "Failed to assign teachers")
+                }
+                return response.json()
             })
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || "Failed to assign teachers")
-            }
+            toast.promise(promise, {
+                loading: 'Orchestrating instructor assignments...',
+                success: () => {
+                    setSubjects(prevSubjects =>
+                        prevSubjects.map(subject => {
+                            if (subject.id === subjectId) {
+                                const newTeachers = teacherIds.map(id => {
+                                    const teacherData = teachers.find(t => t.id === id)
+                                    return {
+                                        teacher: {
+                                            id,
+                                            name: teacherData?.name || '',
+                                            profileImage: teacherData?.profileImage || null,
+                                            userId: teacherData?.userId || ''
+                                        }
+                                    }
+                                })
 
-            setSubjects(prevSubjects =>
-                prevSubjects.map(subject => {
-                    if (subject.id === subjectId) {
-                        const newTeachers = teacherIds.map(id => {
-                            const teacherData = teachers.find(t => t.id === id)
-                            return {
-                                teacher: {
-                                    id,
-                                    name: teacherData?.name || '',
-                                    profileImage: teacherData?.profileImage || null,
-                                    userId: teacherData?.userId || ''
+                                return {
+                                    ...subject,
+                                    teachers: newTeachers
                                 }
                             }
+                            return subject
                         })
+                    )
+                    return '✅ Curriculum staff updated successfully!'
+                },
+                error: (err) => err instanceof Error ? err.message : '❌ Failed to assign teachers',
+            })
 
-                        return {
-                            ...subject,
-                            teachers: newTeachers
-                        }
-                    }
-                    return subject
-                })
-            )
-
-            toast.success("Teachers assigned successfully")
-        } catch (error: any) {
+            await promise
+        } catch (error) {
             console.error("Error assigning teachers:", error)
-            toast.error(error.message || "Failed to assign teachers")
-            throw error
         }
     }
 
@@ -404,57 +429,52 @@ export function SubjectsTable({
 
     const handleAssignClasses = async (subjectId: string, classIds: string[]) => {
         try {
-            console.log(`Sending class assignment request to /api/subjects/${subjectId}/classes with:`, classIds);
-
-            const response = await fetch(`/api/subjects/${subjectId}/classes`, {
+            const promise = fetch(`/api/subjects/${subjectId}/classes`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ classIds }),
-            });
-
-            if (!response.ok) {
-                // Try to extract error message from response
-                let errorMessage = "Failed to assign classes";
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.error || errorMessage;
-                } catch {
-                    // If we can't parse the JSON, use the status text
-                    errorMessage = `${response.status}: ${response.statusText}`;
-                }
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-            console.log("Class assignment response:", data);
-
-            // Immediately update the local state with the new class count
-            setSubjects(prevSubjects =>
-                prevSubjects.map(subject => {
-                    if (subject.id === subjectId) {
-                        return {
-                            ...subject,
-                            _count: {
-                                ...subject._count,
-                                classes: classIds.length
-                            }
-                        };
+            }).then(async (response) => {
+                if (!response.ok) {
+                    let errorMessage = "Failed to assign classes";
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    } catch {
+                        errorMessage = `${response.status}: ${response.statusText}`;
                     }
-                    return subject;
-                })
-            );
+                    throw new Error(errorMessage);
+                }
+                return response.json()
+            })
 
-            toast.success("Classes assigned successfully");
+            toast.promise(promise, {
+                loading: 'Synchronizing curriculum across class blocks...',
+                success: () => {
+                    setSubjects(prevSubjects =>
+                        prevSubjects.map(subject => {
+                            if (subject.id === subjectId) {
+                                return {
+                                    ...subject,
+                                    _count: {
+                                        ...subject._count,
+                                        classes: classIds.length
+                                    }
+                                };
+                            }
+                            return subject;
+                        })
+                    );
+                    fetchSubjects(); // Multi-sync
+                    return '✅ Subject deployment updated successfully!'
+                },
+                error: (err) => err instanceof Error ? err.message : '❌ Failed to assign classes',
+            })
 
-            // Fetch fresh data to ensure everything is in sync
-            fetchSubjects();
-
-        } catch (error: any) {
+            await promise
+        } catch (error) {
             console.error("Error assigning classes:", error);
-            toast.error(error.message || "Failed to assign classes");
-            throw error;
         }
     }
 
@@ -868,6 +888,29 @@ export function SubjectsTable({
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="class">Apply to Class (All Arms)</Label>
+                                    <Select
+                                        value={formData.targetClassName}
+                                        onValueChange={(value) => setFormData({ ...formData, targetClassName: value })}
+                                    >
+                                        <SelectTrigger id="class">
+                                            <SelectValue placeholder="Select a class group" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No specific class</SelectItem>
+                                            {Array.from(new Set(classes.map(c => c.name))).sort().map((className) => (
+                                                <SelectItem key={className} value={className}>
+                                                    {className}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        Selecting a class will automatically assign this subject to all sections (A, B, C...) of that class.
+                                    </p>
                                 </div>
 
                                 <div className="space-y-2">

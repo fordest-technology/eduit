@@ -72,6 +72,9 @@ export async function GET(request: NextRequest) {
                 subject: {
                     include: {
                         classes: {
+                            where: {
+                                teacherId: teacher.id
+                            },
                             include: {
                                 class: {
                                     include: {

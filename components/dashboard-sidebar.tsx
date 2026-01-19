@@ -195,7 +195,16 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "SCHOOL_ADMIN":
-        const perms = user.permissions;
+        let perms = user.permissions;
+
+        // Parse string permissions if needed (e.g. valid JSON string from DB)
+        if (typeof perms === 'string') {
+           try {
+             perms = JSON.parse(perms);
+           } catch (e) {
+             // If parsing fails, keep as is
+           }
+        }
 
         // If no permissions defined, assume legacy school admin (full access)
         if (!perms || (Array.isArray(perms) && perms.length === 0)) {

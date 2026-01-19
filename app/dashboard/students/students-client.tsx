@@ -204,8 +204,8 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
     // Remove debug logging - this was causing performance issues
 
     const handleSuccess = async () => {
-        try {
-            // Fetch the latest student data
+        setIsLoading(true);
+        const promise = (async () => {
             const response = await fetch('/api/students', {
                 headers: {
                     'Cache-Control': 'no-cache',
@@ -222,15 +222,19 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
                 setFilteredStudents(data);
             }
 
-            // Close the modal
             setIsAddModalOpen(false);
             setSelectedStudent(null);
+            return true;
+        })();
 
-            // Show success message
-            toast.success("Student created successfully");
-        } catch (error) {
-            toast.error('Failed to refresh student list');
-        }
+        toast.promise(promise, {
+            loading: 'Synchronizing student directory with latest records...',
+            success: '✅ Student database updated successfully',
+            error: (err) => err instanceof Error ? err.message : '❌ Failed to refresh student list',
+        });
+
+        await promise;
+        setIsLoading(false);
     }
 
     const resetFilters = () => {

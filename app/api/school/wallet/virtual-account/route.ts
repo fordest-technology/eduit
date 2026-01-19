@@ -29,17 +29,40 @@ export async function POST(req: NextRequest) {
     // 1. Fetch School Details for Business VA
     const school = await prisma.school.findUnique({
       where: { id: session.schoolId },
-      select: { name: true, email: true }
+      select: { 
+        name: true, 
+        email: true,
+        bankAccountNumber: true,
+        bankCode: true,
+        squadWalletId: true
+      }
     });
 
     if (!school) {
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
+    // Idempotency Check: Don't call API if we already have an account
+    if (school.bankAccountNumber) {
+       return NextResponse.json({ 
+        message: "School virtual account already active", 
+        data: {
+          account_number: school.bankAccountNumber,
+          bank_code: school.bankCode,
+          virtual_account_reference: school.squadWalletId
+        } 
+      });
+    }
+
     // 2. Create Business Virtual Account (The Proper Way for Schools)
+    let businessName = school.name;
+    if (businessName.trim().split(/\s+/).length < 2) {
+      businessName = `${businessName} School`;
+    }
+
     const squadResponse = await squadClient.createBusinessVirtualAccount({
       bvn: bvn,
-      business_name: school.name,
+      business_name: businessName,
       customer_identifier: `SCH-${session.schoolId.substring(0, 10)}`,
       mobile_num: phoneNumber,
     }).catch(e => e.response?.data || { status: 400, message: e.message });

@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { useSchoolStore } from "@/store/school-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,7 +21,6 @@ export default function LoginPage() {
   const [loginAttempts, setLoginAttempts] = useState(0)
   const [isSchoolLoading, setIsSchoolLoading] = useState(true)
   const router = useRouter()
-  const { toast } = useToast()
   const { school, setSchool } = useSchoolStore()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -113,13 +112,15 @@ export default function LoginPage() {
         throw new Error(data.message || "Invalid email or password");
       }
 
-      toast({
-        title: "Login Successful",
+      toast.success("Login Successful", {
         description: "Welcome back! You are being redirected...",
+        duration: 2000,
       });
 
-      const targetRoute = data.user.role === "super_admin" ? "/dashboard" : `/dashboard`;
-      router.push(targetRoute);
+      // Force a hard refresh to ensure cookie is picked up by middleware
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 500);
 
     } catch (error) {
       setError(error instanceof Error ? error.message : "Login failed");

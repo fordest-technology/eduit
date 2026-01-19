@@ -7,9 +7,10 @@ import { uploadImage } from "@/lib/cloudinary";
 // GET a specific student
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -17,7 +18,7 @@ export async function GET(
 
     // Fetch student with all necessary relations including level data
     const studentData = await prisma.student.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         user: true,
         department: true,
@@ -211,9 +212,10 @@ export async function GET(
 // PATCH to update a student
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -234,7 +236,7 @@ export async function PATCH(
 
     // First, check if student exists
     const student = await prisma.student.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: { user: true },
     });
 
@@ -309,7 +311,7 @@ export async function PATCH(
     // Update student data
     const updatedStudent = await prisma.student.update({
       where: {
-        id: params.id,
+        id: id,
       },
       data: studentData,
       include: {
@@ -326,7 +328,7 @@ export async function PATCH(
       // Check if the student already has this class for this session
       const existingClass = await prisma.studentClass.findFirst({
         where: {
-          studentId: params.id,
+          studentId: id,
           sessionId: sessionId,
         },
       });
@@ -346,7 +348,7 @@ export async function PATCH(
         // Create a new record
         await prisma.studentClass.create({
           data: {
-            studentId: params.id,
+            studentId: id,
             classId,
             sessionId,
             rollNumber: (formData.get("rollNumber") as string) || null,
@@ -379,9 +381,10 @@ export async function PATCH(
 // DELETE a student
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -389,7 +392,7 @@ export async function DELETE(
 
     // Check if student exists and user has permission
     const student = await prisma.student.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: { user: true },
     });
 
@@ -414,20 +417,20 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       // Delete related records first
       await tx.studentSubject.deleteMany({
-        where: { studentId: params.id },
+        where: { studentId: id },
       });
 
       await tx.studentParent.deleteMany({
-        where: { studentId: params.id },
+        where: { studentId: id },
       });
 
       await tx.studentClass.deleteMany({
-        where: { studentId: params.id },
+        where: { studentId: id },
       });
 
       // Delete student and user
       await tx.student.delete({
-        where: { id: params.id },
+        where: { id: id },
       });
 
       await tx.user.delete({
@@ -447,9 +450,10 @@ export async function DELETE(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -457,7 +461,7 @@ export async function PUT(
 
     // Check if student exists and user has permission
     const existingStudent = await prisma.student.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: { user: true },
     });
 
@@ -525,7 +529,7 @@ export async function PUT(
 
       // Update student data
       const updatedStudent = await tx.student.update({
-        where: { id: params.id },
+        where: { id: id },
         data: {
           departmentId,
           address,
@@ -547,14 +551,14 @@ export async function PUT(
       if (subjectIds && Array.isArray(subjectIds)) {
         // Delete existing subject assignments
         await tx.studentSubject.deleteMany({
-          where: { studentId: params.id },
+          where: { studentId: id },
         });
 
         // Create new subject assignments
         if (subjectIds.length > 0) {
           await tx.studentSubject.createMany({
             data: subjectIds.map((subjectId: string) => ({
-              studentId: params.id,
+              studentId: id,
               subjectId,
             })),
           });
@@ -565,14 +569,14 @@ export async function PUT(
       if (parentIds && Array.isArray(parentIds)) {
         // Delete existing parent relationships
         await tx.studentParent.deleteMany({
-          where: { studentId: params.id },
+          where: { studentId: id },
         });
 
         // Create new parent relationships
         if (parentIds.length > 0) {
           await tx.studentParent.createMany({
             data: parentIds.map((parentId: string) => ({
-              studentId: params.id,
+              studentId: id,
               parentId,
               relation: "Parent", // Default relation, can be updated later
             })),
@@ -585,7 +589,7 @@ export async function PUT(
         // Check if student already has a class in this session
         const existingClassRecord = await tx.studentClass.findFirst({
           where: {
-            studentId: params.id,
+            studentId: id,
             sessionId,
           },
         });
@@ -603,7 +607,7 @@ export async function PUT(
           // Create new record
           await tx.studentClass.create({
             data: {
-              studentId: params.id,
+              studentId: id,
               classId,
               sessionId,
               rollNumber: rollNumber || null,
@@ -614,7 +618,7 @@ export async function PUT(
 
       // Return full student data with relations
       const fullStudentData = await tx.student.findUnique({
-        where: { id: params.id },
+        where: { id: id },
         include: {
           user: true,
           department: true,

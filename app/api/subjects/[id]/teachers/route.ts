@@ -31,9 +31,10 @@ function serializeBigInts(data: any): any {
 // GET: Fetch teachers assigned to a subject
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check session and authorization
     const session = await getSession();
     if (!session) {
@@ -43,7 +44,7 @@ export async function GET(
     // Fetch the subject to ensure it exists and belongs to the school
     const subject = await prisma.subject.findUnique({
       where: {
-        id: params.id,
+        id: id,
       },
     });
 
@@ -59,7 +60,7 @@ export async function GET(
     // Fetch teachers assigned to this subject
     const subjectTeachers = await prisma.subjectTeacher.findMany({
       where: {
-        subjectId: params.id,
+        subjectId: id,
       },
       include: {
         teacher: {
@@ -100,9 +101,10 @@ export async function GET(
 // POST: Assign a teacher to a subject
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check session and authorization
     const session = await getSession();
     if (!session) {
@@ -131,7 +133,7 @@ export async function POST(
     // Fetch the subject to ensure it exists and belongs to the school
     const subject = await prisma.subject.findUnique({
       where: {
-        id: params.id,
+        id: id,
       },
     });
 
@@ -168,7 +170,7 @@ export async function POST(
     // Check if assignment already exists
     const existingAssignment = await prisma.subjectTeacher.findFirst({
       where: {
-        subjectId: params.id,
+        subjectId: id,
         teacherId: teacherId,
       },
     });
@@ -183,7 +185,7 @@ export async function POST(
     // Create the assignment
     const subjectTeacher = await prisma.subjectTeacher.create({
       data: {
-        subjectId: params.id,
+        subjectId: id,
         teacherId: teacherId,
       },
       include: {
@@ -226,9 +228,11 @@ export async function POST(
 // DELETE: Remove a teacher from a subject
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Check session and authorization
     const session = await getSession();
     if (!session) {
@@ -272,7 +276,7 @@ export async function DELETE(
     }
 
     // Verify the assignment is for the requested subject
-    if (assignment.subjectId !== params.id) {
+    if (assignment.subjectId !== id) {
       return NextResponse.json(
         { error: "Assignment does not belong to this subject" },
         { status: 400 }
@@ -304,9 +308,10 @@ export async function DELETE(
 // PUT: Update all teacher assignments for a subject
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check session and authorization
     const session = await getSession();
     if (!session) {
@@ -324,7 +329,7 @@ export async function PUT(
     // Fetch the subject to ensure it exists and belongs to the user's school
     const subject = await prisma.subject.findUnique({
       where: {
-        id: params.id,
+        id: id,
       },
     });
 
@@ -386,7 +391,7 @@ export async function PUT(
       // First, remove all existing assignments
       await tx.subjectTeacher.deleteMany({
         where: {
-          subjectId: params.id,
+          subjectId: id,
         },
       });
 
@@ -394,7 +399,7 @@ export async function PUT(
       if (teacherIds.length > 0) {
         await tx.subjectTeacher.createMany({
           data: teacherIds.map((teacherId) => ({
-            subjectId: params.id,
+            subjectId: id,
             teacherId,
           })),
         });
@@ -403,7 +408,7 @@ export async function PUT(
       // Fetch the updated assignments with teacher details
       const updatedAssignments = await tx.subjectTeacher.findMany({
         where: {
-          subjectId: params.id,
+          subjectId: id,
         },
         include: {
           teacher: {

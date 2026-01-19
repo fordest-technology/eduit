@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon, ClipboardCheck, Loader2, AlertTriangle } from "lucide-react";
+import { InfoIcon, ClipboardCheck, Loader2, AlertTriangle, Layout } from "lucide-react";
 import { ClassTabs } from "./_components/class-tabs";
 import { ResultsManagementContainer } from "./_components/results-management-container";
 import { ResultsConfigurationForm } from "./_components/results-configuration-form";
 import { PublishResults } from "./_components/publish-results";
+import { ResultsTemplatesList } from "./_components/results-templates-list";
 import { DashboardHeader } from "@/app/components/dashboard-header";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -142,7 +143,7 @@ export default function ResultsPage() {
       />
 
       <Tabs defaultValue="results" className="w-full" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="w-full grid grid-cols-3 bg-gradient-to-r from-slate-100 to-slate-50 h-14 p-1.5 rounded-2xl gap-2 shadow-inner">
+        <TabsList className="w-full grid grid-cols-4 bg-gradient-to-r from-slate-100 to-slate-50 h-14 p-1.5 rounded-2xl gap-2 shadow-inner">
           <TabsTrigger
             value="results"
             className="rounded-xl font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-orange-600 data-[state=active]:shadow-lg data-[state=active]:shadow-orange-100 transition-all h-11 flex items-center gap-2"
@@ -171,6 +172,14 @@ export default function ResultsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span>Configuration</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="templates"
+            className="rounded-xl font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-lg data-[state=active]:shadow-purple-100 transition-all h-11 flex items-center gap-2"
+            disabled={!isAdmin}
+          >
+            <Layout className="h-5 w-5" />
+            <span>Templates</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="results">
@@ -220,6 +229,9 @@ export default function ResultsPage() {
               />
             </>
           )}
+        </TabsContent>
+        <TabsContent value="templates" className="mt-4">
+          {isAdmin && <ResultsTemplatesList schoolId={schoolId} />}
         </TabsContent>
       </Tabs>
     </div>

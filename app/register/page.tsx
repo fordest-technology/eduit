@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useRef } from "react"
+import { toast } from "sonner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -126,9 +127,16 @@ export default function RegisterPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || data.details || "Registration failed");
 
+      toast.success("School Registered!", {
+        description: "Your institutional portal is ready. Check your email for details.",
+        duration: 5000,
+      });
       router.push("/login?registered=true");
     } catch (error: any) {
       setError(error.message || "Registration failed");
+      toast.error("Registration Failed", {
+        description: error.message || "Please check your information and try again.",
+      });
     } finally {
       setIsLoading(false);
     }

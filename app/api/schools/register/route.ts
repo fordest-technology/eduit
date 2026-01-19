@@ -9,15 +9,41 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { applySchoolTemplate } from "@/lib/school-templates";
+import { z } from "zod";
+import { sanitizeInput } from "@/lib/security";
+
+const registrationSchema = z.object({
+  schoolName: z.string().min(3).max(100),
+  shortName: z.string().min(2).max(20).regex(/^[a-zA-Z0-9-]+$/, "Short name can only contain alphanumeric characters and hyphens"),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email(),
+  adminName: z.string().min(2).max(100),
+  adminEmail: z.string().email(),
+  adminPassword: z.string().min(8),
+  primaryColor: z.string().regex(/^#([A-Fa-f0-9]{3}){1,2}$/).optional(),
+  secondaryColor: z.string().regex(/^#([A-Fa-f0-9]{3}){1,2}$/).optional(),
+});
 
 // Helper function to handle file uploads locally if Cloudinary is not available
 async function handleFileUpload(file: File): Promise<string | null> {
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+  const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    console.error(`Rejected file type: ${file.type}`);
+    return null;
+  }
+
+  if (file.size > MAX_SIZE) {
+    console.error(`File size too large: ${file.size}`);
+    return null;
+  }
+
   try {
-    // Check if Cloudinary is configured
     const isCloudinaryConfigured = checkCloudinaryConfig();
 
     if (isCloudinaryConfigured) {
-      // Use Cloudinary for file upload
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const base64 = buffer.toString("base64");
@@ -25,11 +51,12 @@ async function handleFileUpload(file: File): Promise<string | null> {
 
       return await uploadImage(dataURI);
     } else {
-      // Fallback to local file storage
       const uploadDir = join(process.cwd(), "public", "uploads", "logos");
       await mkdir(uploadDir, { recursive: true });
 
-      const filename = `${randomUUID()}-${file.name.replace(/\s/g, "_")}`;
+      // Sanitize filename: only alphanumeric + extension
+      const ext = file.name.split('.').pop() || 'png';
+      const filename = `${randomUUID()}.${ext.replace(/[^a-zA-Z0-9]/g, '')}`;
       const filePath = join(uploadDir, filename);
 
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -78,6 +105,18 @@ export async function POST(request: NextRequest) {
       // Handle regular JSON request
       body = await request.json();
     }
+    
+    // Sanitize everything before validation
+    const sanitizedBody = sanitizeInput(body);
+
+    // Validate input with Zod
+    const result = registrationSchema.safeParse(sanitizedBody);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: result.error.flatten() },
+        { status: 400 }
+      );
+    }
 
     const {
       schoolName,
@@ -88,22 +127,9 @@ export async function POST(request: NextRequest) {
       adminName,
       adminEmail,
       adminPassword,
-    } = body;
-
-    // Validate required fields
-    if (
-      !schoolName ||
-      !shortName ||
-      !email ||
-      !adminName ||
-      !adminEmail ||
-      !adminPassword
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+      primaryColor,
+      secondaryColor,
+    } = result.data;
 
     // Check if school email already exists
     const existingSchoolByEmail = await prisma.school
@@ -191,7 +217,7 @@ export async function POST(request: NextRequest) {
             admin: {
               create: {
                 adminType: AdminType.SCHOOL_ADMIN,
-                permissions: "[]", // Empty array means full access in our sidebar logic
+                permissions: "[]", // Empty array means full access in our sidebar logic (Super Admin of the school)
               },
             },
           },
@@ -202,7 +228,7 @@ export async function POST(request: NextRequest) {
 
         return { school, admin };
       }, {
-        timeout: 20000 // 20 seconds for template application
+        timeout: 120000 // 120 seconds for template application
       });
 
       // Send welcome email to school admin (and copy school email)
@@ -253,12 +279,7 @@ export async function POST(request: NextRequest) {
       console.error("Transaction error:", transactionError);
       return NextResponse.json(
         {
-          error: "Failed to create school and admin",
-          details:
-            transactionError instanceof Error
-              ? transactionError.message
-              : "Unknown error",
-          code: (transactionError as any)?.code,
+          error: "Failed to register institutional portal. Please try again later.",
         },
         { status: 500 }
       );

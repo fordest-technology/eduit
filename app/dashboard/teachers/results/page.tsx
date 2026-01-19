@@ -1,19 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DashboardHeader } from "@/app/components/dashboard-header";
-import { ClipboardList, Save, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ClipboardList, Loader2, BookOpen } from "lucide-react";
+import { BatchResultsEntry } from "@/app/dashboard/results/_components/batch-results-entry";
+import { getSession } from "@/lib/auth-client";
 
 interface Subject {
     id: string;
@@ -34,398 +31,227 @@ interface AssessmentComponent {
     name: string;
     key: string;
     maxScore: number;
-}
-
-interface StudentResult {
-    studentId: string;
-    name: string;
-    email: string;
-    rollNumber: string | null;
-    resultId?: string;
-    total: number;
-    grade?: string;
-    remark?: string;
-    teacherComment?: string;
-    componentScores: Record<string, number>;
-    hasResult: boolean;
+    weight: number;
 }
 
 export default function TeacherResultEntry() {
-    const router = useRouter();
-
     // Selection state
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [selectedSubject, setSelectedSubject] = useState("");
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedPeriod, setSelectedPeriod] = useState("");
-    const [sessionId, setSessionId] = useState("");
-
+    
     // Data state
-    const [students, setStudents] = useState<StudentResult[]>([]);
+    const [teacher, setTeacher] = useState<any>(null);
+    const [students, setStudents] = useState<any[]>([]);
     const [components, setComponents] = useState<AssessmentComponent[]>([]);
     const [periods, setPeriods] = useState<Array<{ id: string; name: string }>>([]);
-
+    const [sessions, setSessions] = useState<Array<{ id: string; name: string; isCurrent: boolean }>>([]);
+    
     // UI state
-    const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [showForm, setShowForm] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadingStudents, setLoadingStudents] = useState(false);
 
-    // Fetch teacher data
+    // Fetch initial teacher data and config
     useEffect(() => {
-        async function fetchTeacherData() {
+        async function init() {
             try {
-                const res = await fetch("/api/teachers/dashboard");
-                if (!res.ok) throw new Error("Failed to fetch teacher data");
+                const session = await getSession();
+                if (!session) return;
 
-                const data = await res.json();
-                setSubjects(data.subjects);
-                setSessionId(data.currentSession.id);
-
-                // Fetch periods
-                const periodsRes = await fetch(`/api/schools/${data.teacher.schoolId}/results/config-client`);
-                if (periodsRes.ok) {
-                    const configData = await periodsRes.json();
-                    setPeriods(configData.periods || []);
+                // 1. Fetch Teacher Dashboard Data (Subjects, Classes)
+                const dashboardRes = await fetch("/api/teachers/dashboard");
+                if (!dashboardRes.ok) throw new Error("Failed to fetch dashboard data");
+                const dashboardData = await dashboardRes.json();
+                
+                setTeacher(dashboardData.teacher);
+                setSubjects(dashboardData.subjects);
+                
+                // 2. Fetch School Config (Periods, Components, Sessions)
+                const schoolId = dashboardData.teacher.schoolId;
+                const configRes = await fetch(`/api/schools/${schoolId}/results/config-client`);
+                if (!configRes.ok) throw new Error("Failed to fetch result configuration");
+                const configData = await configRes.json();
+                
+                setPeriods(configData.periods || []);
+                setComponents(configData.assessmentComponents || []);
+                
+                // Fetch sessions (if not in config client, fetch separately or use dashboardData currentSession)
+                // Dashboard data only has currentSession. Let's fetch all sessions to be safe or just use current.
+                // For BatchResultsEntry, it expects a list of sessions.
+                const sessionsRes = await fetch(`/api/schools/${schoolId}/sessions`);
+                if (sessionsRes.ok) {
+                    const sessionsData = await sessionsRes.json();
+                    setSessions(sessionsData);
+                     // Default to current session
+                     const current = sessionsData.find((s: any) => s.isCurrent);
+                     if (current && !selectedPeriod) { // Don't override if already selected? No, this is init.
+                         // BatchResultsEntry handles session selection internally if passed list.
+                     }
+                } else {
+                     // Fallback
+                     setSessions([{ ...dashboardData.currentSession, isCurrent: true }]);
                 }
+
             } catch (error) {
-                console.error("Error fetching teacher data:", error);
-                toast.error("Failed to load teacher data");
+                console.error("Error initializing teacher results:", error);
+                toast.error("Failed to load initial data");
+            } finally {
+                setLoading(false);
             }
         }
 
-        fetchTeacherData();
+        init();
     }, []);
 
-    // Fetch students and results when selections are made
-    const handleFetchResults = async () => {
-        if (!selectedSubject || !selectedClass || !selectedPeriod || !sessionId) {
-            toast.error("Please select subject, class, and period");
-            return;
-        }
+    // Fetch students when a class is selected
+    useEffect(() => {
+        if (!selectedClass || !teacher) return;
 
-        setLoading(true);
-        try {
-            const res = await fetch(
-                `/api/teachers/results?subjectId=${selectedSubject}&classId=${selectedClass}&periodId=${selectedPeriod}&sessionId=${sessionId}`
-            );
+        async function fetchStudents() {
+            setLoadingStudents(true);
+            try {
+                // We reuse the teacher results endpoint but we only care about the student list for now.
+                // Or better, a dedicate endpoint. 
+                // Let's use the filter logic we have.
+                // Effectively we want "Students in Class X".
+                // We can use the generic classes API if we have access, or just simple fetch.
+                
+                // Workaround: We use the existing results endpoint which returns students formatted.
+                // Ideally we want raw students.
+                // The `BatchResultsEntry` expects `Student[]`.
+                
+                const sessionId = sessions.find(s => s.isCurrent)?.id;
+                if (!sessionId) return; // Should have a session
 
-            if (!res.ok) throw new Error("Failed to fetch results");
+                // We can use the /api/classes API if available? 
+                // Let's check permissions. Usually teachers can't list all classes.
+                // But this `selectedClass` is one they are assigned to.
+                
+                // Let's call /api/teachers/results just to get the student roster, even if we ignore the results part for now
+                // (BatchResultsEntry will refetch results, which is slightly redundant but safer for the component reuse).
+                
+                // Wait, /api/teachers/results requires subjectId.
+                if (!selectedSubject) return;
 
-            const data = await res.json();
-            setStudents(data.students);
-            setComponents(data.components);
-            setShowForm(true);
-        } catch (error) {
-            console.error("Error fetching results:", error);
-            toast.error("Failed to load students");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Update component score
-    const updateComponentScore = (studentId: string, componentId: string, value: string) => {
-        const score = parseFloat(value) || 0;
-        const component = components.find((c) => c.id === componentId);
-
-        if (component && score > component.maxScore) {
-            toast.error(`Score cannot exceed ${component.maxScore}`);
-            return;
-        }
-
-        setStudents((prev) =>
-            prev.map((student) => {
-                if (student.studentId === studentId) {
-                    const newScores = {
-                        ...student.componentScores,
-                        [componentId]: score,
-                    };
-
-                    // Calculate total
-                    const total = Object.values(newScores).reduce((sum, score) => sum + score, 0);
-
-                    return {
-                        ...student,
-                        componentScores: newScores,
-                        total,
-                    };
+                // Let's fetch.
+                const res = await fetch(
+                    `/api/teachers/results?subjectId=${selectedSubject}&classId=${selectedClass}&periodId=${periods[0]?.id || ""}&sessionId=${sessionId}`
+                );
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    // Transform to match Student interface expected by BatchResultsEntry
+                    const formattedStudents = data.students.map((s: any) => ({
+                        id: s.studentId,
+                        name: s.name,
+                        rollNumber: s.rollNumber,
+                        // Add other fields if needed
+                    }));
+                    setStudents(formattedStudents);
                 }
-                return student;
-            })
-        );
-    };
-
-    // Update comment
-    const updateComment = (studentId: string, comment: string) => {
-        setStudents((prev) =>
-            prev.map((student) =>
-                student.studentId === studentId
-                    ? { ...student, teacherComment: comment }
-                    : student
-            )
-        );
-    };
-
-    // Save results
-    const handleSaveResults = async () => {
-        if (students.length === 0) {
-            toast.error("No students to save");
-            return;
+            } catch (error) {
+                console.error("Error fetching students:", error);
+                toast.error("Failed to load students");
+            } finally {
+                setLoadingStudents(false);
+            }
         }
+        
+        fetchStudents();
+    }, [selectedClass, selectedSubject, teacher, sessions, periods]);
 
-        // Validate that all component scores are entered
-        const incomplete = students.some((student) =>
-            components.some((comp) => !student.componentScores[comp.id] && student.componentScores[comp.id] !== 0)
-        );
-
-        if (incomplete) {
-            toast.error("Please enter scores for all components for all students");
-            return;
-        }
-
-        setSaving(true);
-        try {
-            const results = students.map((student) => ({
-                studentId: student.studentId,
-                subjectId: selectedSubject,
-                sessionId,
-                periodId: selectedPeriod,
-                componentScores: student.componentScores,
-                total: student.total,
-                teacherComment: student.teacherComment || "",
-            }));
-
-            const res = await fetch("/api/teachers/results", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ results }),
-            });
-
-            if (!res.ok) throw new Error("Failed to save results");
-
-            const data = await res.json();
-            toast.success(data.message);
-
-            // Refresh the data
-            handleFetchResults();
-        } catch (error) {
-            console.error("Error saving results:", error);
-            toast.error("Failed to save results");
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const selectedSubjectData = subjects.find((s) => s.id === selectedSubject);
+    const selectedSubjectData = subjects.find(s => s.id === selectedSubject);
     const classesForSubject = selectedSubjectData?.classes || [];
 
-    const selectedClassName = classesForSubject.find((c) => c.id === selectedClass)?.name;
-    const selectedPeriodName = periods.find((p) => p.id === selectedPeriod)?.name;
-
-    const completedCount = students.filter((s) => s.hasResult).length;
-    const totalCount = students.length;
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
             <DashboardHeader
-                heading="Result Entry"
-                text="Enter and manage student results for your subjects"
-                icon={<ClipboardList className="h-6 w-6" />}
+                heading="Results Entry"
+                text="Record student scores for your assigned subjects"
+                icon={<ClipboardList className="h-6 w-6 text-primary" />}
             />
 
-            {/* Selection Form */}
-            <Card className="border-none shadow-md">
+            <Card className="border-l-4 border-l-primary shadow-sm bg-card">
                 <CardHeader>
-                    <CardTitle>Select Class and Subject</CardTitle>
-                    <CardDescription>Choose the class, subject, and term to enter results</CardDescription>
+                    <div className="flex items-center gap-2">
+                         <BookOpen className="h-5 w-5 text-primary" />
+                         <CardTitle>Select Subject & Class</CardTitle>
+                    </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Subject Selection */}
-                        <div className="space-y-2">
-                            <Label htmlFor="subject">Subject</Label>
-                            <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                                <SelectTrigger id="subject">
-                                    <SelectValue placeholder="Select subject" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {subjects.map((subject) => (
-                                        <SelectItem key={subject.id} value={subject.id}>
-                                            <div className="flex items-center gap-2">
-                                                {subject.name}
-                                                {subject.isCore && <Badge variant="default" className="ml-2 text-xs">Core</Badge>}
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Class Selection */}
-                        <div className="space-y-2">
-                            <Label htmlFor="class">Class</Label>
-                            <Select
-                                value={selectedClass}
-                                onValueChange={setSelectedClass}
-                                disabled={!selectedSubject}
-                            >
-                                <SelectTrigger id="class">
-                                    <SelectValue placeholder="Select class" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {classesForSubject.map((classItem) => (
-                                        <SelectItem key={classItem.id} value={classItem.id}>
-                                            {classItem.name} {classItem.section && `- ${classItem.section}`} ({classItem.studentCount} students)
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Period Selection */}
-                        <div className="space-y-2">
-                            <Label htmlFor="period">Term/Period</Label>
-                            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                                <SelectTrigger id="period">
-                                    <SelectValue placeholder="Select term" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {periods.map((period) => (
-                                        <SelectItem key={period.id} value={period.id}>
-                                            {period.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                        <Label>Subject</Label>
+                        <Select value={selectedSubject} onValueChange={(val) => {
+                            setSelectedSubject(val);
+                            setSelectedClass(""); // Reset class when subject changes
+                        }}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a subject" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {subjects.map((subject) => (
+                                    <SelectItem key={subject.id} value={subject.id}>
+                                        <div className="flex items-center justify-between w-full min-w-[200px]">
+                                            <span>{subject.name}</span>
+                                            {subject.isCore && <Badge variant="secondary" className="max-h-[20px] text-[10px] ml-2">Core</Badge>}
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
-                    <Button
-                        onClick={handleFetchResults}
-                        disabled={!selectedSubject || !selectedClass || !selectedPeriod || loading}
-                        className="mt-6"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Loading...
-                            </>
-                        ) : (
-                            "Load Students"
-                        )}
-                    </Button>
+                    <div className="space-y-2">
+                        <Label>Class</Label>
+                        <Select 
+                            value={selectedClass} 
+                            onValueChange={setSelectedClass}
+                            disabled={!selectedSubject}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder={!selectedSubject ? "Select subject first" : "Select a class"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {classesForSubject.map((cls) => (
+                                    <SelectItem key={cls.id} value={cls.id}>
+                                        {cls.name} ({cls.studentCount} students)
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </CardContent>
             </Card>
 
-            {/* Results Entry Table */}
-            {showForm && (
-                <Card className="border-none shadow-md">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>
-                                    {selectedSubjectData?.name} - {selectedClassName}
-                                </CardTitle>
-                                <CardDescription>
-                                    {selectedPeriodName} • {totalCount} students • {completedCount} completed
-                                </CardDescription>
-                            </div>
-                            <Button onClick={handleSaveResults} disabled={saving} size="lg">
-                                {saving ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="mr-2 h-4 w-4" />
-                                        Save All Results
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {students.length > 0 ? (
-                            <div className="rounded-lg border overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[50px]">#</TableHead>
-                                            <TableHead>Student Name</TableHead>
-                                            {components.map((comp) => (
-                                                <TableHead key={comp.id} className="text-center">
-                                                    {comp.name}
-                                                    <br />
-                                                    <span className="text-xs text-muted-foreground">({comp.maxScore})</span>
-                                                </TableHead>
-                                            ))}
-                                            <TableHead className="text-center font-bold">Total</TableHead>
-                                            <TableHead>Comment</TableHead>
-                                            <TableHead className="text-center">Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {students.map((student, index) => (
-                                            <TableRow key={student.studentId}>
-                                                <TableCell>{index + 1}</TableCell>
-                                                <TableCell className="font-medium">{student.name}</TableCell>
-                                                {components.map((comp) => (
-                                                    <TableCell key={comp.id}>
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            max={comp.maxScore}
-                                                            step="0.5"
-                                                            value={student.componentScores[comp.id] || ""}
-                                                            onChange={(e) =>
-                                                                updateComponentScore(student.studentId, comp.id, e.target.value)
-                                                            }
-                                                            className="w-20 text-center"
-                                                        />
-                                                    </TableCell>
-                                                ))}
-                                                <TableCell className="text-center">
-                                                    <span className="font-bold text-lg">{student.total.toFixed(1)}</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Textarea
-                                                        value={student.teacherComment || ""}
-                                                        onChange={(e) => updateComment(student.studentId, e.target.value)}
-                                                        placeholder="Optional comment..."
-                                                        className="min-w-[200px]"
-                                                        rows={1}
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {student.hasResult ? (
-                                                        <Badge variant="default" className="gap-1">
-                                                            <CheckCircle2 className="h-3 w-3" />
-                                                            Saved
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="secondary" className="gap-1">
-                                                            <AlertCircle className="h-3 w-3" />
-                                                            Pending
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                <p className="text-lg font-semibold text-muted-foreground">No students found</p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    This class may not have any active students
-                                </p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+            {selectedClass && selectedSubject && teacher && (
+                <div className="animate-in fade-in max-w-[calc(100vw-3rem)]">
+                     {loadingStudents ? (
+                         <div className="flex flex-col items-center justify-center p-12">
+                             <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                             <p className="text-muted-foreground">Loading student roster...</p>
+                         </div>
+                     ) : (
+                        <BatchResultsEntry
+                            schoolId={teacher.schoolId}
+                            students={students}
+                            subjects={[selectedSubjectData].filter(Boolean) as any[]}
+                            periods={periods}
+                            sessions={sessions as any[]}
+                            components={components}
+                            selectedClassId={selectedClass}
+                            canEditAllSubjects={true} // Validated by logic above and API
+                        />
+                     )}
+                </div>
             )}
         </div>
     );

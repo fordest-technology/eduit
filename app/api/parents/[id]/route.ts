@@ -9,9 +9,10 @@ import { randomUUID } from "crypto";
 // GET a specific parent
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -187,9 +188,10 @@ export async function GET(
 // Update parent info
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (
@@ -262,7 +264,7 @@ export async function PATCH(
         },
       });
 
-      if (existingUser && existingUser.id !== params.id) {
+      if (existingUser && existingUser.id !== id) {
         return new NextResponse("Email already in use by another user", {
           status: 400,
         });
@@ -318,7 +320,7 @@ export async function PATCH(
       // Update user data
       const updatedUser = await tx.user.update({
         where: {
-          id: params.id,
+          id: id,
         },
         data: userUpdateData,
         select: {
@@ -386,9 +388,10 @@ export async function PATCH(
 // Delete parent
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (
@@ -426,15 +429,13 @@ export async function DELETE(
 
     // Delete all parent-student relationships first
     await prisma.studentParent.deleteMany({
-      where: {
-        parentId: params.id,
-      },
+      where: { parentId: id },
     });
 
     // Delete the parent
     await prisma.user.delete({
       where: {
-        id: params.id,
+        id: id,
       },
     });
 

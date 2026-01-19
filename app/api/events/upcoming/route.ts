@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { withErrorHandling } from "@/lib/prisma"
 import prisma from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
 
-    const events = await prisma.event.findMany({
+    const events = await withErrorHandling(() => prisma.event.findMany({
       where: {
         startDate: {
           gte: now,
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
         startDate: "asc",
       },
       take: limit,
-    });
+    }));
 
     return NextResponse.json(events);
   } catch (error) {

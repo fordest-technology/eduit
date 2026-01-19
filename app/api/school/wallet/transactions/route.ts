@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
         take: 10
       }),
-      prisma.userActivity.findMany({
+      prisma.userActivityLog.findMany({
         where: { 
           user: { schoolId: session.schoolId },
           action: "WALLET_WITHDRAWAL"

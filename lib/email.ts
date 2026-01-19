@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import db from "@/lib/db";
 import { generateEmailDebugId } from "@/lib/utils";
+import { escapeHtml } from "./security";
 
 // Create the transporter with proper configuration
 const resend = process.env.RESEND_API_KEY
@@ -62,8 +63,7 @@ export async function sendEmail(
     try {
       console.log("-----------------------------------------");
       console.log(`📧  MOCK EMAIL (ENABLE_REAL_EMAILS=false)`);
-      console.log(`To:      ${to}`);
-      console.log(`From:    ${finalFrom}`);
+      console.log(`To:      [REDACTED_EMAIL]`);
       console.log(`Subject: ${subject}`);
       console.log("-----------------------------------------");
 
@@ -97,7 +97,7 @@ export async function sendEmail(
   }
 
   try {
-    console.log(`🚀  Sending real email via Resend to ${to}...`);
+    console.log(`🚀  Initiating email delivery...`);
     const { data, error } = await resend.emails.send({
       from: finalFrom,
       to: [to],
@@ -111,7 +111,7 @@ export async function sendEmail(
       return { success: false, error: error.message };
     }
 
-    console.log(`✅  Email delivered successfully to ${to}. ID: ${data?.id}`);
+    console.log(`✅  Email delivered successfully.`);
     return { success: true };
   } catch (error: any) {
     console.error("❌  Critical Resend Error:", error);
@@ -211,13 +211,13 @@ export async function sendWelcomeEmail({
           <h1>Welcome to EduIT</h1>
         </div>
         <div class="content">
-          <h2>Hello, ${name}!</h2>
-          <p>You have been registered as a <strong>${role}</strong> for <strong>${schoolName}</strong>.</p>
+          <h2>Hello, ${escapeHtml(name)}!</h2>
+          <p>You have been registered as a <strong>${escapeHtml(role)}</strong> for <strong>${escapeHtml(schoolName)}</strong>.</p>
           
           <div class="credentials">
             <h3 style="margin-top: 0;">Your Login Credentials</h3>
             <p><span>School URL:</span> <a href="${schoolUrl}" style="color: ${primaryColor};">${schoolUrl}</a></p>
-            <p><span>Email:</span> ${email}</p>
+            <p><span>Email:</span> ${escapeHtml(email)}</p>
             <p><span>Password:</span> ${password}</p>
           </div>
           
@@ -488,9 +488,9 @@ export async function sendSchoolWelcomeEmail({
             <p>Welcome to the EduIT ecosystem.</p>
           </div>
           <div class="main-content">
-            <div class="welcome-msg">Congratulations, ${adminName}!</div>
+            <div class="welcome-msg">Congratulations, ${escapeHtml(adminName)}!</div>
             <p class="intro-text">
-              We are beyond excited to have <b>${schoolName}</b> join our network of elite digital institutions. Your custom administrative architecture is live and fully provisioned.
+              We are beyond excited to have <b>${escapeHtml(schoolName)}</b> join our network of elite digital institutions. Your custom administrative architecture is live and fully provisioned.
             </p>
             
             <div class="school-info">
@@ -503,7 +503,7 @@ export async function sendSchoolWelcomeEmail({
                       </div>
                     </td>
                     <td>
-                      <div class="school-name-sm">${schoolName}</div>
+                      <div class="school-name-sm">${escapeHtml(schoolName)}</div>
                       <div style="font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px;">Institutional Access Provisioned</div>
                     </td>
                   </tr>
@@ -518,7 +518,7 @@ export async function sendSchoolWelcomeEmail({
                 <div style="height: 1px; background: #f1f5f9; margin: 12px 0;"></div>
                 <div class="cred-item">
                   <div class="cred-label">Admin Identity</div>
-                  <div class="cred-value">${adminEmail}</div>
+                  <div class="cred-value">${escapeHtml(adminEmail)}</div>
                 </div>
                 <div style="height: 1px; background: #f1f5f9; margin: 12px 0;"></div>
                 <div class="cred-item">
@@ -659,13 +659,13 @@ export async function sendStudentCredentialsEmail({
           <h1>Your Student Account</h1>
         </div>
         <div class="content">
-          <h2>Hello, ${studentName}!</h2>
-          <p>An account has been created for you at <strong>${schoolName}</strong>.</p>
+          <h2>Hello, ${escapeHtml(studentName)}!</h2>
+          <p>An account has been created for you at <strong>${escapeHtml(schoolName)}</strong>.</p>
           
           <div class="credentials">
             <h3 style="margin-top: 0;">Your Login Credentials</h3>
             <p><span>School URL:</span> <a href="${schoolUrl}" style="color: ${primaryColor};">${schoolUrl}</a></p>
-            <p><span>Email:</span> ${studentEmail}</p>
+            <p><span>Email:</span> ${escapeHtml(studentEmail)}</p>
             <p><span>Password:</span> ${password}</p>
           </div>
           
@@ -722,13 +722,13 @@ export async function sendStudentCredentialsEmail({
             <h1>Your Child's Account</h1>
           </div>
           <div class="content">
-            <h2>Hello, ${parentName}!</h2>
-            <p>An account has been created for your child, <strong>${studentName}</strong>, at <strong>${schoolName}</strong>.</p>
+            <h2>Hello, ${escapeHtml(parentName)}!</h2>
+            <p>An account has been created for your child, <strong>${escapeHtml(studentName)}</strong>, at <strong>${escapeHtml(schoolName)}</strong>.</p>
             
             <div class="credentials">
               <h3 style="margin-top: 0;">Your Child's Login Credentials</h3>
               <p><span>School URL:</span> <a href="${schoolUrl}" style="color: ${primaryColor};">${schoolUrl}</a></p>
-              <p><span>Email:</span> ${studentEmail}</p>
+              <p><span>Email:</span> ${escapeHtml(studentEmail)}</p>
               <p><span>Password:</span> ${password}</p>
             </div>
             
@@ -833,13 +833,13 @@ export async function sendTeacherCredentialsEmail({
           <h1>Your Teacher Account</h1>
         </div>
         <div class="content">
-          <h2>Hello, ${name}!</h2>
-          <p>Welcome to the EduIT platform. An account has been created for you as a teacher at <strong>${schoolName}</strong>.</p>
+          <h2>Hello, ${escapeHtml(name)}!</h2>
+          <p>Welcome to the EduIT platform. An account has been created for you as a teacher at <strong>${escapeHtml(schoolName)}</strong>.</p>
           
           <div class="credentials">
             <h3 style="margin-top: 0;">Your Login Credentials</h3>
             <p><span>School URL:</span> <a href="${schoolUrl}" style="color: ${primaryColor};">${schoolUrl}</a></p>
-            <p><span>Email:</span> ${email}</p>
+            <p><span>Email:</span> ${escapeHtml(email)}</p>
             <p><span>Password:</span> ${password}</p>
           </div>
           
@@ -927,13 +927,13 @@ export async function sendResultPublishedEmail({
           <h1>Academic Results Published</h1>
         </div>
         <div class="content">
-          <h2>Hello, ${parentName || studentName}!</h2>
-          <p>The academic results for <strong>${studentName}</strong> for <strong>${periodName} (${sessionName})</strong> have been published.</p>
+          <h2>Hello, ${escapeHtml(parentName || studentName)}!</h2>
+          <p>The academic results for <strong>${escapeHtml(studentName)}</strong> for <strong>${escapeHtml(periodName)} (${escapeHtml(sessionName)})</strong> have been published.</p>
           <p>You can now log in to the school portal to view the detailed results and download the report card.</p>
           <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eduit.app'}" class="button">View Results</a>
         </div>
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} ${schoolName}. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} ${escapeHtml(schoolName)}. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -1068,7 +1068,7 @@ export async function sendPasswordResetEmail({
           <div class="main-content">
             <div style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 16px;">Secure Password Reset</div>
             <p style="font-size: 16px; line-height: 1.7; color: #475569;">
-              Hello, ${userName}. Your password reset request for <b>${schoolName}</b> has been received. Please use the 4-digit code below to continue.
+              Hello, ${escapeHtml(userName)}. Your password reset request for <b>${escapeHtml(schoolName)}</b> has been received. Please use the 4-digit code below to continue.
             </p>
             
             <div class="code-box">

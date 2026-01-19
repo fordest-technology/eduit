@@ -81,27 +81,36 @@ export function SubjectsDialog({
     })
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
-        try {
-            setIsLoading(true)
-            const response = await fetch("/api/subjects", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(values),
-            })
+        setIsLoading(true)
 
+        const promise = fetch("/api/subjects", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(values),
+        }).then(async (response) => {
             if (!response.ok) {
                 throw new Error("Failed to create subject")
             }
+            return response.json();
+        });
 
-            toast.success("Subject created successfully")
-            form.reset()
-            router.refresh()
-            onOpenChange(false)
+        toast.promise(promise, {
+            loading: 'Registering new academic subject...',
+            success: () => {
+                form.reset()
+                router.refresh()
+                onOpenChange(false)
+                return '✅ Subject created successfully'
+            },
+            error: '❌ Failed to create subject',
+        });
+
+        try {
+            await promise;
         } catch (error) {
             console.error(error)
-            toast.error("Something went wrong. Please try again.")
         } finally {
             setIsLoading(false)
         }

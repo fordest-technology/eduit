@@ -8,34 +8,43 @@ async function main() {
 
   // Clear existing data (order matters for foreign keys)
   console.log("🗑️  Cleaning existing data...");
-  await prisma.componentScore.deleteMany();
-  await prisma.result.deleteMany();
-  await prisma.studentClass.deleteMany();
-  await prisma.studentPayment.deleteMany();
-  await prisma.billAssignment.deleteMany();
-  await prisma.bill.deleteMany();
-  await prisma.walletTransaction.deleteMany();
-  await prisma.schoolWallet.deleteMany();
-  await prisma.paymentRequest.deleteMany();
-  await prisma.paymentAccount.deleteMany();
-  await prisma.studentParent.deleteMany();
-  await prisma.student.deleteMany();
-  await prisma.parent.deleteMany();
-  await prisma.classSubject.deleteMany();
-  await prisma.subjectTeacher.deleteMany();
-  await prisma.teacher.deleteMany();
-  await prisma.class.deleteMany();
-  await prisma.subject.deleteMany();
-  await prisma.resultPeriod.deleteMany();
-  await prisma.assessmentComponent.deleteMany();
-  await prisma.gradingScale.deleteMany();
-  await prisma.resultConfiguration.deleteMany();
-  await prisma.academicSession.deleteMany();
-  await prisma.schoolLevel.deleteMany();
-  await prisma.department.deleteMany();
-  await prisma.admin.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.school.deleteMany();
+  try {
+    console.log("   - UserActivityLog"); await prisma.userActivityLog.deleteMany();
+    console.log("   - PaymentRequest"); await prisma.paymentRequest.deleteMany();
+    console.log("   - ResultPublication"); await prisma.resultPublication.deleteMany();
+    console.log("   - Attendance"); await prisma.attendance.deleteMany();
+    console.log("   - Event"); await prisma.event.deleteMany();
+    console.log("   - ComponentScore"); await prisma.componentScore.deleteMany();
+    console.log("   - AssessmentComponent"); await prisma.assessmentComponent.deleteMany();
+    console.log("   - ResultTemplate"); await prisma.resultTemplate.deleteMany();
+    console.log("   - Result"); await prisma.result.deleteMany();
+    console.log("   - StudentClass"); await prisma.studentClass.deleteMany();
+    console.log("   - StudentPayment"); await prisma.studentPayment.deleteMany();
+    console.log("   - BillAssignment"); await prisma.billAssignment.deleteMany();
+    console.log("   - Bill"); await prisma.bill.deleteMany();
+    console.log("   - SchoolWallet"); await prisma.schoolWallet.deleteMany();
+    console.log("   - PaymentAccount"); await prisma.paymentAccount.deleteMany();
+    console.log("   - StudentParent"); await prisma.studentParent.deleteMany();
+    console.log("   - Student"); await prisma.student.deleteMany();
+    console.log("   - Parent"); await prisma.parent.deleteMany();
+    console.log("   - ClassSubject"); await prisma.classSubject.deleteMany();
+    console.log("   - SubjectTeacher"); await prisma.subjectTeacher.deleteMany();
+    console.log("   - Class"); await prisma.class.deleteMany();
+    console.log("   - Teacher"); await prisma.teacher.deleteMany();
+    console.log("   - Subject"); await prisma.subject.deleteMany();
+    console.log("   - ResultPeriod"); await prisma.resultPeriod.deleteMany();
+    console.log("   - GradingScale"); await prisma.gradingScale.deleteMany();
+    console.log("   - ResultConfiguration"); await prisma.resultConfiguration.deleteMany();
+    console.log("   - AcademicSession"); await prisma.academicSession.deleteMany();
+    console.log("   - SchoolLevel"); await prisma.schoolLevel.deleteMany();
+    console.log("   - Department"); await prisma.department.deleteMany();
+    console.log("   - Admin"); await prisma.admin.deleteMany();
+    console.log("   - User"); await prisma.user.deleteMany();
+    console.log("   - School"); await prisma.school.deleteMany();
+  } catch (e) {
+    console.error("❌ Cleanup failed:", e);
+    throw e;
+  }
 
   const hashedPassword = await bcrypt.hash("password123", 10);
 
@@ -61,9 +70,6 @@ async function main() {
     data: {
       schoolId: school.id,
       balance: 5750000, // ₦5.75M
-      virtualAccountNo: "1234567890",
-      virtualBankName: "Moniepoint MFB",
-      providerRef: "EDUIT_" + school.id,
     },
   });
 
@@ -118,6 +124,16 @@ async function main() {
       cumulativeMethod: "progressive_average",
       showCumulativePerTerm: true,
     },
+  });
+
+  const ca1 = await prisma.assessmentComponent.create({
+    data: { name: "Test 1", key: "ca1", maxScore: 20, configurationId: resultConfig.id },
+  });
+  const project = await prisma.assessmentComponent.create({
+    data: { name: "Project", key: "project", maxScore: 20, configurationId: resultConfig.id },
+  });
+  const exam = await prisma.assessmentComponent.create({
+    data: { name: "Exam", key: "exam", maxScore: 60, configurationId: resultConfig.id },
   });
 
   const term1 = await prisma.resultPeriod.create({
@@ -177,6 +193,7 @@ async function main() {
         password: hashedPassword,
         role: "TEACHER",
         schoolId: school.id,
+        profileImage: `https://ui-avatars.com/api/?name=${td.name.replace(/\s+/g, '+')}&background=random`,
       },
     });
 
@@ -220,10 +237,10 @@ async function main() {
   const subjects = {
     // Core subjects (for all levels)
     math: await prisma.subject.create({
-      data: { name: "Mathematics", code: "MTH101", schoolId: school.id, departmentId: scienceDept.id, isCore: true },
+      data: { name: "Mathematics", code: "MTH101", schoolId: school.id, departmentId: scienceDept.id },
     }),
     english: await prisma.subject.create({
-      data: { name: "English Language", code: "ENG101", schoolId: school.id, departmentId: artsDept.id, isCore: true },
+      data: { name: "English Language", code: "ENG101", schoolId: school.id, departmentId: artsDept.id },
     }),
 
     // Junior subjects
@@ -251,6 +268,67 @@ async function main() {
       data: { name: "Economics", code: "ECO201", schoolId: school.id, departmentId: commerceDept.id, levelId: seniorLevel.id },
     }),
   };
+
+
+
+  // Assign teachers to subjects
+  console.log("🔗 Assigning teachers to subjects...");
+  await prisma.subjectTeacher.createMany({
+    data: [
+        { subjectId: subjects.math.id, teacherId: teachers[0].id },
+        { subjectId: subjects.english.id, teacherId: teachers[1].id },
+        { subjectId: subjects.basicScience.id, teacherId: teachers[2].id },
+        { subjectId: subjects.basicTech.id, teacherId: teachers[2].id }, // Same teacher for science/tech
+        { subjectId: subjects.civics.id, teacherId: teachers[5].id },
+        { subjectId: subjects.physics.id, teacherId: teachers[2].id },
+        { subjectId: subjects.chemistry.id, teacherId: teachers[4].id },
+        { subjectId: subjects.biology.id, teacherId: teachers[4].id }, // Same teacher for chem/bio
+        { subjectId: subjects.economics.id, teacherId: teachers[3].id },
+    ]
+  });
+
+  // Assign subjects to classes (ClassSubject)
+  console.log("🏫 Assigning subjects to classes...");
+  const juniorSubs = [subjects.math, subjects.english, subjects.basicScience, subjects.basicTech, subjects.civics];
+  const seniorSubs = [subjects.math, subjects.english, subjects.physics, subjects.chemistry, subjects.biology, subjects.economics];
+
+  const subjectTeacherMap = {
+    [subjects.math.id]: teachers[0].id,
+    [subjects.english.id]: teachers[1].id,
+    [subjects.basicScience.id]: teachers[2].id,
+    [subjects.basicTech.id]: teachers[2].id,
+    [subjects.civics.id]: teachers[5].id,
+    [subjects.physics.id]: teachers[2].id,
+    [subjects.chemistry.id]: teachers[4].id,
+    [subjects.biology.id]: teachers[4].id,
+    [subjects.economics.id]: teachers[3].id,
+  };
+
+  const classSubjectAssignments = [];
+
+  // Junior Classes
+  for (const cls of [classes.jss1, classes.jss2, classes.jss3]) {
+      for (const sub of juniorSubs) {
+          classSubjectAssignments.push({
+              classId: cls.id,
+              subjectId: sub.id,
+              teacherId: subjectTeacherMap[sub.id]
+          });
+      }
+  }
+
+  // Senior Classes
+  for (const cls of [classes.ss1, classes.ss2, classes.ss3]) {
+      for (const sub of seniorSubs) {
+           classSubjectAssignments.push({
+              classId: cls.id,
+              subjectId: sub.id,
+              teacherId: subjectTeacherMap[sub.id]
+           });
+      }
+  }
+
+  await prisma.classSubject.createMany({ data: classSubjectAssignments });
 
   // 11. Create 36 Students (6 per class)
   console.log("👨‍👩‍👧‍👦 Creating 36 students across all classes...");
@@ -320,10 +398,11 @@ async function main() {
       const parentUser = await prisma.user.create({
         data: {
           name: studentData.parent,
-          email: `${studentData.last.toLowerCase()}.${studentData.first.toLowerCase()}@gmail.com`,
+          email: `${studentData.last.toLowerCase()}.${studentData.first.toLowerCase()}.parent@gmail.com`,
           password: hashedPassword,
           role: "PARENT",
           schoolId: school.id,
+          profileImage: `https://ui-avatars.com/api/?name=${studentData.parent.replace(/\s+/g, '+')}&background=random`,
         },
       });
 
@@ -342,6 +421,7 @@ async function main() {
           password: hashedPassword,
           role: "STUDENT",
           schoolId: school.id,
+          profileImage: `https://ui-avatars.com/api/?name=${studentData.first}+${studentData.last}&background=random`,
         },
       });
 
@@ -390,7 +470,7 @@ async function main() {
   }
 
   // 12. Create Results for all students in OLD SESSION
-  console.log("📝 Creating student results (540 total records)...");
+  console.log("📝 Creating student results with component scores...");
 
   const terms = [term1, term2, term3];
 
@@ -398,20 +478,47 @@ async function main() {
     for (const term of terms) {
       for (const subject of student.subjects) {
         const baseScore = student.targetAvg;
+        // Add some variation between terms/subjects
         const variance = Math.random() * 20 - 10;
-        const score = Math.max(0, Math.min(100, baseScore + variance));
+        let totalScore = Math.max(0, Math.min(100, baseScore + variance));
+        
+        // Distribute scores: CA1 (20), Project (20), Exam (60)
+        // We'll generate component scores loosely based on the total desired
+        let ca1Score = Math.min(20, (totalScore * 0.2) + (Math.random() * 4 - 2));
+        let projectScore = Math.min(20, (totalScore * 0.2) + (Math.random() * 4 - 2));
+        
+        // Ensure non-negative
+        ca1Score = Math.max(0, Math.round(ca1Score));
+        projectScore = Math.max(0, Math.round(projectScore));
+        
+        let examScore = Math.round(totalScore - ca1Score - projectScore);
+        // Cap exam score at 60
+        if (examScore > 60) examScore = 60;
+        if (examScore < 0) examScore = 0;
+        
+        // Recalculate true total
+        totalScore = ca1Score + projectScore + examScore;
 
-        await prisma.result.create({
+        const result = await prisma.result.create({
           data: {
             studentId: student.id,
             subjectId: subject.id,
             sessionId: oldSession.id,
             periodId: term.id,
-            total: Math.round(score),
-            grade: score >= 70 ? "A" : score >= 60 ? "B" : score >= 50 ? "C" : score >= 40 ? "D" : "F",
-            remark: score >= 70 ? "Excellent" : score >= 60 ? "Very Good" : score >= 50 ? "Good" : score >= 40 ? "Pass" : "Fail",
-            teacherComment: score >= 60 ? "Keep up the good work!" : "More effort needed.",
+            total: totalScore,
+            grade: totalScore >= 70 ? "A" : totalScore >= 60 ? "B" : totalScore >= 50 ? "C" : totalScore >= 40 ? "D" : "F",
+            remark: totalScore >= 70 ? "Excellent" : totalScore >= 60 ? "Very Good" : totalScore >= 50 ? "Good" : totalScore >= 40 ? "Pass" : "Fail",
+            teacherComment: totalScore >= 60 ? "Keep up the good work!" : "More effort needed.",
           },
+        });
+
+        // Create component scores
+        await prisma.componentScore.createMany({
+            data: [
+                { componentId: ca1.id, resultId: result.id, score: ca1Score },
+                { componentId: project.id, resultId: result.id, score: projectScore },
+                { componentId: exam.id, resultId: result.id, score: examScore },
+            ]
         });
       }
     }
@@ -448,52 +555,52 @@ async function main() {
   });
 
   // 14. Create Wallet Transactions
-  console.log("💸 Creating wallet transactions...");
+  console.log("💸 Creating wallet transactions... (SKIPPED - Model missing)");
 
-  await prisma.walletTransaction.createMany({
-    data: [
-      {
-        walletId: wallet.id,
-        amount: 75000,
-        type: "CREDIT",
-        status: "SUCCESS",
-        reference: "PAY-20250102-001",
-        description: "JSS1 Payment - Chioma Nwosu",
-      },
-      {
-        walletId: wallet.id,
-        amount: 125000,
-        type: "CREDIT",
-        status: "SUCCESS",
-        reference: "PAY-20250102-002",
-        description: "SS3 WAEC - Augustine Obi",
-      },
-      {
-        walletId: wallet.id,
-        amount: 1500000,
-        type: "DEBIT",
-        status: "SUCCESS",
-        reference: "WD-20250103-001",
-        description: "Withdrawal to GTBank",
-      },
-      {
-        walletId: wallet.id,
-        amount: 5250000,
-        type: "CREDIT",
-        status: "SUCCESS",
-        reference: "PAY-20250103-002",
-        description: "Bulk term payment",
-      },
-      {
-        walletId: wallet.id,
-        amount: 1800000,
-        type: "CREDIT",
-        status: "PENDING",
-        reference: "PAY-20250104-001",
-        description: "Pending transfer",
-      },
-    ],
-  });
+  // await prisma.walletTransaction.createMany({
+  //   data: [
+  //     {
+  //       walletId: wallet.id,
+  //       amount: 75000,
+  //       type: "CREDIT",
+  //       status: "SUCCESS",
+  //       reference: "PAY-20250102-001",
+  //       description: "JSS1 Payment - Chioma Nwosu",
+  //     },
+  //     {
+  //       walletId: wallet.id,
+  //       amount: 125000,
+  //       type: "CREDIT",
+  //       status: "SUCCESS",
+  //       reference: "PAY-20250102-002",
+  //       description: "SS3 WAEC - Augustine Obi",
+  //     },
+  //     {
+  //       walletId: wallet.id,
+  //       amount: 1500000,
+  //       type: "DEBIT",
+  //       status: "SUCCESS",
+  //       reference: "WD-20250103-001",
+  //       description: "Withdrawal to GTBank",
+  //     },
+  //     {
+  //       walletId: wallet.id,
+  //       amount: 5250000,
+  //       type: "CREDIT",
+  //       status: "SUCCESS",
+  //       reference: "PAY-20250103-002",
+  //       description: "Bulk term payment",
+  //     },
+  //     {
+  //       walletId: wallet.id,
+  //       amount: 1800000,
+  //       type: "CREDIT",
+  //       status: "PENDING",
+  //       reference: "PAY-20250104-001",
+  //       description: "Pending transfer",
+  //     },
+  //   ],
+  // });
 
   console.log("✅ FULL SCHOOL Database seeded successfully!");
   console.log("\n📊 Summary:");

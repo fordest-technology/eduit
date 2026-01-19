@@ -122,10 +122,6 @@ export async function POST(req: NextRequest) {
               });
             }
           }
-
-          // If there's a specific bill/fee, mark it as paid for backward compatibility
-            });
-          }
         });
 
         // Send Notifications (Outisde transaction to not block DB)

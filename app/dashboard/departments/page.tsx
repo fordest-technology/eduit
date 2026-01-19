@@ -2,9 +2,9 @@ import { redirect } from "next/navigation"
 import { getSession } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { DepartmentsTable } from "./departments-table"
-import { Card, CardContent } from "@/components/ui/card"
 import { BookOpen, Users, GraduationCap, Building2 } from "lucide-react"
 import { DashboardStatsCard, DashboardStatsGrid } from "@/components/dashboard-stats-card"
+import { DashboardHeader } from "@/app/components/dashboard-header"
 
 export default async function DepartmentsPage() {
     const session = await getSession()
@@ -63,21 +63,12 @@ export default async function DepartmentsPage() {
 
         return (
             <div className="container py-6">
-                {/* Banner section */}
-                <div
-                    className="w-full p-8 mb-6 rounded-lg relative overflow-hidden"
-                    style={{
-                        background: `linear-gradient(45deg, ${schoolColors.primaryColor}, ${schoolColors.secondaryColor})`,
-                    }}
-                >
-                    <div className="absolute inset-0 bg-grid-white/15 [mask-image:linear-gradient(0deg,rgba(255,255,255,0.1),rgba(255,255,255,0.5))]"></div>
-                    <div className="relative z-10">
-                        <h1 className="text-3xl font-bold text-white mb-2">Departments</h1>
-                        <p className="text-white text-opacity-90 max-w-2xl">
-                            Manage academic departments across your institution. Create new departments, assign students and faculty, and track department performance.
-                        </p>
-                    </div>
-                </div>
+                <DashboardHeader
+                    heading="Departments"
+                    text="Manage academic departments across your institution. Create new departments, assign students and faculty, and track department performance."
+                    showBanner={true}
+                    icon={<Building2 className="h-6 w-6" />}
+                />
 
                 {/* Stats Cards Section */}
                 <DashboardStatsGrid columns={4} className="mb-8">

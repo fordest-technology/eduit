@@ -1,10 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import { join } from "path";
-import { randomUUID } from "crypto";
-import { mkdir } from "fs/promises";
 import { cookies } from "next/headers";
 import db from "@/lib/db";
 import { uploadImage } from "@/lib/cloudinary";
@@ -274,6 +270,9 @@ export async function POST(req: Request) {
     const sendCredentials = formData.get("sendCredentials") === "true";
     const sendWelcomeEmail = formData.get("sendWelcomeEmail") === "true";
 
+    // Generate password once if not provided
+    const studentPassword = password || generatePassword();
+
     // Validate required fields
     const validationErrors: Record<string, string> = {};
 
@@ -385,13 +384,13 @@ export async function POST(req: Request) {
     }
 
     // 7. Create user and student in a transaction
-    const result = await db.$transaction(async (tx) => {
+    const transactionResult = await db.$transaction(async (tx) => {
       // Create user
       const user = await tx.user.create({
         data: {
           name: name.trim(),
           email: email.toLowerCase().trim(),
-          password: password || generatePassword(),
+          password: studentPassword,
           role: UserRole.STUDENT,
           schoolId: session.schoolId,
           profileImage: profileImageUrl,
@@ -427,33 +426,35 @@ export async function POST(req: Request) {
         });
       }
 
-      // Return complete student data
-      const completeStudent = await tx.student.findUnique({
-        where: { id: student.id },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              profileImage: true,
-            },
+      return { studentId: student.id };
+    }, {
+      timeout: 15000 // Increase timeout to 15 seconds
+    });
+
+    // Fetch complete student data outside the transaction to reduce transaction time
+    const result = await db.student.findUnique({
+      where: { id: transactionResult.studentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profileImage: true,
           },
-          classes: {
-            where: { sessionId: targetSessionId },
-            include: {
-              class: {
-                include: {
-                  level: true,
-                },
+        },
+        classes: {
+          where: { sessionId: targetSessionId },
+          include: {
+            class: {
+              include: {
+                level: true,
               },
             },
           },
-          department: true,
         },
-      });
-
-      return completeStudent;
+        department: true,
+      },
     });
 
     // Update onboarding activity and check triggers
@@ -474,7 +475,7 @@ export async function POST(req: Request) {
       await sendStudentCredentialsEmail({
         studentName: name,
         studentEmail: email,
-        password: password || generatePassword(),
+        password: studentPassword,
         schoolName: school?.name || "Your School",
         schoolUrl,
         schoolId: session.schoolId,

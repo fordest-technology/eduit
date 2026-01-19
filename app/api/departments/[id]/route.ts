@@ -31,16 +31,17 @@ function serializeBigInts(data: any): any {
 // GET /api/departments/:id - fetch a specific department with its details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const departmentId = params.id;
+    const departmentId = id;
 
     if (!departmentId) {
       return NextResponse.json(
@@ -95,9 +96,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -119,7 +121,7 @@ export async function PUT(
 
     const department = await prisma.department.update({
       where: {
-        id: params.id,
+        id: id,
         schoolId: session.schoolId,
       },
       data: {
@@ -148,9 +150,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -164,7 +167,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const departmentId = params.id;
+    const departmentId = id;
 
     // Check if the department exists and belongs to the school
     const existingDepartment = await prisma.department.findUnique({
@@ -228,8 +231,9 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getSession();
 
   if (
@@ -240,7 +244,7 @@ export async function PATCH(
   }
 
   try {
-    const departmentId = params.id;
+    const departmentId = id;
     const body = await request.json();
     const { name, description } = body;
 

@@ -90,8 +90,7 @@ export const columns: ColumnDef<Student>[] = [
             const { name, section, level } = student.currentClass;
             return (
                 <div>
-                    {name}
-                    {section && ` - ${section}`}
+                    {name} {section || ""}
                     {level?.name && ` (${level.name})`}
                 </div>
             );

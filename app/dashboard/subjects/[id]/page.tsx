@@ -29,14 +29,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet"
 import {
     Select,
     SelectContent,
@@ -675,16 +668,16 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Add Teacher Sheet */}
-            <Sheet open={showAddTeacherDialog} onOpenChange={setShowAddTeacherDialog}>
-                <SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right">
-                    <SheetHeader>
-                        <SheetTitle>Assign Teacher</SheetTitle>
-                        <SheetDescription>
-                            Select a teacher to assign to this subject.
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="py-4">
+            {/* Add Teacher ResponsiveSheet */}
+            <ResponsiveSheet 
+                open={showAddTeacherDialog} 
+                onOpenChange={setShowAddTeacherDialog}
+                title="Assign Teacher"
+                description="Select a teacher to assign to this subject."
+                className="sm:max-w-md"
+            >
+                <div className="flex flex-col gap-6">
+                    <div>
                         {loadingTeachers ? (
                             <div className="flex justify-center py-6">
                                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -694,130 +687,148 @@ export default function SubjectPage({ params }: { params: { id: string } }) {
                                 No available teachers to assign. All teachers are already assigned to this subject.
                             </p>
                         ) : (
-                            <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a teacher" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableTeachers.map((teacher) => (
-                                        <SelectItem key={teacher.id} value={teacher.id}>
-                                            {teacher.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="space-y-4">
+                                <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Search Educator</Label>
+                                <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all">
+                                        <SelectValue placeholder="Select a teacher" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl border-slate-50 shadow-2xl">
+                                        {availableTeachers.map((teacher) => (
+                                            <SelectItem key={teacher.id} value={teacher.id} className="rounded-xl px-4 py-3">
+                                                {teacher.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         )}
                     </div>
-                    <SheetFooter>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <Button
                             variant="outline"
+                            className="flex-1 h-14 rounded-2xl border-slate-200 font-bold hover:bg-slate-50"
                             onClick={() => setShowAddTeacherDialog(false)}
                             disabled={addingTeacher}
                         >
-                            Cancel
+                            Discard
                         </Button>
                         <Button
+                            className="flex-[2] h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
                             onClick={handleAddTeacher}
                             disabled={addingTeacher || availableTeachers.length === 0 || !selectedTeacherId}
                         >
                             {addingTeacher ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Assigning...
-                                </>
+                                <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
-                                "Assign"
+                                "Confirm Assignment"
                             )}
                         </Button>
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
+                    </div>
+                </div>
+            </ResponsiveSheet>
 
-            <Sheet open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
-                    <SheetHeader>
-                        <SheetTitle>Edit Subject</SheetTitle>
-                        <SheetDescription>
-                            Update the subject details. Click save when you're done.
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="space-y-4 py-4">
+            {/* Edit Subject ResponsiveSheet */}
+            <ResponsiveSheet 
+                open={showEditDialog} 
+                onOpenChange={setShowEditDialog}
+                title="Edit Subject"
+                description="Update the subject details. Click save when you're done."
+                className="sm:max-w-xl"
+            >
+                <div className="flex flex-col gap-6">
+                    <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Subject Name</Label>
+                            <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-slate-400">Subject Name</Label>
                             <Input
                                 id="name"
                                 value={editForm.name}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold text-lg"
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="code">Subject Code</Label>
+                            <Label htmlFor="code" className="text-xs font-black uppercase tracking-widest text-slate-400">Subject Code</Label>
                             <Input
                                 id="code"
                                 value={editForm.code}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold"
                                 onChange={(e) => setEditForm({ ...editForm, code: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="description">Description</Label>
+                            <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-slate-400">Description</Label>
                             <Textarea
                                 id="description"
                                 value={editForm.description}
+                                className="min-h-[120px] rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-medium py-4"
                                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="department">Department</Label>
-                            <Select
-                                value={editForm.departmentId}
-                                onValueChange={(value) => setEditForm({ ...editForm, departmentId: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a department" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {departments.map((dept) => (
-                                        <SelectItem key={dept.id} value={dept.id}>
-                                            {dept.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="level">Level</Label>
-                            <Select
-                                value={editForm.levelId}
-                                onValueChange={(value) => setEditForm({ ...editForm, levelId: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a level" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {levels.map((level) => (
-                                        <SelectItem key={level.id} value={level.id}>
-                                            {level.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="department" className="text-xs font-black uppercase tracking-widest text-slate-400">Department</Label>
+                                <Select
+                                    value={editForm.departmentId}
+                                    onValueChange={(value) => setEditForm({ ...editForm, departmentId: value })}
+                                >
+                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold">
+                                        <SelectValue placeholder="Select a department" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl border-slate-50 shadow-2xl">
+                                        {departments.map((dept) => (
+                                            <SelectItem key={dept.id} value={dept.id} className="rounded-xl px-4 py-3">
+                                                {dept.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="level" className="text-xs font-black uppercase tracking-widest text-slate-400">School Level</Label>
+                                <Select
+                                    value={editForm.levelId}
+                                    onValueChange={(value) => setEditForm({ ...editForm, levelId: value })}
+                                >
+                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold">
+                                        <SelectValue placeholder="Select a level" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl border-slate-50 shadow-2xl">
+                                        {levels.map((level) => (
+                                            <SelectItem key={level.id} value={level.id} className="rounded-xl px-4 py-3">
+                                                {level.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
-                    <SheetFooter>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <Button
                             variant="outline"
+                            className="flex-1 h-14 rounded-2xl border-slate-200 font-bold hover:bg-slate-50"
                             onClick={() => setShowEditDialog(false)}
                             disabled={isEditing}
                         >
-                            Cancel
+                            Discard
                         </Button>
-                        <Button onClick={handleEditSubmit} disabled={isEditing}>
-                            {isEditing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save Changes
+                        <Button
+                            className="flex-[2] h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            onClick={handleEditSubmit}
+                            disabled={isEditing}
+                        >
+                            {isEditing ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                                "Update Subject"
+                            )}
                         </Button>
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
+                    </div>
+                </div>
+            </ResponsiveSheet>
         </div>
     )
 } 

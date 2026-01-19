@@ -23,16 +23,10 @@ import { motion } from "framer-motion";
 import { WithdrawalModal } from "../../_components/withdrawal-modal";
 import { TransactionHistory } from "../../_components/transaction-history";
 import Image from "next/image";
-import { 
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 import { 
   ShieldCheck, 
   MapPin, 
@@ -256,163 +250,157 @@ export function WalletFeesContent() {
         onSuccess={fetchWallet}
       />
 
-      <Sheet open={isAccountModalOpen} onOpenChange={setIsAccountModalOpen}>
-        <SheetContent className="sm:max-w-xl p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col">
-            <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
-                <SheetHeader className="mb-10">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
-                            <Sparkles className="h-7 w-7" />
-                        </div>
-                        {process.env.NODE_ENV === "development" && (
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="rounded-xl border-dashed border-blue-200 text-blue-600 font-semibold hover:bg-blue-50"
-                                onClick={() => setKycData({
-                                    firstName: "Joesph",
-                                    lastName: "Ayodele",
-                                    email: "test@example.com",
-                                    phoneNumber: "08012345678",
-                                    bvn: "22110011001",
-                                    dob: "1990-01-01",
-                                    gender: "1",
-                                    address: "123 Test Street, Lagos"
-                                })}
-                            >
-                                <Sparkles className="h-3 w-3 mr-2" /> Fill Test Data
-                            </Button>
-                        )}
+      <ResponsiveSheet 
+        open={isAccountModalOpen} 
+        onOpenChange={setIsAccountModalOpen}
+        title="Institutional Liquidity"
+        description="Provision a dedicated virtual account to automate revenue collection."
+        className="sm:max-w-xl"
+      >
+        <div className="flex flex-col gap-10">
+            {process.env.NODE_ENV === "development" && (
+                <div className="flex justify-end -mt-4">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-xl border-dashed border-indigo-200 text-indigo-600 font-black uppercase text-[9px] tracking-widest hover:bg-indigo-50"
+                        onClick={() => setKycData({
+                            firstName: "Joesph",
+                            lastName: "Ayodele",
+                            email: "test@example.com",
+                            phoneNumber: "08012345678",
+                            bvn: "22110011001",
+                            dob: "1990-01-01",
+                            gender: "1",
+                            address: "123 Test Street, Lagos"
+                        })}
+                    >
+                        <Sparkles className="h-3.5 w-3.5 mr-2" /> Populate Sandbox Credentials
+                    </Button>
+                </div>
+            )}
+
+            <div className="p-5 rounded-2xl bg-indigo-50 border border-indigo-100/50 text-indigo-700 text-[10px] font-bold uppercase tracking-tight flex gap-3 items-center">
+                <ShieldCheck className="h-5 w-5 shrink-0 opacity-70" />
+                <span>In sandbox, BVN details must match provider's testing records exactly.</span>
+            </div>
+
+            <div className="space-y-10">
+                {/* KYC Section */}
+                <div className="space-y-6">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
+                       <User className="h-4 w-4 text-indigo-500" />
+                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Faculty Representative Identity</h4>
                     </div>
-                    <SheetTitle className="text-2xl font-bold font-sora text-slate-900 mt-6 tracking-tight">Activate Receiving Account</SheetTitle>
-                    <SheetDescription className="text-base font-medium text-slate-500 leading-relaxed">
-                        Create a dedicated bank account for your school to receive parent payments instantly.
-                        <div className="mt-4 p-4 bg-amber-50 rounded-2xl border border-amber-100/50 text-amber-700 text-xs flex gap-3 items-start">
-                           <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 opacity-70" />
-                           <span className="leading-normal">In sandbox, BVN details must match Squad's testing records exactly (Names, DOB, and Phone).</span>
-                        </div>
-                    </SheetDescription>
-                </SheetHeader>
-
-                <div className="space-y-10 pb-10">
-                    {/* KYC Section */}
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
-                           <User className="h-3.5 w-3.5 text-blue-500" />
-                           <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Representative KYC</h4>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                             <div className="space-y-2">
-                                <Label className="text-[11px] font-semibold text-slate-500 ml-1">First Name</Label>
-                                <Input 
-                                    className="h-11 rounded-xl bg-slate-50/50 border-slate-100 font-medium focus:bg-white transition-all shadow-sm"
-                                    placeholder="John"
-                                    value={kycData.firstName}
-                                    onChange={(e) => setKycData({...kycData, firstName: e.target.value})}
-                                />
-                             </div>
-                             <div className="space-y-2">
-                                <Label className="text-[11px] font-semibold text-slate-500 ml-1">Last Name</Label>
-                                <Input 
-                                    className="h-11 rounded-xl bg-slate-50/50 border-slate-100 font-medium focus:bg-white transition-all shadow-sm"
-                                    placeholder="Doe"
-                                    value={kycData.lastName}
-                                    onChange={(e) => setKycData({...kycData, lastName: e.target.value})}
-                                />
-                             </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-[11px] font-semibold text-slate-500 ml-1">Email Address</Label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Legal First Name</Label>
                             <Input 
-                                className="h-11 rounded-xl bg-slate-50/50 border-slate-100 font-medium focus:bg-white transition-all shadow-sm"
-                                placeholder="admin@school.com"
-                                type="email"
-                                value={kycData.email}
-                                onChange={(e) => setKycData({...kycData, email: e.target.value})}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg focus:bg-white transition-all"
+                                placeholder="John"
+                                value={kycData.firstName}
+                                onChange={(e) => setKycData({...kycData, firstName: e.target.value})}
                             />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-[11px] font-semibold text-slate-500 ml-1">Bank Verification Number (BVN)</Label>
+                         </div>
+                         <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Legal Surname</Label>
                             <Input 
-                                className="h-11 rounded-xl bg-slate-50/50 border-slate-100 font-semibold tracking-widest focus:bg-white transition-all shadow-sm"
-                                placeholder="22233344455"
-                                maxLength={11}
-                                value={kycData.bvn}
-                                onChange={(e) => setKycData({...kycData, bvn: e.target.value})}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg focus:bg-white transition-all"
+                                placeholder="Doe"
+                                value={kycData.lastName}
+                                onChange={(e) => setKycData({...kycData, lastName: e.target.value})}
                             />
-                            <div className="flex items-center gap-1.5 ml-1 mt-1.5">
-                               <ShieldCheck className="h-3 w-3 text-green-500" />
-                               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Securely encrypted</span>
-                            </div>
-                        </div>
+                         </div>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
-                           <MapPin className="h-3.5 w-3.5 text-blue-500" />
-                           <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Personal Details</h4>
-                        </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Official Email Address</Label>
+                        <Input 
+                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg focus:bg-white transition-all"
+                            placeholder="registrar@institution.edu"
+                            type="email"
+                            value={kycData.email}
+                            onChange={(e) => setKycData({...kycData, email: e.target.value})}
+                        />
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-semibold text-slate-500 ml-1">Phone Number</Label>
-                                <Input 
-                                    className="h-11 rounded-xl bg-slate-50/50 border-slate-100 font-medium focus:bg-white transition-all shadow-sm"
-                                    placeholder="08012345678"
-                                    value={kycData.phoneNumber}
-                                    onChange={(e) => setKycData({...kycData, phoneNumber: e.target.value})}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-semibold text-slate-500 ml-1">Date of Birth</Label>
-                                <Input 
-                                    className="h-11 rounded-xl bg-slate-50/50 border-slate-100 font-medium focus:bg-white transition-all shadow-sm"
-                                    type="date"
-                                    value={kycData.dob}
-                                    onChange={(e) => setKycData({...kycData, dob: e.target.value})}
-                                />
-                            </div>
-                        </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Bank Verification Identity (BVN)</Label>
+                        <Input 
+                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-black text-xl tracking-[0.2em] focus:bg-white transition-all"
+                            placeholder="22200011100"
+                            maxLength={11}
+                            value={kycData.bvn}
+                            onChange={(e) => setKycData({...kycData, bvn: e.target.value})}
+                        />
+                    </div>
+                </div>
 
+                <div className="space-y-6">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
+                       <MapPin className="h-4 w-4 text-indigo-500" />
+                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Institutional Residency</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-semibold text-slate-500 ml-1">Residential Address</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Direct Line</Label>
                             <Input 
-                                className="h-11 rounded-xl bg-slate-50/50 border-slate-100 font-medium focus:bg-white transition-all shadow-sm"
-                                placeholder="No. 123 High Street..."
-                                value={kycData.address}
-                                onChange={(e) => setKycData({...kycData, address: e.target.value})}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg focus:bg-white transition-all"
+                                placeholder="08012345678"
+                                value={kycData.phoneNumber}
+                                onChange={(e) => setKycData({...kycData, phoneNumber: e.target.value})}
                             />
                         </div>
-
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-semibold text-slate-500 ml-1">Gender</Label>
-                            <div className="flex gap-4">
-                                <button 
-                                    onClick={() => setKycData({...kycData, gender: "1"})}
-                                    className={cn(
-                                        "flex-1 h-11 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider",
-                                        kycData.gender === "1" ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-100" : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                                    )}
-                                >Male</button>
-                                <button 
-                                    onClick={() => setKycData({...kycData, gender: "2"})}
-                                    className={cn(
-                                        "flex-1 h-11 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider",
-                                        kycData.gender === "2" ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-100" : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                                    )}
-                                >Female</button>
-                            </div>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Birth Registry</Label>
+                            <Input 
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg focus:bg-white transition-all uppercase"
+                                type="date"
+                                value={kycData.dob}
+                                onChange={(e) => setKycData({...kycData, dob: e.target.value})}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Verified Address</Label>
+                        <Input 
+                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg focus:bg-white transition-all"
+                            placeholder="Institutional or Residential street address..."
+                            value={kycData.address}
+                            onChange={(e) => setKycData({...kycData, address: e.target.value})}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Gender</Label>
+                        <div className="flex gap-3">
+                            <button 
+                                type="button"
+                                onClick={() => setKycData({...kycData, gender: "1"})}
+                                className={cn(
+                                    "flex-1 h-12 rounded-xl border transition-all text-xs font-black uppercase tracking-widest",
+                                    kycData.gender === "1" ? "bg-indigo-600 text-white border-transparent shadow-lg shadow-indigo-100" : "bg-white text-slate-400 border-slate-100 hover:border-slate-300"
+                                )}
+                            >Male Candidate</button>
+                            <button 
+                                type="button"
+                                onClick={() => setKycData({...kycData, gender: "2"})}
+                                className={cn(
+                                    "flex-1 h-12 rounded-xl border transition-all text-xs font-black uppercase tracking-widest",
+                                    kycData.gender === "2" ? "bg-indigo-600 text-white border-transparent shadow-lg shadow-indigo-100" : "bg-white text-slate-400 border-slate-100 hover:border-slate-300"
+                                )}
+                            >Female Candidate</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="p-8 bg-slate-50/50 border-t border-slate-100 space-y-4">
+            <div className="flex flex-col gap-6 pt-6 border-t border-slate-50">
                 <Button 
-                    className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-widest shadow-xl transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="w-full h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-tighter shadow-xl shadow-indigo-100 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
                     disabled={kycLoading}
                     onClick={async () => {
                         setKycLoading(true);
@@ -425,14 +413,14 @@ export function WalletFeesContent() {
                             
                             const result = await res.json();
                             if (res.ok) {
-                                toast.success("Virtual account activated successfully!");
+                                toast.success("Virtual account provisioned successfully!");
                                 setIsAccountModalOpen(false);
                                 fetchWallet();
                             } else {
-                                toast.error(result.error || "Activation failed");
+                                toast.error(result.error || "Provisioning failed");
                             }
                         } catch (e) {
-                            toast.error("An error occurred");
+                            toast.error("A network synchronization error occurred");
                         } finally {
                             setKycLoading(false);
                         }
@@ -440,46 +428,39 @@ export function WalletFeesContent() {
                 >
                     {kycLoading ? (
                         <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Processing...</span>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Provisioning Identity...</span>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
-                           <span>Activate Receiving Account</span>
-                           <ChevronRight className="h-4 w-4" />
+                        <div className="flex items-center justify-center gap-2">
+                           <span>Activate Institutional Account</span>
+                           <Sparkles className="h-5 w-5" />
                         </div>
                     )}
                 </Button>
 
-                <div className="flex items-center justify-center gap-3 pt-2 opacity-50 grayscale">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Powered By</p>
-                    <Image 
-                        src="/squad.png" 
-                        alt="Squad" 
-                        width={60} 
-                        height={20} 
-                        className="h-4 w-auto object-contain"
-                    />
-                    <div className="h-3 w-px bg-slate-300"></div>
-                    <Image 
-                        src="/habaripay.jpg" 
-                        alt="HabariPay" 
-                        width={60} 
-                        height={20} 
-                        className="h-4 w-auto object-contain"
-                    />
-                    <div className="h-3 w-px bg-slate-300"></div>
-                     <Image 
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" 
-                        alt="GTBank" 
-                        width={60} 
-                        height={20} 
-                        className="h-4 w-auto object-contain"
-                    />
+                <div className="flex items-center justify-center gap-4 opacity-40 grayscale group-hover:grayscale-0 transition-all">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">In Partnership With</p>
+                    <div className="flex items-center gap-3">
+                        <Image src="/squad.png" alt="Squad" width={50} height={15} className="h-3 w-auto object-contain" />
+                        <div className="h-3 w-px bg-slate-200" />
+                        <Image src="/habaripay.jpg" alt="HabariPay" width={50} height={15} className="h-3 w-auto object-contain" />
+                        <div className="h-3 w-px bg-slate-200" />
+                        <div className="flex items-center gap-1">
+                            <Image 
+                                src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" 
+                                alt="GTBank" 
+                                width={12} 
+                                height={12} 
+                                className="h-3 w-auto object-contain"
+                            />
+                            <span className="text-[9px] font-black text-slate-500">GTCO</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </SheetContent>
-      </Sheet>
+        </div>
+      </ResponsiveSheet>
     </div>
   );
 }

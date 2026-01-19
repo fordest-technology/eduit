@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
 
@@ -14,7 +14,7 @@ export async function GET(
   }
 
   try {
-    const userId = params.id;
+    const { id: userId } = await params;
 
     // Check if user has permission to view this user
     if (
@@ -86,7 +86,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
 
@@ -95,14 +95,15 @@ export async function PUT(
   }
 
   try {
-    const userId = params.id;
+    const { id: userId } = await params;
     const body = await request.json();
     const { name, email, password, role, schoolId, adminData } = body;
 
     // Check if user has permission to update this user
     if (
       session.role !== "SUPER_ADMIN" &&
-      (session.role !== "SCHOOL_ADMIN" || session.id === userId)
+      session.role !== "SCHOOL_ADMIN" &&
+      session.id !== userId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -160,7 +161,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
 
@@ -172,7 +173,7 @@ export async function DELETE(
   }
 
   try {
-    const userId = params.id;
+    const { id: userId } = await params;
 
     // Check if user has permission to delete this user
     if (session.role === "SCHOOL_ADMIN") {

@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { createSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
+import { sanitizeInput } from "@/lib/security";
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const rawBody = await request.json();
+    const { email, password } = sanitizeInput(rawBody);
 
     if (!email || !password) {
       return NextResponse.json({ message: "Missing email or password" }, { status: 400 });
@@ -29,16 +31,22 @@ export async function POST(request: Request) {
       permissions = adminRecord?.permissions;
     }
 
-    // build JWT & cookie
-    const session = await createSession({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      ...(user.schoolId && { schoolId: user.schoolId }),
-      permissions,
-    } as any);
+    // Get request host for cookie domain detection
+    const host = request.headers.get("host") || undefined;
 
-    // copy cookie into our response
+    // Create session with JWT & cookie
+    const session = await createSession(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        ...(user.schoolId && { schoolId: user.schoolId }),
+        permissions,
+      } as any,
+      host
+    );
+
+    // Copy cookie into response
     const response = NextResponse.json({
       user: {
         id: user.id,

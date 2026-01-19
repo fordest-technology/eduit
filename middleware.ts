@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyJwt } from "./lib/auth-server";
+import { SECURITY_HEADERS } from "./lib/security";
 
 // ------------- route lists -------------
 const authRequiredPaths = ["/dashboard"];
 const authRedirectPaths = ["/login", "/register"];
 const publicPaths = [
-  "/api/public/schools",
+  "/api/public/",
   "/api/auth/login",
   "/api/auth/logout",
   "/api/auth/session",
   "/api/webhooks",
   "/api/payments/webhook",
-  "/login",
-  "/register",
-  "/",
-  "/_next",
-  "/static",
-  "/favicon.ico",
+  "/api/schools/register",
 ];
 
 const allowedOrigins = [
@@ -30,6 +26,12 @@ const allowedOrigins = [
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const origin = request.headers.get("origin");
+  const requestHeaders = new Headers(request.headers);
+
+  // --- Security Headers ---
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    requestHeaders.set(key, value);
+  });
 
   // --- CORS pre-flight ---
   if (request.method === "OPTIONS") {
@@ -37,6 +39,7 @@ export async function middleware(request: NextRequest) {
       return new NextResponse(null, {
         status: 204,
         headers: {
+          ...SECURITY_HEADERS,
           "Access-Control-Allow-Origin": origin,
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type, Authorization",
@@ -44,50 +47,70 @@ export async function middleware(request: NextRequest) {
         },
       });
     }
-    return new NextResponse(null, { status: 403 });
-  }
-
-  // --- CORS headers on normal responses ---
-  const response = NextResponse.next();
-  if (origin && allowedOrigins.includes(origin)) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
-    response.headers.set(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
-    );
-    response.headers.set(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization"
-    );
+    return new NextResponse(null, { status: 403, headers: SECURITY_HEADERS });
   }
 
   // --- auth checks ---
   const sessionToken = request.cookies.get("session")?.value;
   const user = sessionToken ? await verifyJwt(sessionToken) : null;
 
-  const isPublic = publicPaths.some((p) => path.startsWith(p));
+  const isPublic = publicPaths.some((p) => path.startsWith(p)) || 
+                  path === "/" || path === "/login" || path === "/register" ||
+                  path.startsWith("/_next") || path.startsWith("/static") || path === "/favicon.ico";
 
   // API routes
   if (path.startsWith("/api")) {
-    if (isPublic) return response;
-    if (!user)
+    if (!isPublic && !user) {
       return new NextResponse(JSON.stringify({ error: "Authentication required" }), {
         status: 401,
-        headers: { "Content-Type": "application/json" },
+        headers: { ...SECURITY_HEADERS, "Content-Type": "application/json" },
       });
+    }
 
-    response.headers.set("x-user-id", user.id);
-    response.headers.set("x-user-role", user.role);
-    if (user.schoolId) response.headers.set("x-school-id", user.schoolId);
+    if (user) {
+      requestHeaders.set("x-user-id", user.id);
+      requestHeaders.set("x-user-role", user.role);
+      if (user.schoolId) requestHeaders.set("x-school-id", user.schoolId);
+    }
+    
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+
+    // Add CORS headers to normal API responses
+    if (origin && allowedOrigins.includes(origin)) {
+      response.headers.set("Access-Control-Allow-Origin", origin);
+    }
+    
+    // Add Security Headers
+    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
     return response;
   }
 
   // Non-API routes
-  if (user && authRedirectPaths.includes(path))
+  if (user && authRedirectPaths.includes(path)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
 
-  if (!user && authRequiredPaths.some((p) => path.startsWith(p)))
+  if (!user && authRequiredPaths.some((p) => path.startsWith(p))) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+  
+  // Add Security Headers
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
 
   return response;
 }

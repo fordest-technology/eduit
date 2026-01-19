@@ -2,14 +2,8 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Loader2, Plus, X } from "lucide-react"
 import {
@@ -103,85 +97,102 @@ export function ManageSubjectsModal({
     }
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right">
-                <SheetHeader className="mb-6">
-                    <SheetTitle>Manage Subjects</SheetTitle>
-                    <SheetDescription>
-                        Add or remove subjects this teacher will teach.
-                    </SheetDescription>
-                </SheetHeader>
-
-                <div className="space-y-4 py-4">
+        <ResponsiveSheet 
+            open={open} 
+            onOpenChange={onOpenChange}
+            title="Curriculum Alignment"
+            description="Optimize the academic portfolio for this faculty member."
+            className="sm:max-w-xl"
+        >
+            <div className="flex flex-col gap-10">
+                <div className="space-y-6">
                     {/* Selected Subjects */}
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Selected Subjects</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {selectedSubjects.map((subjectId) => {
-                                const subject = availableSubjects.find(s => s.id === subjectId)
-                                return subject ? (
-                                    <Badge key={subjectId} variant="secondary" className="flex items-center gap-1">
-                                        {subject.name}
-                                        <button
-                                            onClick={() => handleRemoveSubject(subjectId)}
-                                            className="ml-1 hover:text-destructive"
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Assignments</label>
+                        <div className="flex flex-wrap gap-2.5 p-4 rounded-[2rem] bg-slate-50 border border-slate-100 min-h-[100px] content-start">
+                            {selectedSubjects.length === 0 ? (
+                                <div className="w-full flex items-center justify-center p-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest italic">
+                                    No subjects currently linked
+                                </div>
+                            ) : (
+                                selectedSubjects.map((subjectId) => {
+                                    const subject = availableSubjects.find(s => s.id === subjectId)
+                                    return subject ? (
+                                        <Badge 
+                                            key={subjectId} 
+                                            variant="secondary" 
+                                            className="h-10 pl-4 pr-2 flex items-center gap-2 bg-white border-slate-100 text-slate-700 font-black text-xs rounded-xl shadow-sm hover:shadow-md transition-all group"
                                         >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </Badge>
-                                ) : null
-                            })}
+                                            {subject.name}
+                                            <button
+                                                onClick={() => handleRemoveSubject(subjectId)}
+                                                className="h-6 w-6 rounded-lg flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </Badge>
+                                    ) : null
+                                })
+                            )}
                         </div>
                     </div>
 
                     {/* Add New Subject */}
-                    <div className="flex gap-2">
-                        <Select value={newSubjectId} onValueChange={setNewSubjectId}>
-                            <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select a subject to add" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableOptions.map((subject) => (
-                                    <SelectItem key={subject.id} value={subject.id}>
-                                        {subject.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={handleAddSubject}
-                            disabled={!newSubjectId}
-                        >
-                            <Plus className="h-4 w-4" />
-                        </Button>
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Expand Curriculum</label>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="flex-1">
+                                <Select value={newSubjectId} onValueChange={setNewSubjectId}>
+                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold transition-all">
+                                        <SelectValue placeholder="Select institutional subject" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
+                                        {availableOptions.map((subject) => (
+                                            <SelectItem key={subject.id} value={subject.id} className="font-bold">
+                                                {subject.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button
+                                type="button"
+                                onClick={handleAddSubject}
+                                disabled={!newSubjectId}
+                                className="h-14 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100"
+                            >
+                                <Plus className="mr-2 h-5 w-5" />
+                                Add
+                            </Button>
+                        </div>
                     </div>
 
-                    {availableOptions.length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                            No more subjects available to add.
-                        </p>
+                    {availableOptions.length === 0 && selectedSubjects.length > 0 && (
+                        <div className="flex items-center gap-2 p-4 rounded-xl bg-amber-50 text-amber-700 border border-amber-100">
+                            <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Saturation Reached: All curriculum subjects assigned.</span>
+                        </div>
                     )}
                 </div>
 
-                <SheetFooter className="mt-8">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancel
+                <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => onOpenChange(false)}
+                        className="flex-1 h-14 rounded-2xl font-bold text-slate-500 hover:text-slate-800"
+                    >
+                        Discard
                     </Button>
-                    <Button onClick={onSubmit} disabled={isLoading}>
-                        {isLoading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            "Save Changes"
-                        )}
+                    <Button
+                        onClick={onSubmit}
+                        disabled={isLoading}
+                        className="flex-[2] h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
+                        Finalize Changes
                     </Button>
-                </SheetFooter>
-            </SheetContent>
-        </Sheet>
+                </div>
+            </div>
+        </ResponsiveSheet>
     )
 } 

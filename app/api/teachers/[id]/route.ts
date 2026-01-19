@@ -22,9 +22,10 @@ const updateTeacherSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: teacherId } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -38,7 +39,7 @@ export async function PATCH(
     // Check if teacher exists and belongs to the same school
     const user = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id: teacherId,
         role: UserRole.TEACHER,
         schoolId: session.schoolId,
       },
@@ -98,7 +99,7 @@ export async function PATCH(
       // Update the user record
       if (Object.keys(userData).length > 0) {
         await tx.user.update({
-          where: { id: params.id },
+          where: { id: teacherId },
           data: userData,
         });
       }
@@ -122,7 +123,7 @@ export async function PATCH(
 
       // Return the updated user with teacher profile
       return tx.user.findUnique({
-        where: { id: params.id },
+        where: { id: teacherId },
         include: { teacher: true },
       });
     });
@@ -139,9 +140,11 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: teacherId } = await params;
+    
     const session = await getSession();
 
     if (!session) {
@@ -158,7 +161,7 @@ export async function DELETE(
     // Find the teacher profile first
     const teacher = await prisma.teacher.findUnique({
       where: {
-        id: params.id,
+        id: teacherId,
       },
       include: {
         user: true,
@@ -204,15 +207,15 @@ export async function DELETE(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: teacherId } = await params;
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const teacherId = params.id;
     if (!teacherId) {
       return NextResponse.json(
         { message: "Teacher ID is required" },

@@ -3,15 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from "@/components/ui/sheet"
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -485,168 +477,187 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                     <p className="text-sm text-muted-foreground">Manage your academic sessions and terms</p>
                 </div>
 
-                <Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <SheetTrigger asChild>
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Session
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
-                        <SheetHeader>
-                            <SheetTitle>Create New Academic Session</SheetTitle>
-                            <SheetDescription>Add a new academic session or term to your school calendar.</SheetDescription>
-                        </SheetHeader>
+            {/* Add Session ResponsiveSheet */}
+            <ResponsiveSheet 
+                open={isDialogOpen} 
+                onOpenChange={setIsDialogOpen}
+                title="Create New Academic Session"
+                description="Add a new academic session or term to your school calendar."
+                className="sm:max-w-xl"
+            >
+                <div className="flex flex-col gap-6">
+                    {error && (
+                        <Alert variant="destructive" className="rounded-2xl border-red-100 bg-red-50">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertTitle className="text-red-900 font-bold">Configuration Error</AlertTitle>
+                            <AlertDescription className="text-red-700">{error}</AlertDescription>
+                        </Alert>
+                    )}
 
-                        {error && (
-                            <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertTitle>Error</AlertTitle>
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-black uppercase tracking-widest text-slate-400">Session Designation</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g. 2023/2024 Academic Year" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold text-lg" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            {userRole === "super_admin" && (
                                 <FormField
                                     control={form.control}
-                                    name="name"
+                                    name="schoolId"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Session Name</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g. 2023/2024 Academic Year" {...field} />
-                                            </FormControl>
+                                            <FormLabel className="text-xs font-black uppercase tracking-widest text-slate-400">Institutional Mapping</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold">
+                                                        <SelectValue placeholder="Select a school" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-2xl border-slate-50 shadow-2xl">
+                                                    {schools.map(school => (
+                                                        <SelectItem key={school.id} value={school.id} className="rounded-xl px-4 py-3">{school.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="startDate"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-xs font-black uppercase tracking-widest text-slate-400">Commencement</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button
+                                                            variant={"outline"}
+                                                            className={cn("h-14 rounded-2xl bg-slate-50 border-slate-100 pl-3 text-left font-bold transition-all hover:bg-slate-100", !field.value && "text-muted-foreground")}
+                                                        >
+                                                            {field.value ? format(field.value, "PPP") : <span>Pick a start date</span>}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-3xl overflow-hidden" align="start">
+                                                    <DateCalendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-4" />
+                                                </PopoverContent>
+                                            </Popover>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
 
-                                {userRole === "super_admin" && (
-                                    <FormField
-                                        control={form.control}
-                                        name="schoolId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>School</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormField
+                                    control={form.control}
+                                    name="endDate"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-xs font-black uppercase tracking-widest text-slate-400">Conclusion</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
                                                     <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select a school" />
-                                                        </SelectTrigger>
+                                                        <Button
+                                                            variant={"outline"}
+                                                            className={cn("h-14 rounded-2xl bg-slate-50 border-slate-100 pl-3 text-left font-bold transition-all hover:bg-slate-100", !field.value && "text-muted-foreground")}
+                                                        >
+                                                            {field.value ? format(field.value, "PPP") : <span>Pick an end date</span>}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
                                                     </FormControl>
-                                                    <SelectContent>
-                                                        {schools.map(school => (
-                                                            <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-3xl overflow-hidden" align="start">
+                                                    <DateCalendar
+                                                        mode="single"
+                                                        selected={field.value}
+                                                        onSelect={field.onChange}
+                                                        disabled={(date: Date) => date <= form.getValues().startDate}
+                                                        initialFocus
+                                                        className="p-4"
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="startDate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Start Date</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button
-                                                                variant={"outline"}
-                                                                className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                                                            >
-                                                                {field.value ? format(field.value, "PPP") : <span>Pick a start date</span>}
-                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <DateCalendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                                                    </PopoverContent>
-                                                </Popover>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="endDate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>End Date</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button
-                                                                variant={"outline"}
-                                                                className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                                                            >
-                                                                {field.value ? format(field.value, "PPP") : <span>Pick an end date</span>}
-                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <DateCalendar
-                                                            mode="single"
-                                                            selected={field.value}
-                                                            onSelect={field.onChange}
-                                                            disabled={(date: Date) => date <= form.getValues().startDate}
-                                                            initialFocus
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-
-                                <div className="space-y-4 pt-2">
-                                    <div className="flex items-center justify-between">
-                                        <FormLabel>Terms / Periods</FormLabel>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendTerm({ name: "" })}>
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add Term
-                                        </Button>
+                            <div className="space-y-4 pt-4 border-t border-slate-50">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <h4 className="text-sm font-black uppercase tracking-widest text-slate-400">Calendar Segments</h4>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Define terms or periodic divisions for this session.</p>
                                     </div>
-                                    <div className="space-y-3">
-                                        {termFields.map((field, index) => (
-                                            <div key={field.id} className="flex items-center gap-2">
-                                                <FormField
-                                                    control={form.control}
-                                                    name={`terms.${index}.name`}
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex-1">
-                                                            <FormControl>
-                                                                <Input placeholder={`Term ${index + 1} Name (e.g. 1st Term)`} {...field} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <Button type="button" variant="ghost" size="icon" disabled={termFields.length <= 1} onClick={() => removeTerm(index)}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <Button type="button" variant="outline" size="sm" className="rounded-xl font-bold h-10 border-indigo-100 text-indigo-600 hover:bg-indigo-50" onClick={() => appendTerm({ name: "" })}>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Term
+                                    </Button>
                                 </div>
+                                <div className="space-y-3">
+                                    {termFields.map((field, index) => (
+                                        <div key={field.id} className="flex items-center gap-2 group animate-in fade-in slide-in-from-top-1 duration-200">
+                                            <FormField
+                                                control={form.control}
+                                                name={`terms.${index}.name`}
+                                                render={({ field }) => (
+                                                    <FormItem className="flex-1">
+                                                        <FormControl>
+                                                            <Input placeholder={`Term ${index + 1} Name (e.g. 1st Term)`} className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <Button type="button" variant="ghost" size="icon" disabled={termFields.length <= 1} onClick={() => removeTerm(index)} className="h-14 w-14 rounded-2xl hover:bg-red-50 hover:text-red-600">
+                                                <Trash2 className="h-5 w-5" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
-                                <SheetFooter className="mt-6">
-                                    <Button type="submit" disabled={isLoading}>{isLoading ? "Creating..." : "Create Session"}</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
-                    </SheetContent>
-                </Sheet>
+                            <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="flex-1 h-14 rounded-2xl border-slate-200 font-bold hover:bg-slate-50"
+                                    onClick={() => setIsDialogOpen(false)}
+                                    disabled={isLoading}
+                                >
+                                    Discard
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    disabled={isLoading}
+                                    className="flex-[2] h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    {isLoading ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        "Initiate Session"
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </div>
+            </ResponsiveSheet>
             </div>
 
             {sessions.length > 0 ? (
@@ -667,59 +678,60 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                 </Card>
             )}
 
-            {/* Edit Session Sheet */}
-            <Sheet open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
-                    <SheetHeader>
-                        <SheetTitle>Edit Academic Session</SheetTitle>
-                        <SheetDescription>Update the details of your academic session.</SheetDescription>
-                    </SheetHeader>
-
+            {/* Edit Session ResponsiveSheet */}
+            <ResponsiveSheet 
+                open={isEditDialogOpen} 
+                onOpenChange={setIsEditDialogOpen}
+                title="Edit Academic Session"
+                description="Update the details of your academic session."
+                className="sm:max-w-xl"
+            >
+                <div className="flex flex-col gap-6">
                     {error && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{error}</AlertDescription>
+                        <Alert variant="destructive" className="rounded-2xl border-red-100 bg-red-50">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertTitle className="text-red-900 font-bold">Error Updating</AlertTitle>
+                            <AlertDescription className="text-red-700">{error}</AlertDescription>
                         </Alert>
                     )}
 
                     <Form {...editForm}>
-                        <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                        <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
                             <FormField
                                 control={editForm.control}
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Session Name</FormLabel>
+                                        <FormLabel className="text-xs font-black uppercase tracking-widest text-slate-400">Session Designation</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="e.g. 2023/2024 Academic Year" {...field} />
+                                            <Input placeholder="e.g. 2023/2024 Academic Year" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold text-lg" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField
                                     control={editForm.control}
                                     name="startDate"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Start Date</FormLabel>
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-xs font-black uppercase tracking-widest text-slate-400">Commencement</FormLabel>
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <FormControl>
                                                         <Button
                                                             variant={"outline"}
-                                                            className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                                            className={cn("h-14 rounded-2xl bg-slate-50 border-slate-100 pl-3 text-left font-bold transition-all hover:bg-slate-100", !field.value && "text-muted-foreground")}
                                                         >
                                                             {field.value ? format(field.value, "PPP") : <span>Pick a start date</span>}
                                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                         </Button>
                                                     </FormControl>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                    <DateCalendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                                                <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-3xl overflow-hidden" align="start">
+                                                    <DateCalendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-4" />
                                                 </PopoverContent>
                                             </Popover>
                                             <FormMessage />
@@ -731,27 +743,28 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                                     control={editForm.control}
                                     name="endDate"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>End Date</FormLabel>
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-xs font-black uppercase tracking-widest text-slate-400">Conclusion</FormLabel>
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <FormControl>
                                                         <Button
                                                             variant={"outline"}
-                                                            className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                                            className={cn("h-14 rounded-2xl bg-slate-50 border-slate-100 pl-3 text-left font-bold transition-all hover:bg-slate-100", !field.value && "text-muted-foreground")}
                                                         >
                                                             {field.value ? format(field.value, "PPP") : <span>Pick an end date</span>}
                                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                         </Button>
                                                     </FormControl>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
+                                                <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-3xl overflow-hidden" align="start">
                                                     <DateCalendar
                                                         mode="single"
                                                         selected={field.value}
                                                         onSelect={field.onChange}
                                                         disabled={(date: Date) => date <= editForm.getValues().startDate}
                                                         initialFocus
+                                                        className="p-4"
                                                     />
                                                 </PopoverContent>
                                             </Popover>
@@ -761,96 +774,141 @@ export function SessionsTable({ initialSessions, schools, userRole, userSchoolId
                                 />
                             </div>
 
-                            {/* Terms are currently not editable via the direct PUT API, 
-                                but we show them for reference or could add term editing logic later */}
-                            <div className="space-y-2 opacity-50 pointer-events-none">
-                                <FormLabel>Terms (Non-editable)</FormLabel>
+                            <div className="space-y-3 opacity-60 grayscale-[0.5]">
+                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Immutable Calendar Segments</h4>
                                 <div className="flex flex-wrap gap-2">
                                     {selectedSession?.resultConfigurations?.[0]?.periods?.map((term) => (
-                                        <Badge key={term.id} variant="outline">{term.name}</Badge>
+                                        <Badge key={term.id} variant="outline" className="rounded-xl px-3 py-1 font-bold border-slate-200">{term.name}</Badge>
                                     ))}
                                 </div>
-                                <p className="text-[10px] text-muted-foreground italic">Term names cannot be changed once the session is created.</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase italic mt-1">Segments are immutable post-initiation to preserve academic integrity.</p>
                             </div>
 
-                            <SheetFooter className="mt-6">
-                                <Button type="submit" disabled={isLoading}>{isLoading ? "Saving..." : "Save Changes"}</Button>
-                            </SheetFooter>
+                            <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="flex-1 h-14 rounded-2xl border-slate-200 font-bold hover:bg-slate-50"
+                                    onClick={() => setIsEditDialogOpen(false)}
+                                    disabled={isLoading}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    disabled={isLoading}
+                                    className="flex-[2] h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    {isLoading ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        "Save Adjustments"
+                                    )}
+                                </Button>
+                            </div>
                         </form>
                     </Form>
-                </SheetContent>
-            </Sheet>
+                </div>
+            </ResponsiveSheet>
 
-            {/* View Details Sheet */}
-            <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
-                    <SheetHeader>
-                        <SheetTitle>Session Details</SheetTitle>
-                        <SheetDescription>Complete information about this academic session.</SheetDescription>
-                    </SheetHeader>
-                    {selectedSession && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Session Name</p>
-                                    <p className="text-sm font-semibold">{selectedSession.name}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Status</p>
-                                    <Badge
-                                        variant={(selectedSession.isActive || (selectedSession as any).isCurrent) ? "default" : "secondary"}
-                                        className={(selectedSession.isActive || (selectedSession as any).isCurrent)
-                                            ? "bg-green-600 hover:bg-green-700 text-white font-semibold"
-                                            : "bg-slate-200 hover:bg-slate-300 text-slate-700"
-                                        }
-                                    >
-                                        {(selectedSession.isActive || (selectedSession as any).isCurrent) ? "Active" : "Inactive"}
-                                    </Badge>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Start Date</p>
-                                    <p className="text-sm">{formatDate(selectedSession.startDate)}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider text-[10px]">End Date</p>
-                                    <p className="text-sm">{formatDate(selectedSession.endDate)}</p>
-                                </div>
+            {/* View Details ResponsiveSheet */}
+            <ResponsiveSheet 
+                open={isDetailsOpen} 
+                onOpenChange={setIsDetailsOpen}
+                title="Session Information"
+                description="Complete administrative overview of this academic year."
+                className="sm:max-w-xl"
+            >
+                {selectedSession && (
+                    <div className="flex flex-col gap-8">
+                        <div className="grid grid-cols-2 gap-8">
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Record ID</p>
+                                <p className="text-sm font-mono font-bold text-slate-400 break-all">{selectedSession.id}</p>
                             </div>
-                            <Separator />
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Session Identity</p>
+                                <p className="text-lg font-black text-slate-900">{selectedSession.name}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-slate-50 border border-slate-100">
                             <div className="space-y-2">
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Terms / Periods</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {selectedSession.resultConfigurations?.[0]?.periods?.map((term) => (
-                                        <Badge key={term.id} variant="outline" className="px-2 py-1">{term.name} (Weight: {term.weight})</Badge>
-                                    )) || <span className="text-xs italic">No terms defined</span>}
+                                <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                                        <Calendar className="h-4 w-4" />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Commencement</span>
                                 </div>
+                                <p className="text-xl font-bold pl-10">{formatDate(selectedSession.startDate)}</p>
                             </div>
-                            <Separator />
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                                <div className="p-2 border rounded-lg bg-muted/30">
-                                    <p className="text-lg font-bold">{selectedSession._count.studentClasses}</p>
-                                    <p className="text-[10px] text-muted-foreground uppercase">Classes</p>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
+                                        <Calendar className="h-4 w-4" />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Conclusion</span>
                                 </div>
-                                <div className="p-2 border rounded-lg bg-muted/30">
-                                    <p className="text-lg font-bold">{selectedSession._count.results}</p>
-                                    <p className="text-[10px] text-muted-foreground uppercase">Results</p>
+                                <p className="text-xl font-bold pl-10">{formatDate(selectedSession.endDate)}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Academic Hierarchy</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Classes</p>
+                                    <p className="text-xl font-black text-indigo-600">{selectedSession._count?.classes || 0}</p>
                                 </div>
-                                <div className="p-2 border rounded-lg bg-muted/30">
-                                    <p className="text-lg font-bold">{selectedSession._count.attendance}</p>
-                                    <p className="text-[10px] text-muted-foreground uppercase">Attendance</p>
+                                <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Enrolled</p>
+                                    <p className="text-xl font-black text-indigo-600">{selectedSession._count?.studentClasses || 0}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Attendance</p>
+                                    <p className="text-xl font-black text-indigo-600">{selectedSession._count?.attendance || 0}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Results</p>
+                                    <p className="text-xl font-black text-indigo-600">{selectedSession._count?.results || 0}</p>
                                 </div>
                             </div>
                         </div>
-                    )}
-                    <SheetFooter className="mt-6">
-                        <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>Close</Button>
-                        <Button onClick={() => {
-                            setIsDetailsOpen(false)
-                            router.push('/dashboard/classes')
-                        }}>Manage Classes</Button>
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
+
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Defined Periods</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {selectedSession.resultConfigurations?.[0]?.periods?.map((term: any) => (
+                                    <div key={term.id} className="px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                                        <span className="text-sm font-bold text-indigo-800">{term.name}</span>
+                                        <Badge variant="outline" className="text-[9px] font-black">{term.weight || 0}% Weight</Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-slate-50 flex flex-col sm:flex-row gap-3">
+                            <Button 
+                                variant="outline"
+                                className="flex-1 h-14 rounded-2xl border-slate-200 font-bold hover:bg-slate-50"
+                                onClick={() => setIsDetailsOpen(false)}
+                            >
+                                Close Overview
+                            </Button>
+                            <Button
+                                className="flex-[2] h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                onClick={() => {
+                                    setIsDetailsOpen(false)
+                                    router.push('/dashboard/classes')
+                                }}
+                            >
+                                Manage Classes
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </ResponsiveSheet>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>

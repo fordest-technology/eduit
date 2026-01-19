@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { prisma, withErrorHandling } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { ClassesTable } from "./classes-table"
 import { BookOpen, Users, GraduationCap } from "lucide-react"
@@ -14,108 +14,68 @@ async function getData(schoolId: string) {
     const startTime = Date.now()
 
     try {
-        logger.info("Fetching classes data", { schoolId })
-
-        // Get current academic session first
-        const currentSession = await prisma.academicSession.findFirst({
-            where: {
-                schoolId,
-                isCurrent: true,
-            },
-            select: {
-                id: true,
-            },
-        })
-
-        // Optimized parallel queries with minimal data selection
-        const [teachersData, subjects, classes, school] = await Promise.all([
-            prisma.teacher.findMany({
-                where: {
-                    user: {
-                        role: "TEACHER",
+        // Fetch essential data in parallel with retry logic
+        const [currentSession, teachers, subjects, uniqueClasses] = await withErrorHandling(() => 
+            Promise.all([
+                prisma.academicSession.findFirst({
+                    where: {
                         schoolId,
-                    }
-                },
-                select: {
-                    id: true,
-                    user: {
-                        select: {
-                            name: true,
-                            profileImage: true
+                        isCurrent: true,
+                    },
+                    select: {
+                        id: true,
+                    },
+                }),
+                prisma.teacher.findMany({
+                    where: {
+                        user: {
+                            role: "TEACHER",
+                            schoolId,
                         }
-                    }
-                },
-                orderBy: {
-                    user: {
-                        name: "asc"
-                    }
-                }
-            }),
-            prisma.subject.findMany({
-                where: {
-                    schoolId,
-                },
-                select: {
-                    id: true,
-                    name: true,
-                },
-                orderBy: {
-                    name: "asc",
-                },
-            }),
-            prisma.class.findMany({
-                where: {
-                    schoolId,
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    section: true,
-                    _count: {
-                        select: {
-                            students: {
-                                where: {
-                                    sessionId: currentSession?.id,
-                                    status: "ACTIVE",
-                                },
-                            },
-                            subjects: true,
+                    },
+                    select: {
+                        id: true,
+                        user: {
+                            select: {
+                                name: true,
+                                profileImage: true
+                            }
                         }
-                    }
-                },
-                orderBy: {
-                    name: "asc",
-                },
-            }),
-            prisma.school.findUnique({
-                where: { id: schoolId },
-                select: {
-                    primaryColor: true,
-                    secondaryColor: true,
-                }
-            })
-        ])
+                    },
+                }),
+                prisma.subject.findMany({
+                    where: { schoolId },
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                }),
+                prisma.class.groupBy({
+                    by: ["name"],
+                    where: { schoolId },
+                }),
+            ])
+        )
 
-        // Transform teachers data to match component interface
-        const teachers = teachersData.map((teacher: any) => ({
-            id: teacher.id,
-            name: teacher.user.name,
-            profileImage: teacher.user.profileImage
-        }))
+        const classesCount = uniqueClasses.length
 
         const duration = Date.now() - startTime
-        logger.query("Classes data fetch", duration, {
+        logger.query("Classes page data fetch", duration, {
             schoolId,
+            classesCount,
             teachersCount: teachers.length,
             subjectsCount: subjects.length,
-            classesCount: classes.length
         })
 
         return {
-            teachers,
+            classesCount,
+            currentSessionId: currentSession?.id || null,
+            teachers: teachers.map(t => ({
+                id: t.id,
+                name: t.user.name,
+                profileImage: t.user.profileImage
+            })),
             subjects,
-            classes,
-            schoolColors: school || { primaryColor: "#3b82f6", secondaryColor: "#1d4ed8" }
         }
     } catch (error) {
         logger.error("Error fetching classes data", error, { schoolId })
@@ -152,11 +112,7 @@ export default async function ClassesPage() {
         redirect("/dashboard")
     }
 
-    const { teachers, subjects, classes, schoolColors } = await getData(session.schoolId)
-
-    // Calculate totals for stats
-    const totalStudents = classes.reduce((acc: number, cls: any) => acc + cls._count.students, 0)
-    const totalSubjects = classes.reduce((acc: number, cls: any) => acc + cls._count.subjects, 0)
+    const { classesCount, teachers, subjects } = await getData(session.schoolId)
 
     return (
         <div className="space-y-6">
@@ -173,28 +129,28 @@ export default async function ClassesPage() {
             <DashboardStatsGrid columns={3}>
                 <DashboardStatsCard
                     title="Total Classes"
-                    value={classes.length}
+                    value={classesCount}
                     icon={GraduationCap}
                     color="blue"
                     description="Classes across all levels"
                 />
                 <DashboardStatsCard
                     title="Subjects Assigned"
-                    value={totalSubjects}
+                    value={subjects.length}
                     icon={BookOpen}
                     color="emerald"
                     description="Subjects taught in classes"
                 />
                 <DashboardStatsCard
-                    title="Enrolled Students"
-                    value={totalStudents}
+                    title="Teachers"
+                    value={teachers.length}
                     icon={Users}
                     color="purple"
-                    description="Students across all classes"
+                    description="Faculty members"
                 />
             </DashboardStatsGrid>
 
-            {/* Classes Table */}
+            {/* Classes Table - fetches own data client-side */}
             <Card>
                 <CardContent className="p-6">
                     <ClassesTable
@@ -208,4 +164,4 @@ export default async function ClassesPage() {
             </Card>
         </div>
     )
-} 
+}

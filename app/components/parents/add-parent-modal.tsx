@@ -6,14 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { toast } from "sonner"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet"
 import {
     Form,
     FormControl,
@@ -195,24 +188,20 @@ export function AddParentModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>
-                        {isEditMode ? "Edit Parent" : "Add New Parent"}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {isEditMode
-                            ? "Update the parent's information"
-                            : "Add a new parent to your school. They will receive an email with login credentials."}
-                    </DialogDescription>
-                </DialogHeader>
-
+        <ResponsiveSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            title={isEditMode ? "Edit Parent" : "Add New Parent"}
+            description={isEditMode
+                ? "Update the parent's information"
+                : "Add a new parent to your school. They will receive an email with login credentials."}
+        >
+            <div className="flex flex-col gap-6">
                 {!isEditMode && (
-                    <Alert className="bg-blue-50">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Automatic credential generation</AlertTitle>
-                        <AlertDescription>
+                    <Alert className="bg-indigo-50 border-indigo-100 rounded-2xl">
+                        <AlertCircle className="h-4 w-4 text-indigo-600" />
+                        <AlertTitle className="text-indigo-900 font-bold">Automatic credential generation</AlertTitle>
+                        <AlertDescription className="text-indigo-700">
                             When you create a new parent, the system will automatically generate a secure password and send the
                             login credentials to the parent's email address if you don't provide a password.
                         </AlertDescription>
@@ -220,15 +209,15 @@ export function AddParentModal({
                 )}
 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <FormField
                             control={form.control}
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Full Name</FormLabel>
+                                    <FormLabel className="text-xs font-bold text-slate-500">Full Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter parent's full name" {...field} />
+                                        <Input placeholder="Enter parent's full name" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold text-lg" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -240,9 +229,9 @@ export function AddParentModal({
                             name="email"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Email Address</FormLabel>
+                                    <FormLabel className="text-xs font-bold text-slate-500">Email Address</FormLabel>
                                     <FormControl>
-                                        <Input type="email" placeholder="Enter email address" {...field} />
+                                        <Input type="email" placeholder="Enter email address" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -254,9 +243,9 @@ export function AddParentModal({
                             name="phone"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Phone Number (Optional)</FormLabel>
+                                    <FormLabel className="text-xs font-bold text-slate-500">Phone Number (Optional)</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter phone number" {...field} />
+                                        <Input placeholder="Enter phone number" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -268,17 +257,18 @@ export function AddParentModal({
                             name="password"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>
+                                    <FormLabel className="text-xs font-bold text-slate-500">
                                         {isEditMode ? "New Password (leave blank to keep current)" : "Password (Optional)"}
                                     </FormLabel>
                                     <FormControl>
                                         <PasswordInput
                                             placeholder={isEditMode ? "New password" : "Leave blank to auto-generate"}
+                                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-mono font-bold"
                                             {...field}
                                         />
                                     </FormControl>
                                     {!isEditMode && (
-                                        <p className="text-sm text-muted-foreground">
+                                        <p className="text-xs text-slate-400 font-medium">
                                             If left blank, a secure password will be generated and sent to the parent's email.
                                         </p>
                                     )}
@@ -288,57 +278,57 @@ export function AddParentModal({
                         />
 
                         {!isEditMode && (
-                            <div className="bg-muted/50 p-3 rounded-md">
-                                <div className="flex items-center text-sm">
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    <p>A welcome email with login credentials will be sent automatically to the provided email address.</p>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div className="flex items-center text-xs font-medium text-slate-600">
+                                    <Mail className="h-4 w-4 mr-2 text-indigo-500" />
+                                    <p>A welcome email with login credentials will be sent automatically.</p>
                                 </div>
                                 {emailStatus === 'sending' && (
-                                    <div className="flex items-center mt-2 text-sm text-amber-600">
+                                    <div className="flex items-center mt-2 text-xs text-amber-600 font-bold">
                                         <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                        <p>Sending login credentials to email...</p>
+                                        <p>Dispatching credentials...</p>
                                     </div>
                                 )}
                                 {emailStatus === 'success' && (
-                                    <div className="flex items-center mt-2 text-sm text-green-600">
+                                    <div className="flex items-center mt-2 text-xs text-green-600 font-bold">
                                         <CheckCircle className="h-3 w-3 mr-2" />
-                                        <p>Login credentials sent successfully!</p>
+                                        <p>Credentials dispatched successfully!</p>
                                     </div>
                                 )}
                                 {emailStatus === 'error' && (
-                                    <div className="flex items-center mt-2 text-sm text-red-600">
+                                    <div className="flex items-center mt-2 text-xs text-red-600 font-bold">
                                         <AlertCircle className="h-3 w-3 mr-2" />
-                                        <p>{emailError || "Failed to send email with credentials. Please contact the user directly."}</p>
+                                        <p>{emailError || "Dispatch failed. Manual intervention required."}</p>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        <DialogFooter>
+                        <div className="flex flex-col sm:flex-row gap-3 pt-6">
                             <Button
                                 type="button"
                                 variant="outline"
+                                className="flex-1 h-14 rounded-[1.25rem] border-slate-200 font-bold hover:bg-slate-50"
                                 onClick={() => onOpenChange(false)}
                                 disabled={isLoading}
                             >
-                                Cancel
+                                Discard
                             </Button>
-                            <Button type="submit" disabled={isLoading}>
+                            <Button 
+                                type="submit" 
+                                disabled={isLoading}
+                                className="flex-[2] h-14 rounded-[1.25rem] bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            >
                                 {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {isEditMode ? "Saving..." : "Creating..."}
-                                    </>
-                                ) : isEditMode ? (
-                                    "Save Changes"
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
-                                    "Create Parent"
+                                    isEditMode ? "Update Profile" : "Create Parent Account"
                                 )}
                             </Button>
-                        </DialogFooter>
+                        </div>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </div>
+        </ResponsiveSheet>
     )
 } 

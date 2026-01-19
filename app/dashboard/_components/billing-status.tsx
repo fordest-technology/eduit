@@ -83,114 +83,121 @@ export function BillingStatus() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="mb-8"
+      className="w-full h-full"
     >
-      <motion.div variants={itemVariants}>
+      <motion.div variants={itemVariants} className="h-full">
         <Card className={cn(
-          "border-none shadow-xl rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:shadow-2xl max-w-2xl mx-auto",
-          isBlocked ? "bg-red-50 border-2 border-red-200" : "bg-white"
+          "border-none shadow-xl rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:shadow-2xl relative h-full flex flex-col",
+          isBlocked 
+            ? "bg-red-50 border-2 border-red-100" 
+            : "bg-white"
         )}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-bold font-sora">Subscription status</CardTitle>
-              <Badge variant={isBlocked ? "destructive" : "outline"} className="rounded-full px-4 py-1">
-                {isBlocked ? "BLOCKED" : "ACTIVE"}
-              </Badge>
-            </div>
-            <CardDescription>Progressive Student-Based Billing</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-3xl bg-slate-50 border border-slate-100 group transition-all hover:bg-white hover:border-blue-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-blue-100 rounded-2xl text-blue-600 transition-transform group-hover:scale-110">
-                    <Users className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Students</p>
-                    <p className="text-xl font-black text-slate-800 tracking-tight">{billing?.currentStudentCount} <span className="text-slate-400 font-medium text-sm">onboarded</span></p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Paid For</p>
-                  <p className="text-xl font-black text-slate-800 tracking-tight">{billing?.paidStudentCount}</p>
-                </div>
-              </div>
+          {/* Decorative Gradient Background for Active State */}
+          {!isBlocked && (
+             <div className="absolute top-0 right-0 w-[400px] h-full bg-gradient-to-l from-indigo-50/80 to-transparent pointer-events-none" />
+          )}
 
-              <AnimatePresence>
-                {hasUnpaid && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, height: "auto", scale: 1 }}
-                    exit={{ opacity: 0, height: 0, scale: 0.9 }}
-                    className={cn(
-                      "p-5 rounded-3xl flex items-start gap-4 shadow-inner",
-                      isBlocked ? "bg-red-100/30 text-red-900" : "bg-amber-50 text-amber-900"
-                    )}
-                  >
-                    <div className={cn(
-                      "p-2 rounded-xl shrink-0",
-                      isBlocked ? "bg-red-500 text-white" : "bg-amber-500 text-white"
-                    )}>
-                      <AlertCircle className="h-5 w-5" />
+          <CardContent className="p-0 flex-1 flex flex-col">
+             <div className="flex flex-col h-full">
+                {/* Status Header */}
+                <div className={cn(
+                  "p-6 flex flex-col justify-center border-b border-slate-100 relative overflow-hidden shrink-0",
+                   isBlocked ? "bg-red-100/50" : "bg-slate-50/50"
+                )}>
+                    <div className="relative z-10 flex items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                           <Badge variant={isBlocked ? "destructive" : "secondary"} className={cn("px-2.5 py-0.5 text-[10px] font-bold tracking-wider rounded-md", !isBlocked && "bg-white text-indigo-600")}>
+                              {billing?.billingStatus || "UNKNOWN"}
+                           </Badge>
+                        </div>
+                        <h3 className="text-lg font-black font-sora text-slate-800 flex items-center gap-2">
+                           {isBlocked ? <AlertCircle className="h-5 w-5 text-red-500" /> : <CreditCard className="h-5 w-5 text-indigo-600" />}
+                           {isBlocked ? "Access Revoked" : "Subscription"}
+                        </h3>
+                      </div>
+                      <div className="text-right">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Students</p>
+                         <p className="text-2xl font-black text-slate-800 font-sora">{billing?.currentStudentCount}</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-black font-sora">
-                        {isBlocked ? "Account Access Revoked" : "Action Required: Unpaid Students"}
-                      </p>
-                      <p className="text-xs font-medium mt-1 leading-relaxed opacity-80">
-                        You have {billing?.unpaidStudents} students awaiting payment (₦{billing?.amountDue?.toLocaleString()}).
-                        {billing?.hoursRemaining !== null && billing?.hoursRemaining !== undefined && !isBlocked && (
-                          <span className="flex items-center gap-1 mt-2 font-black">
-                            <Clock className="h-3 w-3" />
-                            Blocks in {billing.hoursRemaining} hours
-                          </span>
-                        )}
-                      </p>
-                      <Button 
-                        size="sm" 
-                        className={cn(
-                          "mt-4 rounded-xl font-bold shadow-lg transition-all active:scale-95",
-                          isBlocked ? "bg-red-600 hover:bg-red-700" : "bg-slate-900 hover:bg-slate-800"
-                        )}
-                        disabled={!billing}
-                        onClick={async () => {
-                          if (!billing) return;
-                          try {
-                            const res = await fetch("/api/payments/create", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                amount: billing.amountDue,
-                                type: "USAGE_BILLING"
-                              })
-                            });
-                            const data = await res.json();
-                            if (data.checkout_url) {
-                              window.location.href = data.checkout_url;
-                            }
-                          } catch (error) {
-                            console.error("Payment initiation failed", error);
-                          }
-                        }}
-                      >
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        Pay ₦{billing?.amountDue.toLocaleString() ?? "0"}
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {!hasUnpaid && (
-                <div className="p-4 rounded-3xl bg-green-50/50 border border-green-100 flex items-center gap-3">
-                  <div className="p-1.5 bg-green-500 rounded-full text-white">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-xs font-black text-green-800 uppercase tracking-tight">Verified & Fully Paid</p>
                 </div>
-              )}
-            </div>
+
+                {/* Content Body */}
+                <div className="flex-1 p-6 flex flex-col justify-between gap-6">
+                     {/* Stats Bar */}
+                     <div className="space-y-3">
+                        <div className="flex items-center justify-between text-xs font-medium">
+                           <span className="text-slate-500"><b className="text-slate-800">{billing?.paidStudentCount}</b> Paid</span>
+                           <span className={cn(hasUnpaid ? "text-red-500 font-bold" : "text-emerald-600 font-bold")}>
+                              {billing?.unpaidStudents} Unpaid
+                           </span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                           <div 
+                              className={cn("h-full rounded-full transition-all duration-1000", isBlocked ? "bg-red-500" : "bg-emerald-500")} 
+                              style={{ width: `${billing?.currentStudentCount ? (billing.paidStudentCount / billing.currentStudentCount) * 100 : 0}%` }}
+                           />
+                        </div>
+                     </div>
+
+                     {/* Action Area */}
+                     <div className="mt-auto">
+                        {hasUnpaid ? (
+                           <div className="flex items-center justify-between gap-4">
+                             <div>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Due Now</p>
+                               <div className="flex items-baseline gap-1">
+                                 <span className="text-xl font-black text-slate-800 font-sora">₦{billing?.amountDue?.toLocaleString()}</span>
+                               </div>
+                               {billing?.hoursRemaining !== null && billing?.hoursRemaining !== undefined && !isBlocked && (
+                                  <p className="text-[10px] font-bold text-amber-500 flex items-center gap-1 mt-0.5">
+                                    <Clock className="h-2.5 w-2.5" /> {billing.hoursRemaining}h left
+                                  </p>
+                               )}
+                             </div>
+                             <Button 
+                                className={cn(
+                                  "rounded-xl font-bold font-sora shadow-lg shadow-indigo-100 transition-all hover:scale-105 active:scale-95 px-5 py-2 h-10 text-sm",
+                                  isBlocked ? "bg-red-600 hover:bg-red-700 shadow-red-100" : "bg-indigo-600 hover:bg-indigo-700"
+                                )}
+                                onClick={async () => {
+                                  if (!billing) return;
+                                  try {
+                                    const res = await fetch("/api/payments/create", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        amount: billing.amountDue,
+                                        type: "USAGE_BILLING"
+                                      })
+                                    });
+                                    const data = await res.json();
+                                    if (data.checkout_url) {
+                                      window.location.href = data.checkout_url;
+                                    }
+                                  } catch (error) {
+                                    console.error("Payment initiation failed", error);
+                                  }
+                                }}
+                              >
+                                {isBlocked ? "Restore Access" : "Pay Now"}
+                             </Button>
+                           </div>
+                        ) : (
+                           <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
+                              <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                <CheckCircle2 className="h-4 w-4" />
+                              </div>
+                              <div className="leading-tight">
+                                <p className="text-xs font-bold text-slate-800">All Caught Up</p>
+                                <p className="text-[10px] text-slate-500">No pending bills</p>
+                              </div>
+                           </div>
+                        )}
+                     </div>
+                  </div>
+             </div>
           </CardContent>
         </Card>
       </motion.div>

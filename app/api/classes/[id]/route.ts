@@ -3,10 +3,14 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 
+interface RouteParams {
+  params: { id: string } | Promise<{ id: string }>;
+}
+
 // GET a specific class
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
     const auth = await requireAuth(request);
@@ -15,9 +19,13 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Next.js 15: params must be awaited
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
     const classDetails = await prisma.class.findUnique({
       where: {
-        id: params.id,
+        id: id,
         schoolId: auth.user.schoolId,
       },
       include: {
@@ -72,7 +80,31 @@ export async function GET(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    return NextResponse.json(classDetails);
+    // Fetch other arms of the same class name
+    const otherArms = await prisma.class.findMany({
+      where: {
+        schoolId: auth.user.schoolId,
+        name: classDetails.name,
+        id: { not: classDetails.id },
+      },
+      select: {
+        id: true,
+        section: true,
+        _count: {
+          select: {
+            students: true,
+          }
+        }
+      },
+      orderBy: {
+        section: "asc"
+      }
+    });
+
+    return NextResponse.json({
+      ...classDetails,
+      otherArms
+    });
   } catch (error) {
     console.error("[CLASS_GET]", error);
     return NextResponse.json(
@@ -85,7 +117,7 @@ export async function GET(
 // PATCH to update a class
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
     const auth = await requireAuth(request, [
@@ -101,7 +133,11 @@ export async function PUT(
     }
 
     const { user } = auth;
-    const classId = params.id;
+    
+    // Next.js 15: params must be awaited
+    const resolvedParams = await params;
+    const classId = resolvedParams.id;
+    
     const body = await request.json();
 
     // Validate the class exists and belongs to the school
@@ -155,7 +191,7 @@ export async function PUT(
 // DELETE a class
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
     const auth = await requireAuth(request, [
@@ -171,7 +207,10 @@ export async function DELETE(
     }
 
     const { user } = auth;
-    const classId = params.id;
+    
+    // Next.js 15: params must be awaited
+    const resolvedParams = await params;
+    const classId = resolvedParams.id;
 
     // Validate the class exists and belongs to the school
     const existingClass = await prisma.class.findUnique({
@@ -185,11 +224,28 @@ export async function DELETE(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    // Delete the class
-    await prisma.class.delete({
-      where: {
-        id: classId,
-      },
+    // Use transaction to delete related records first to avoid foreign key violations
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete StudentClass relations
+      await tx.studentClass.deleteMany({
+        where: {
+          classId: classId,
+        },
+      });
+
+      // 2. Delete ClassSubject relations
+      await tx.classSubject.deleteMany({
+        where: {
+          classId: classId,
+        },
+      });
+
+      // 3. Finally delete the class
+      await tx.class.delete({
+        where: {
+          id: classId,
+        },
+      });
     });
 
     return NextResponse.json({ message: "Class deleted successfully" });

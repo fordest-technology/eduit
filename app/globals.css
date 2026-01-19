@@ -90,31 +90,37 @@
   background-color: var(--secondary-color);
 }
 
-/* Custom switch styles for better visibility */
-[data-state="unchecked"] {
+/* Custom switch/checkbox styles for better visibility */
+button[role="switch"][data-state="unchecked"],
+input[type="checkbox"][data-state="unchecked"] {
   background-color: #9ca3af !important;
   /* gray-400 - more visible */
 }
 
-[data-state="checked"] {
+button[role="switch"][data-state="checked"],
+input[type="checkbox"][data-state="checked"] {
   background-color: var(--primary-color) !important;
 }
 
 /* Make switch thumb more visible */
-[data-state="unchecked"] .bg-background {
+[role="switch"][data-state="unchecked"] span,
+[type="checkbox"][data-state="unchecked"] span {
   background-color: #ffffff !important;
 }
 
-[data-state="checked"] .bg-background {
+[role="switch"][data-state="checked"] span,
+[type="checkbox"][data-state="checked"] span {
   background-color: #ffffff !important;
 }
 
-/* Override default switch styles for better visibility */
-.peer[data-state="unchecked"] {
+/* Override default peer styles for better visibility */
+.peer[role="switch"][data-state="unchecked"],
+.peer[type="checkbox"][data-state="unchecked"] {
   background-color: #9ca3af !important;
   /* gray-400 */
 }
 
-.peer[data-state="checked"] {
+.peer[role="switch"][data-state="checked"],
+.peer[type="checkbox"][data-state="checked"] {
   background-color: var(--primary-color) !important;
 }

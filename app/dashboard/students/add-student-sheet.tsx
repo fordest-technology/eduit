@@ -424,65 +424,51 @@ export function AddStudentSheet({
                 console.log(`${key}:`, value);
             }
 
-            // Make API request
-            const response = await fetch("/api/students", {
+            // Make API request with toast.promise for premium feedback
+            const promise = fetch("/api/students", {
                 method: "POST",
                 body: formData,
-            });
-
-            const data = await response.json();
-            console.log("API response:", { status: response.status, data });
-
-            if (!response.ok) {
-                // Handle validation errors
-                if (response.status === 400 && data.errors) {
-                    const errorMessages = Object.entries(data.errors)
-                        .map(([field, message]) => `${field}: ${message}`)
-                        .join('\n');
-                    throw new Error(`Validation failed:\n${errorMessages}`);
+            }).then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) {
+                    if (response.status === 400 && data.errors) {
+                        const errorMessages = Object.entries(data.errors)
+                            .map(([field, message]) => `${field}: ${message}`)
+                            .join(', ');
+                        throw new Error(`Validation failed: ${errorMessages}`);
+                    }
+                    throw new Error(data.message || "Failed to process request");
                 }
-                throw new Error(data.message || "Failed to create student");
-            }
-
-            // Send credentials email if requested
-            if (values.sendCredentials) {
-                await sendCredentialsEmail({
-                    name: values.name,
-                    email: values.email,
-                    password: values.password,
-                });
-            }
-
-            // Show a prominent success toast
-            if (studentToEdit) {
-                toast.success("✅ Student Updated Successfully!", {
-                    description: `${values.name}'s information has been updated successfully.`,
-                    duration: 4000,
-                    action: {
-                        label: "View Students",
-                        onClick: () => router.push("/dashboard/students")
-                    }
-                });
-            } else {
-                toast.success("🎉 Student Created Successfully!", {
-                    description: `${values.name} has been added to the system successfully.`,
-                    duration: 5000, // Show for 5 seconds
-                    action: {
-                        label: "View Students",
-                        onClick: () => router.push("/dashboard/students")
-                    }
-                });
-            }
-
-            onSuccess?.();
-            onOpenChange(false);
-            router.refresh();
-        } catch (error) {
-            console.error("Error creating student:", error);
-            toast.error("❌ Failed to Create Student", {
-                description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-                duration: 6000
+                
+                // Send credentials email if requested (non-blocking for the main success toast)
+                if (values.sendCredentials) {
+                    sendCredentialsEmail({
+                        name: values.name,
+                        email: values.email,
+                        password: values.password,
+                    });
+                }
+                
+                return data;
             });
+
+            toast.promise(promise, {
+                loading: studentToEdit ? 'Updating student record...' : 'Creating new student record...',
+                success: (data) => {
+                    onSuccess?.();
+                    onOpenChange(false);
+                    router.refresh();
+                    return studentToEdit 
+                        ? `✅ ${values.name}'s record updated successfully!` 
+                        : `🎉 ${values.name} has been admitted successfully!`;
+                },
+                error: (err) => err instanceof Error ? err.message : '❌ An unexpected error occurred. Please try again.',
+            });
+
+            await promise;
+        } catch (error) {
+            console.error("Error submitting student form:", error);
+            // Error is handled by toast.promise
         } finally {
             setIsLoading(false);
         }

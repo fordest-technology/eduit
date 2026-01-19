@@ -1,20 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth-client';
+import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 import PDFDocument from 'pdfkit';
+import { UserRole } from '@prisma/client';
 
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params;
-        const session = await getSession(null);
+        const { id: studentId } = await params;
+        const session = await getSession();
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const studentId = params.id;
         const { searchParams } = new URL(req.url);
         const sessionId = searchParams.get('sessionId');
         const periodId = searchParams.get('periodId');
@@ -23,12 +22,7 @@ export async function GET(
             return NextResponse.json({ error: 'Session and Period are required' }, { status: 400 });
         }
 
-        // Verify access - user must be the student or parent of the student
-        const hasAccess = await verifyResultAccess(session.id, studentId);
-        if (!hasAccess) {
-            return NextResponse.json({ error: 'Unauthorized access to results' }, { status: 403 });
-        }
-
+        // Fetch student with school info early for access verification
         const student = await prisma.student.findUnique({
             where: { id: studentId },
             include: { user: true, school: true }
@@ -36,6 +30,12 @@ export async function GET(
 
         if (!student) {
             return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+        }
+
+        // Verify access with role-based and multi-tenant logic
+        const hasAccess = await verifyResultAccess(session, student);
+        if (!hasAccess) {
+            return NextResponse.json({ error: 'Unauthorized access to results' }, { status: 403 });
         }
 
         // Fetch results with components
@@ -149,26 +149,36 @@ export async function GET(
 }
 
 async function verifyResultAccess(
-    userId: string,
-    studentId: string
+    session: any,
+    student: any
 ): Promise<boolean> {
-    const student = await prisma.student.findUnique({
-        where: { id: studentId },
-        select: { userId: true },
-    });
+    const { id: userId, role, schoolId: userSchoolId } = session;
+    const studentId = student.id;
 
-    if (student?.userId === userId) {
-        return true;
+    // 1. Super Admin has access to everything
+    if (role === UserRole.SUPER_ADMIN) return true;
+
+    // 2. School Admin has access if in the same school
+    if (role === UserRole.SCHOOL_ADMIN && userSchoolId === student.schoolId) return true;
+
+    // 3. Teacher has access if in the same school (could be tighter, but this is standard)
+    if (role === UserRole.TEACHER && userSchoolId === student.schoolId) return true;
+
+    // 4. Student has access if it's their own profile
+    if (role === UserRole.STUDENT && student.userId === userId) return true;
+
+    // 5. Parent has access if linked to the student
+    if (role === UserRole.PARENT) {
+        const parentRelation = await prisma.studentParent.findFirst({
+            where: {
+                studentId,
+                parent: {
+                    userId,
+                },
+            },
+        });
+        return !!parentRelation;
     }
 
-    const parentRelation = await prisma.studentParent.findFirst({
-        where: {
-            studentId,
-            parent: {
-                userId,
-            },
-        },
-    });
-
-    return !!parentRelation;
+    return false;
 }

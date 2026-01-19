@@ -7,6 +7,7 @@ import { join } from "path";
 import { randomUUID } from "crypto";
 import { mkdir } from "fs/promises";
 import { hash } from "bcryptjs";
+import { generatePassword } from "@/lib/utils";
 
 interface TeacherData {
   id: string;
@@ -304,6 +305,7 @@ export async function POST(request: NextRequest) {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
+    const teacherPassword = password || generatePassword();
 
     // Basic validation
     if (!name || !email) {
@@ -418,7 +420,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Set a default password if not provided
-    const hashedPassword = await hash(password, 10);
+    const hashedPassword = await hash(teacherPassword, 10);
 
     // Create teacher with transaction to ensure everything is created together
     const result = await prisma.$transaction(async (tx) => {
@@ -455,7 +457,18 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // If classId is provided, update the class to assign this teacher
+      const classId = formData.get("classId") as string;
+      if (classId && newUser.teacher) {
+        await tx.class.update({
+          where: { id: classId },
+          data: { teacherId: newUser.teacher.id }
+        });
+      }
+
       return newUser;
+    }, {
+      timeout: 15000 // Increase timeout to 15 seconds
     });
 
     // Send welcome email with credentials to the teacher
@@ -475,7 +488,7 @@ export async function POST(request: NextRequest) {
       await sendTeacherCredentialsEmail({
         name,
         email,
-        password, // Send the plain text password (before hashing)
+        password: teacherPassword, // Send the plain text password (before hashing)
         schoolName: school?.name || "EduIT",
         schoolUrl,
         schoolId

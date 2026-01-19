@@ -82,10 +82,8 @@ export function ClassAssignmentModal({
             console.log(`Sending assignment request for subject ${subject.id} with classes:`, selectedClasses)
             await onAssignClasses(subject.id, selectedClasses)
             onOpenChange(false)
-            toast.success("Classes assigned successfully")
         } catch (error) {
             console.error("Error assigning classes:", error)
-            toast.error("Failed to assign classes")
         } finally {
             setIsLoading(false)
         }

@@ -24,6 +24,7 @@ export async function withErrorHandling<T>(operation: () => Promise<T>, retries 
         error.code === 'P1001' || // Can't reach database server
         error.code === 'P1008' || // Operations timeout
         error.code === 'P2024' || // Connection timeout
+        error.code === 'P2028' || // Transaction API error: Unable to start a transaction in the given time
         error.message?.includes('closed') ||
         error.message?.includes('timeout') ||
         error.message?.includes('connection');

@@ -11,14 +11,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetDescription,
-    SheetTrigger,
-} from "@/components/ui/sheet"
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet"
 import { Input } from "@/components/ui/input"
 import {
     Select,
@@ -35,8 +28,10 @@ import {
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, BookOpen, Trash2, Eye, Loader2, Users, Plus, GraduationCap } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { MoreHorizontal, Pencil, BookOpen, Trash2, Eye, Loader2, Users, Plus, GraduationCap, Sparkles } from "lucide-react"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -272,7 +267,6 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
     }, [teachers])
 
     const handleCreateClass = async () => {
-        const startTime = Date.now()
         try {
             if (!newClass.name.trim()) {
                 toast.error("Class name is required")
@@ -289,44 +283,45 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                 levelId: newClass.levelId === "null" ? null : newClass.levelId
             }
 
-            logger.info("Creating new class", formData)
-
-            const response = await fetch("/api/classes", {
+            const promise = fetch("/api/classes", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(formData),
+            }).then(async (response) => {
+                const data = await response.json()
+                if (!response.ok) {
+                    throw new Error(data.message || "Failed to create class")
+                }
+                return data
             })
 
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.message || "Failed to create class")
-            }
-
-            const duration = Date.now() - startTime
-            logger.api("Create class", duration, { className: formData.name })
-
-            toast.success("Class created successfully")
-            setShowCreateSheet(false)
-            setNewClass({
-                name: "",
-                section: "",
-                teacherId: "null",
-                levelId: "null",
+            toast.promise(promise, {
+                loading: 'Initializing new class section...',
+                success: () => {
+                    setShowCreateSheet(false)
+                    setNewClass({
+                        name: "",
+                        section: "",
+                        teacherId: "null",
+                        levelId: "null",
+                    })
+                    fetchClasses()
+                    return `✅ Class "${formData.name}" initialized successfully!`
+                },
+                error: (err) => err instanceof Error ? err.message : "❌ Failed to create class",
             })
-            fetchClasses()
+
+            await promise
         } catch (error) {
-            logger.error("Error creating class", error, { formData: newClass })
-            toast.error(error instanceof Error ? error.message : "Failed to create class")
+            console.error("Error creating class:", error)
         } finally {
             setIsLoading(prev => ({ ...prev, create: false }))
         }
     }
 
     const handleAssignSubject = async () => {
-        const startTime = Date.now()
         try {
             if (!selectedClass || !selectedSubject) {
                 toast.error("Please select both class and subject")
@@ -335,9 +330,7 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
 
             setIsLoading(prev => ({ ...prev, assignSubject: true }))
 
-            logger.info("Assigning subject to class", { classId: selectedClass, subjectId: selectedSubject })
-
-            const response = await fetch(`/api/classes/${selectedClass}/subjects`, {
+            const promise = fetch(`/api/classes/${selectedClass}/subjects`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -345,24 +338,29 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                 body: JSON.stringify({
                     subjectId: selectedSubject,
                 }),
+            }).then(async (response) => {
+                if (!response.ok) {
+                    const data = await response.json()
+                    throw new Error(data.message || "Failed to assign subject")
+                }
+                return response.json()
             })
 
-            if (!response.ok) {
-                const data = await response.json()
-                throw new Error(data.message || "Failed to assign subject")
-            }
+            toast.promise(promise, {
+                loading: 'Linking subject to class curriculum...',
+                success: () => {
+                    setShowAssignSubjectDialog(false)
+                    setSelectedClass("")
+                    setSelectedSubject("")
+                    fetchClasses()
+                    return '✅ Subject linked successfully!'
+                },
+                error: (err) => err instanceof Error ? err.message : '❌ Failed to assign subject',
+            })
 
-            const duration = Date.now() - startTime
-            logger.api("Assign subject to class", duration, { classId: selectedClass, subjectId: selectedSubject })
-
-            toast.success("Subject assigned successfully")
-            setShowAssignSubjectDialog(false)
-            setSelectedClass("")
-            setSelectedSubject("")
-            fetchClasses()
+            await promise
         } catch (error) {
-            logger.error("Error assigning subject", error, { classId: selectedClass, subjectId: selectedSubject })
-            toast.error(error instanceof Error ? error.message : "Failed to assign subject")
+            console.error("Error assigning subject:", error)
         } finally {
             setIsLoading(prev => ({ ...prev, assignSubject: false }))
         }
@@ -445,10 +443,34 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
     }
 
     const handleDeleteConfirm = async () => {
-        if (classToDelete) {
-            await handleDeleteClass(classToDelete)
-            setShowDeleteDialog(false)
-            setClassToDelete("")
+        if (!classToDelete) return;
+
+        try {
+            setIsLoading(prev => ({ ...prev, delete: true }))
+            
+            const promise = fetch(`/api/classes/${classToDelete}`, {
+                method: "DELETE",
+            }).then(async (response) => {
+                if (!response.ok) throw new Error("Failed to decommission class")
+                return response.json()
+            })
+
+            toast.promise(promise, {
+                loading: 'Decommissioning institutional class record...',
+                success: () => {
+                    setShowDeleteDialog(false)
+                    setClassToDelete("")
+                    fetchClasses()
+                    return '✅ Class decommissioned successfully'
+                },
+                error: (err) => err instanceof Error ? err.message : '❌ Failed to delete class',
+            })
+
+            await promise
+        } catch (error) {
+            console.error("Error deleting class:", error)
+        } finally {
+            setIsLoading(prev => ({ ...prev, delete: false }))
         }
     }
 
@@ -484,12 +506,12 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
             {/* Action Bar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-slate-50 border border-slate-100 rounded-3xl">
                 <div className="flex-1 max-w-md relative group">
-                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 transition-colors group-focus-within:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 transition-colors group-focus-within:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <Input
                         placeholder="Search classes or levels..."
-                        className="pl-12 h-12 bg-white border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        className="pl-12 h-12 bg-white border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                 </div>
 
@@ -499,7 +521,7 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                         size="icon"
                         onClick={() => fetchClasses()}
                         disabled={isLoading.table}
-                        className="h-12 w-12 rounded-2xl hover:bg-white hover:text-indigo-600 transition-all border border-transparent hover:border-slate-100"
+                        className="h-12 w-12 rounded-2xl hover:bg-white hover:text-primary transition-all border border-transparent hover:border-slate-100"
                     >
                         {isLoading.table ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
@@ -511,88 +533,101 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                     </Button>
 
                     {isAdmin && (
-                        <Sheet open={showCreateSheet} onOpenChange={setShowCreateSheet}>
-                            <SheetTrigger asChild>
-                                <Button className="h-12 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] font-bold">
-                                    <Plus className="mr-2 h-5 w-5" />
-                                    New Class
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent className="rounded-l-[2.5rem] p-8 border-none shadow-2xl">
-                                <SheetHeader className="pb-8">
-                                    <SheetTitle className="text-2xl font-black font-sora text-slate-800">Assign New Class</SheetTitle>
-                                    <SheetDescription className="font-medium text-slate-500">
-                                        Configure the class profile and academic assignment
-                                    </SheetDescription>
-                                </SheetHeader>
-                                <div className="space-y-6 mt-4">
+                        <>
+                            <Button
+                                onClick={() => setShowCreateSheet(true)}
+                                className="h-12 px-6 rounded-2xl font-black uppercase tracking-tighter shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            >
+                                <Plus className="mr-2 h-5 w-5" />
+                                Add Class
+                            </Button>
+                            
+                            <ResponsiveSheet 
+                                open={showCreateSheet} 
+                                onOpenChange={setShowCreateSheet}
+                                title="Assign New Class"
+                                description="Configure the class profile and academic assignment"
+                            >
+                                <div className="space-y-6">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest text-slate-400">Class Signature</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Class Identity</label>
                                         <Input
-                                            placeholder="e.g., Grade 10 - Science"
+                                            placeholder="e.g., JSS 1"
                                             value={newClass.name}
-                                            className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-all capitalize"
+                                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold transition-all capitalize"
                                             onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest text-slate-400">Section/Arm</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Section Identifier</label>
                                         <Input
                                             placeholder="A, B, or C"
                                             value={newClass.section}
-                                            className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-all uppercase"
+                                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold transition-all uppercase"
                                             onChange={(e) => setNewClass({ ...newClass, section: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest text-slate-400">Academic Level</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Institutional Rank</label>
                                         <Select
                                             value={newClass.levelId}
                                             onValueChange={(value) => setNewClass({ ...newClass, levelId: value })}
                                         >
-                                            <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-all">
+                                            <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white font-bold text-lg">
                                                 <SelectValue placeholder="Select rank" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-xl shadow-xl border-slate-100">
-                                                <SelectItem value="null">General / No Level</SelectItem>
+                                            <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
+                                                <SelectItem value="null" className="font-bold">General Enrollment</SelectItem>
                                                 {levels.map((level) => (
-                                                    <SelectItem key={level.id} value={level.id}>
+                                                    <SelectItem key={level.id} value={level.id} className="font-bold">
                                                         {level.name}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-2">
+                                            Linking to a rank auto-populates the curriculum for this section.
+                                        </p>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest text-slate-400">Form Teacher</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned Educator</label>
                                         <Select
                                             value={newClass.teacherId}
                                             onValueChange={(value) => setNewClass({ ...newClass, teacherId: value })}
                                         >
-                                            <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-all">
-                                                <SelectValue placeholder="Select educator" />
+                                            <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white font-bold text-lg">
+                                                <SelectValue placeholder="Select faculty member" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-xl shadow-xl border-slate-100">
-                                                <SelectItem value="null">Unassigned</SelectItem>
+                                            <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
+                                                <SelectItem value="null" className="font-bold text-slate-400 italic">No Lead Assigned</SelectItem>
                                                 {teachersData.map((teacher) => (
-                                                    <SelectItem key={teacher.id} value={teacher.id}>
+                                                    <SelectItem key={teacher.id} value={teacher.id} className="font-bold">
                                                         {teacher.name}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <Button
-                                        onClick={handleCreateClass}
-                                        disabled={isLoading.create}
-                                        className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-tighter shadow-lg shadow-indigo-500/20 mt-8"
-                                    >
-                                        {isLoading.create ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
-                                        Finalize Class Creation
-                                    </Button>
+                                    <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
+                                        <Button 
+                                            variant="ghost" 
+                                            onClick={() => setShowCreateSheet(false)}
+                                            className="flex-1 h-16 rounded-2xl font-bold text-slate-500 hover:text-slate-800"
+                                        >
+                                            Discard
+                                        </Button>
+                                        <Button
+                                            onClick={handleCreateClass}
+                                            disabled={isLoading.create}
+                                            className="flex-[2] h-16 rounded-2xl font-black shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                        >
+                                            {isLoading.create ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                                            Establish Class Arm
+                                        </Button>
+                                    </div>
                                 </div>
-                            </SheetContent>
-                        </Sheet>
+                            </ResponsiveSheet>
+                        </>
                     )}
                 </div>
             </div>
@@ -622,52 +657,90 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                                     <TableCell className="px-6 py-6 text-right"><div className="h-8 w-8 ml-auto bg-slate-50 rounded-lg animate-pulse" /></TableCell>
                                 </TableRow>
                             ))
-                        ) : classes.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-24 bg-slate-50/50">
-                                    <div className="flex flex-col items-center gap-4">
-                                        <div className="w-20 h-20 bg-white rounded-3xl shadow-sm border border-slate-100 flex items-center justify-center">
-                                            <GraduationCap className="h-10 w-10 text-slate-200" />
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-slate-800 font-sora uppercase tracking-tight">Academic void detected</p>
-                                            <p className="text-sm text-slate-500 font-medium mt-1">Initialize your first class to begin curriculum tracking</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            classes.map((classItem) => (
-                                <TableRow key={classItem.id} className="border-slate-100 hover:bg-slate-50/30 transition-colors group">
+                        ) : (() => {
+                            // Group classes by name
+                            const grouped = classes.reduce((acc: any, cls) => {
+                                if (!acc[cls.name]) {
+                                    acc[cls.name] = {
+                                        name: cls.name,
+                                        arms: [],
+                                        level: cls.level,
+                                        totalStudents: 0,
+                                        maxSubjects: 0,
+                                        teachers: [] as any[]
+                                    }
+                                }
+                                acc[cls.name].arms.push(cls)
+                                acc[cls.name].totalStudents += cls._count.students
+                                acc[cls.name].maxSubjects = Math.max(acc[cls.name].maxSubjects, cls._count.subjects)
+                                if (cls.teacher) {
+                                    acc[cls.name].teachers.push(cls.teacher)
+                                }
+                                return acc
+                            }, {})
+
+                            const groups = Object.values(grouped)
+
+                            if (groups.length === 0) {
+                                return (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-24 bg-slate-50/50">
+                                            <div className="flex flex-col items-center gap-4">
+                                                <div className="w-20 h-20 bg-white rounded-3xl shadow-sm border border-slate-100 flex items-center justify-center">
+                                                    <GraduationCap className="h-10 w-10 text-slate-200" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-slate-800 font-sora uppercase tracking-tight">Academic void detected</p>
+                                                    <p className="text-sm text-slate-500 font-medium mt-1">Initialize your first class to begin curriculum tracking</p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            }
+
+                            return groups.map((group: any) => (
+                                <TableRow key={group.name} className="border-slate-100 hover:bg-slate-50/30 transition-colors group">
                                     <TableCell className="px-6 py-6 font-bold font-sora text-slate-800">
-                                        <div className="flex flex-col">
-                                            <span className="text-lg group-hover:text-indigo-600 transition-colors">{classItem.name}</span>
-                                            {classItem.section && (
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1 flex items-center">
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 mr-2" />
-                                                    Block {classItem.section}
-                                                </span>
-                                            )}
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-lg group-hover:text-primary transition-colors">
+                                                {group.name}
+                                            </span>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {group.arms.map((arm: any) => (
+                                                    <Link key={arm.id} href={`/dashboard/classes/${arm.id}`}>
+                                                        <Badge 
+                                                            className="text-[10px] h-6 px-2.5 font-black uppercase tracking-widest transition-all cursor-pointer shadow-md shadow-primary/10 ring-4 ring-white"
+                                                        >
+                                                            {arm.section || "?"}
+                                                        </Badge>
+                                                    </Link>
+                                                ))}
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="px-6 py-6">
-                                        {classItem.teacher ? (
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-10 w-10 rounded-xl shadow-sm border-2 border-white">
-                                                    <AvatarImage src={classItem.teacher.user.profileImage || ""} />
-                                                    <AvatarFallback className="bg-indigo-50 text-indigo-700 font-black">
-                                                        {classItem.teacher.user.name.charAt(0)}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <span className="text-sm font-bold text-slate-700">{classItem.teacher.user.name}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-amber-100">Unassigned</span>
+                                        <div className="flex -space-x-2 overflow-hidden">
+                                            {group.teachers.length > 0 ? (
+                                                group.teachers.map((teacher: any, idx: number) => (
+                                                    <Avatar key={`${teacher.id}-${idx}`} className="inline-block h-9 w-9 rounded-xl border-2 border-white shadow-sm" title={teacher.user.name}>
+                                                        <AvatarImage src={teacher.user.profileImage || ""} />
+                                                        <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-black">{teacher.user.name[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                ))
+                                            ) : (
+                                                <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-amber-100">Unassigned</span>
+                                            )}
+                                        </div>
+                                        {group.teachers.length > 0 && (
+                                            <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-tight">
+                                                {group.teachers.length === 1 ? group.teachers[0].user.name : `${group.teachers.length} Educators`}
+                                            </p>
                                         )}
                                     </TableCell>
                                     <TableCell className="px-6 py-6">
-                                        {classItem.level ? (
-                                            <span className="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest rounded-full border border-blue-100">{classItem.level.name}</span>
+                                        {group.level ? (
+                                            <span className="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest rounded-full border border-blue-100">{group.level.name}</span>
                                         ) : (
                                             <span className="text-slate-300">—</span>
                                         )}
@@ -677,7 +750,7 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                                             <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
                                                 <Users className="h-4 w-4" />
                                             </div>
-                                            <span className="text-sm font-black text-slate-700">{classItem._count.students}</span>
+                                            <span className="text-sm font-black text-slate-700">{group.totalStudents}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="px-6 py-6">
@@ -685,57 +758,50 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                                             <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
                                                 <BookOpen className="h-4 w-4" />
                                             </div>
-                                            <span className="text-sm font-black text-slate-700">{classItem._count.subjects}</span>
+                                            <span className="text-sm font-black text-slate-700">{group.maxSubjects}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="px-6 py-6 text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white text-slate-400 hover:text-indigo-600 transition-all border border-transparent hover:border-slate-100">
+                                                <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white text-slate-400 hover:text-primary transition-all border border-transparent hover:border-slate-100">
                                                     <MoreHorizontal className="h-5 w-5" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="p-2 rounded-2xl border-slate-100 shadow-2xl min-w-[200px]">
-                                                <DropdownMenuItem asChild className="rounded-xl cursor-default focus:bg-slate-50 py-3">
-                                                    <Link href={`/dashboard/classes/${classItem.id}`} className="flex items-center w-full">
-                                                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3">
-                                                            <Eye className="h-4 w-4" />
-                                                        </div>
-                                                        <span className="font-bold text-slate-700">Detailed View</span>
-                                                    </Link>
+                                                <DropdownMenuLabel className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Arm to Manage</DropdownMenuLabel>
+                                                {group.arms.map((arm: any) => (
+                                                    <DropdownMenuItem key={arm.id} asChild className="rounded-xl focus:bg-slate-50 py-2.5">
+                                                        <Link href={`/dashboard/classes/${arm.id}`} className="flex items-center w-full">
+                                                            <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center mr-3 font-black text-[10px]">
+                                                                {arm.section || "?"}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-700 text-sm">Class Section {arm.section}</span>
+                                                                <span className="text-[9px] text-slate-400 font-bold uppercase">{arm._count.students} Students</span>
+                                                            </div>
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                ))}
+                                                <DropdownMenuSeparator className="bg-slate-50 my-2" />
+                                                <DropdownMenuItem 
+                                                    onClick={() => {
+                                                        const firstArm = group.arms[0];
+                                                        if (firstArm) setClassToEdit(firstArm);
+                                                    }} 
+                                                    className="rounded-xl py-2.5 focus:bg-slate-50"
+                                                >
+                                                    <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mr-3">
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </div>
+                                                    <span className="font-bold text-slate-700 text-sm">Quick Edit (Section {group.arms[0]?.section})</span>
                                                 </DropdownMenuItem>
-                                                {isAdmin && (
-                                                    <>
-                                                        <DropdownMenuItem onClick={() => setClassToEdit(classItem)} className="rounded-xl py-3 focus:bg-slate-50">
-                                                            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mr-3">
-                                                                <Pencil className="h-4 w-4" />
-                                                            </div>
-                                                            <span className="font-bold text-slate-700">Modify Class</span>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleAddStudentClick(classItem)} className="rounded-xl py-3 focus:bg-slate-50">
-                                                            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mr-3">
-                                                                <Users className="h-4 w-4" />
-                                                            </div>
-                                                            <span className="font-bold text-slate-700">Add Scholars</span>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator className="bg-slate-50 my-2" />
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleDeleteClick(classItem.id)}
-                                                            className="rounded-xl py-3 text-red-600 focus:bg-red-50 focus:text-red-700"
-                                                        >
-                                                            <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mr-3">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </div>
-                                                            <span className="font-black uppercase tracking-tighter text-[11px]">Decommission</span>
-                                                        </DropdownMenuItem>
-                                                    </>
-                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))
-                        )}
+                        })()}
                     </TableBody>
                 </Table>
             </div>
@@ -764,40 +830,44 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Add Student Sheet */}
-            <Sheet open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
-                <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
-                    <SheetHeader>
-                        <SheetTitle>Add Student to Class</SheetTitle>
-                        <SheetDescription>
-                            Select a student to add to {currentClass?.name}
-                        </SheetDescription>
-                    </SheetHeader>
+            {/* Add Student ResponsiveSheet */}
+            <ResponsiveSheet 
+                open={showAddStudentDialog} 
+                onOpenChange={setShowAddStudentDialog}
+                title="Enroll Student"
+                description={`Assign a registered learner to ${currentClass?.name}.`}
+                className="sm:max-w-md"
+            >
+                <div className="flex flex-col gap-6">
                     <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium">Student</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Institutional Learner</label>
                             <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-                                <SelectTrigger>
+                                <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white font-bold text-lg">
                                     <SelectValue placeholder="Select student" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    {availableStudents.map((student) => (
-                                        <SelectItem key={student.id} value={student.id}>
-                                            {student.name}
-                                        </SelectItem>
-                                    ))}
+                                <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
+                                    {availableStudents.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-slate-400 font-bold uppercase">No available students found</div>
+                                    ) : (
+                                        availableStudents.map((student) => (
+                                            <SelectItem key={student.id} value={student.id} className="rounded-xl">
+                                                {student.name}
+                                            </SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium">Session</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target Academic Session</label>
                             <Select value={selectedSession} onValueChange={setSelectedSession}>
-                                <SelectTrigger>
+                                <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white font-bold text-lg">
                                     <SelectValue placeholder="Select session" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
                                     {academicSessions.map((session) => (
-                                        <SelectItem key={session.id} value={session.id}>
+                                        <SelectItem key={session.id} value={session.id} className="rounded-xl">
                                             {session.name}
                                         </SelectItem>
                                     ))}
@@ -805,18 +875,25 @@ export function ClassesTable({ userRole, userId, schoolId, teachers, subjects }:
                             </Select>
                         </div>
                     </div>
-                    <SheetFooter className="mt-6">
-                        <Button variant="outline" onClick={() => setShowAddStudentDialog(false)}>Cancel</Button>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setShowAddStudentDialog(false)}
+                            className="flex-1 h-14 rounded-2xl font-bold text-slate-500 hover:text-slate-800"
+                        >
+                            Discard
+                        </Button>
                         <Button
                             onClick={handleAddStudent}
-                            disabled={isLoading.addStudent}
+                            disabled={isLoading.addStudent || !selectedStudent}
+                            className="flex-[2] h-14 rounded-2xl font-black shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
                         >
-                            {isLoading.addStudent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Add Student
+                            {isLoading.addStudent ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
+                            Process Enrollment
                         </Button>
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
+                    </div>
+                </div>
+            </ResponsiveSheet>
         </div>
     )
 } 

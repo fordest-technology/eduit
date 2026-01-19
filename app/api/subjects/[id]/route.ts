@@ -3,9 +3,13 @@ import prisma from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 
+interface RouteParams {
+  params: { id: string } | Promise<{ id: string }>;
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   const session = await getSession();
 
@@ -14,7 +18,8 @@ export async function GET(
   }
 
   try {
-    const subjectId = params.id;
+    const resolvedParams = await params;
+    const subjectId = resolvedParams.id;
 
     const subject = await prisma.subject.findUnique({
       where: { id: subjectId },
@@ -75,7 +80,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: Promise<string> } }
+  { params }: RouteParams
 ) {
   const session = await getSession();
 
@@ -87,7 +92,9 @@ export async function PUT(
   }
 
   try {
-    const subjectId = await params.id;
+    const resolvedParams = await params;
+    const subjectId = resolvedParams.id;
+    
     const body = await request.json();
     const { name, code, description, departmentId, levelId } = body;
 
@@ -120,54 +127,6 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // If code is being changed, check for uniqueness within the school
-    if (code && code !== existingSubject.code) {
-      const existingSubjectWithCode = await prisma.subject.findFirst({
-        where: {
-          code,
-          schoolId: existingSubject.schoolId,
-          id: { not: subjectId },
-        },
-      });
-
-      if (existingSubjectWithCode) {
-        return NextResponse.json(
-          { error: "A subject with this code already exists in your school" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // If departmentId is provided, verify it belongs to the school
-    if (departmentId) {
-      const department = await prisma.department.findUnique({
-        where: { id: departmentId },
-        select: { schoolId: true },
-      });
-
-      if (!department || department.schoolId !== existingSubject.schoolId) {
-        return NextResponse.json(
-          { error: "Invalid department" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // If levelId is provided, verify it belongs to the school
-    if (levelId) {
-      const level = await prisma.schoolLevel.findUnique({
-        where: { id: levelId },
-        select: { schoolId: true },
-      });
-
-      if (!level || level.schoolId !== existingSubject.schoolId) {
-        return NextResponse.json(
-          { error: "Invalid school level" },
-          { status: 400 }
-        );
-      }
-    }
-
     // Update subject
     const subject = await prisma.subject.update({
       where: { id: subjectId },
@@ -187,12 +146,6 @@ export async function PUT(
     return NextResponse.json(subject);
   } catch (error: any) {
     console.error("Error updating subject:", error);
-    if (error?.code === "P2002") {
-      return NextResponse.json(
-        { error: "A subject with this code already exists" },
-        { status: 400 }
-      );
-    }
     return NextResponse.json(
       { error: "Failed to update subject" },
       { status: 500 }
@@ -202,7 +155,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   const session = await getSession();
 
@@ -214,7 +167,8 @@ export async function DELETE(
   }
 
   try {
-    const subjectId = params.id;
+    const resolvedParams = await params;
+    const subjectId = resolvedParams.id;
 
     // Check if subject exists and user has permission to delete it
     const existingSubject = await prisma.subject.findUnique({
@@ -233,9 +187,27 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Delete subject
-    await prisma.subject.delete({
-      where: { id: subjectId },
+    // Use transaction to cleanup related records
+    await prisma.$transaction(async (tx) => {
+        // 1. Delete ClassSubject relations
+        await tx.classSubject.deleteMany({
+            where: { subjectId }
+        });
+
+        // 2. Delete SubjectTeacher relations
+        await tx.subjectTeacher.deleteMany({
+            where: { subjectId }
+        });
+
+        // 3. Delete StudentSubject relations
+        await tx.studentSubject.deleteMany({
+            where: { subjectId }
+        });
+
+        // 4. Finally delete the subject
+        await tx.subject.delete({
+            where: { id: subjectId },
+        });
     });
 
     return NextResponse.json({ success: true });
@@ -250,7 +222,7 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   const session = await getSession();
 
@@ -263,9 +235,11 @@ export async function PATCH(
   }
 
   try {
-    const subjectId = params.id;
+    const resolvedParams = await params;
+    const subjectId = resolvedParams.id;
+
     const body = await request.json();
-    const { name, code, description, departmentId, levelId } = body;
+    const { name, code, description, departmentId, levelId, classIds } = body;
 
     // Check if subject exists and user has permission to update it
     const existingSubject = await prisma.subject.findUnique({
@@ -297,76 +271,87 @@ export async function PATCH(
       updateData.departmentId = departmentId || null;
     if (levelId !== undefined) updateData.levelId = levelId || null;
 
-    // If code is being changed, check for uniqueness within the school
-    if (code !== undefined && code !== existingSubject.code) {
-      const existingSubjectWithCode = await prisma.subject.findFirst({
-        where: {
-          code,
-          schoolId: existingSubject.schoolId,
-          id: { not: subjectId },
+    // Handle classIds update in a transaction
+    const subject = await prisma.$transaction(async (tx) => {
+      // 1. Update subject metadata
+      const updatedSubject = await tx.subject.update({
+        where: { id: subjectId },
+        data: updateData,
+        include: {
+          department: true,
+          level: true,
+          teachers: {
+            include: {
+              teacher: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      profileImage: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              classes: true,
+              teachers: true,
+            },
+          },
         },
       });
 
-      if (existingSubjectWithCode) {
-        return NextResponse.json(
-          { error: "A subject with this code already exists in your school" },
-          { status: 400 }
-        );
+      // 2. Compute final class IDs if levelId or classIds were provided
+      if (classIds !== undefined || levelId !== undefined) {
+        let finalClassIds = classIds || [];
+        
+        // If we have a level, add all classes in that level
+        const effectiveLevelId = levelId !== undefined ? levelId : updatedSubject.levelId;
+        
+        if (effectiveLevelId) {
+          const levelClasses = await tx.class.findMany({
+            where: { levelId: effectiveLevelId, schoolId: updatedSubject.schoolId },
+            select: { id: true }
+          });
+          const levelClassIds = levelClasses.map(c => c.id);
+          finalClassIds = Array.from(new Set([...finalClassIds, ...levelClassIds]));
+        }
+
+        await tx.classSubject.deleteMany({
+            where: { subjectId }
+        });
+        if (finalClassIds.length > 0) {
+            await tx.classSubject.createMany({
+                data: finalClassIds.map(id => ({
+                    subjectId,
+                    classId: id
+                }))
+            });
+        }
       }
-    }
 
-    // If departmentId is provided, verify it belongs to the school
-    if (departmentId) {
-      const department = await prisma.department.findUnique({
-        where: { id: departmentId },
-        select: { schoolId: true },
-      });
-
-      if (!department || department.schoolId !== existingSubject.schoolId) {
-        return NextResponse.json(
-          { error: "Invalid department" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // If levelId is provided, verify it belongs to the school
-    if (levelId) {
-      const level = await prisma.schoolLevel.findUnique({
-        where: { id: levelId },
-        select: { schoolId: true },
-      });
-
-      if (!level || level.schoolId !== existingSubject.schoolId) {
-        return NextResponse.json(
-          { error: "Invalid school level" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Update subject with only the provided fields
-    const subject = await prisma.subject.update({
-      where: { id: subjectId },
-      data: updateData,
-      include: {
-        department: true,
-        level: true,
-      },
+      return updatedSubject;
     });
 
-    return NextResponse.json(subject);
+    // Transform teachers for the frontend
+    const transformedSubject = {
+      ...subject,
+      teachers: subject.teachers.map((t) => ({
+        teacher: {
+          id: t.teacher.id,
+          name: t.teacher.user.name,
+          profileImage: t.teacher.user.profileImage,
+          userId: t.teacher.user.id,
+        },
+      })),
+    };
+
+    return NextResponse.json(transformedSubject);
   } catch (error: any) {
     console.error("Error updating subject:", error);
-    if (error?.code === "P2002") {
-      return NextResponse.json(
-        { error: "A subject with this code already exists" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Failed to update subject" },
-      { status: 500 }
-    );
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

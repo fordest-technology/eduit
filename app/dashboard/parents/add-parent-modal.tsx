@@ -227,83 +227,64 @@ export function AddParentModal({
 
         try {
             const formData = new FormData();
-
-            // Basic information
             formData.append("name", values.name);
             formData.append("email", values.email);
             formData.append("password", values.password || "");
-
-            // Contact information
             if (values.phone) formData.append("phone", values.phone);
             if (values.alternatePhone) formData.append("alternatePhone", values.alternatePhone);
-
-            // Professional information
             if (values.occupation) formData.append("occupation", values.occupation);
-
-            // Address information
             if (values.address) formData.append("address", values.address);
             if (values.city) formData.append("city", values.city);
             if (values.state) formData.append("state", values.state);
             if (values.country) formData.append("country", values.country);
 
-            // Add image if available
             if (image && image.startsWith('data:')) {
                 const response = await fetch(image);
                 const blob = await response.blob();
                 formData.append("profileImage", blob, "profile.jpg");
             }
 
-            let apiResponse;
-
-            if (isEditMode && parentToEdit) {
-                // Update existing parent
-                apiResponse = await fetch(`/api/parents/${parentToEdit.id}`, {
-                    method: "PATCH",
+            const promise = (async () => {
+                const apiResponse = await fetch(isEditMode && parentToEdit ? `/api/parents/${parentToEdit.id}` : "/api/parents", {
+                    method: isEditMode ? "PATCH" : "POST",
                     body: formData,
                 });
-            } else {
-                // Create new parent
-                apiResponse = await fetch("/api/parents", {
-                    method: "POST",
-                    body: formData,
-                });
-            }
 
-            const result = await apiResponse.json();
+                const result = await apiResponse.json();
 
-            if (!apiResponse.ok) {
-                if (result.code === "EMAIL_EXISTS") {
-                    form.setError("email", {
-                        type: "manual",
-                        message: "This email is already registered. Please use a different email."
-                    });
-                    setIsLoading(false);
-                    return;
+                if (!apiResponse.ok) {
+                    if (result.code === "EMAIL_EXISTS") {
+                        form.setError("email", {
+                            type: "manual",
+                            message: "This email is already registered. Please use a different email."
+                        });
+                        throw new Error("Email already in use");
+                    }
+                    throw new Error(result.error || "Failed to save parent");
                 }
-                throw new Error(result.error || "Failed to save parent");
-            }
 
-            // If creating a new parent, send login credentials
-            if (!isEditMode) {
-                await sendLoginCredentials(values.name, values.email, values.password || "");
-            }
+                if (!isEditMode) {
+                    await sendLoginCredentials(values.name, values.email, values.password || "");
+                }
 
-            toast.success(isEditMode
-                ? `Parent ${values.name} updated successfully`
-                : `Parent ${values.name} created successfully`
-            );
+                router.refresh();
+                return result;
+            })();
 
-            // Immediate data refresh
-            router.refresh();
+            toast.promise(promise, {
+                loading: isEditMode ? 'Synchronizing parent profile...' : 'Registering parent into institutional database...',
+                success: () => {
+                    setTimeout(() => {
+                        if (onSuccess) onSuccess();
+                        onOpenChange(false);
+                    }, 100);
+                    return `✅ Parent "${values.name}" ${isEditMode ? 'updated' : 'registered'} successfully!`
+                },
+                error: (err) => err instanceof Error ? err.message : '❌ Operation failed',
+            })
 
-            // Close modal and trigger additional success callback
-            setTimeout(() => {
-                if (onSuccess) onSuccess();
-                onOpenChange(false);
-            }, 100);
-
-        } catch (error: any) {
-            toast.error(error.message || "An error occurred");
+            await promise;
+        } catch (error) {
             console.error(error);
         } finally {
             setIsLoading(false);

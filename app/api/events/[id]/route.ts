@@ -4,16 +4,17 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const eventId = await params.id;
+    const eventId = await id;
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -44,9 +45,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (
@@ -56,7 +58,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const eventId = params.id;
+    const eventId = id;
     const body = await request.json();
     const {
       title,
@@ -111,9 +113,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
 
     if (
@@ -123,7 +126,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const eventId = params.id;
+    const eventId = id;
 
     // Check if event exists
     const existingEvent = await prisma.event.findUnique({

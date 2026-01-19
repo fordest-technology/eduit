@@ -6,14 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 
 interface SchoolLevel {
     id: string
@@ -59,22 +52,19 @@ export function LevelModal({
     }
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right">
-                <SheetHeader className="mb-6">
-                    <SheetTitle>
-                        {mode === "create" ? "Create New Level" : "Edit Level"}
-                    </SheetTitle>
-                    <SheetDescription>
-                        {mode === "create"
-                            ? "Add a new academic level to your school"
-                            : "Update the academic level details"}
-                    </SheetDescription>
-                </SheetHeader>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
+        <ResponsiveSheet 
+            open={open} 
+            onOpenChange={onOpenChange}
+            title={mode === "create" ? "Create Academic Level" : "Edit Level Registry"}
+            description={mode === "create"
+                ? "Define a new organizational tier for your institution's curriculum."
+                : "Modify the configuration and display priority of this academic level."}
+            className="sm:max-w-md"
+        >
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Level Name</Label>
+                        <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Level Designation</Label>
                         <Input
                             id="name"
                             placeholder="e.g., Primary 1, JSS 1, SSS 1"
@@ -82,15 +72,16 @@ export function LevelModal({
                             onChange={(e) =>
                                 setFormData({ ...formData, name: e.target.value })
                             }
+                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold"
                             required
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Administrative Notes</Label>
                         <Textarea
                             id="description"
-                            placeholder="Brief description of this level..."
+                            placeholder="Brief description of this level's scope..."
                             value={formData.description || ""}
                             onChange={(e) =>
                                 setFormData({
@@ -98,12 +89,13 @@ export function LevelModal({
                                     description: e.target.value,
                                 })
                             }
+                            className="rounded-2xl bg-slate-50 border-slate-100 focus:bg-white font-medium min-h-[120px]"
                             rows={3}
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="order">Display Order</Label>
+                        <Label htmlFor="order" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Display Hierarchy Order</Label>
                         <Input
                             id="order"
                             type="number"
@@ -116,38 +108,39 @@ export function LevelModal({
                                     order: parseInt(e.target.value) || 0,
                                 })
                             }
+                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold"
                         />
-                        <p className="text-sm text-muted-foreground">
-                            Lower numbers will be displayed first
+                        <p className="text-[10px] font-medium text-slate-400 italic">
+                            Lower numbers prioritize this level in lists and dashboards.
                         </p>
                     </div>
+                </div>
 
-                    <SheetFooter className="mt-8">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            disabled={isSubmitting}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    {mode === "create"
-                                        ? "Creating..."
-                                        : "Updating..."}
-                                </>
-                            ) : mode === "create" ? (
-                                "Create Level"
-                            ) : (
-                                "Update Level"
-                            )}
-                        </Button>
-                    </SheetFooter>
-                </form>
-            </SheetContent>
-        </Sheet>
+                <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => onOpenChange(false)}
+                        disabled={isSubmitting}
+                        className="flex-1 h-14 rounded-2xl font-bold text-slate-500 hover:text-slate-800"
+                    >
+                        Discard
+                    </Button>
+                    <Button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="flex-[2] h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        {isSubmitting ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : mode === "create" ? (
+                            "Finalize Level"
+                        ) : (
+                            "Update Level"
+                        )}
+                    </Button>
+                </div>
+            </form>
+        </ResponsiveSheet>
     )
 } 

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { UserRole } from "@prisma/client"
@@ -39,7 +39,6 @@ interface ProfileSettingsProps {
 
 export function ProfileSettings({ userRole, userId }: ProfileSettingsProps) {
     const [isLoading, setIsLoading] = useState(false)
-    const { toast } = useToast()
 
     const form = useForm<ProfileFormData>({
         resolver: zodResolver(profileSchema),
@@ -74,41 +73,37 @@ export function ProfileSettings({ userRole, userId }: ProfileSettingsProps) {
                     form.reset(data.user)
                 }
             } catch (error) {
-                toast({
-                    title: "Error",
-                    description: "Failed to load user data",
-                    variant: "destructive"
-                })
+                toast.error("Failed to load user data")
             }
         }
         fetchUserData()
-    }, [userId, form, toast])
+    }, [userId, form])
 
     async function onSubmit(data: ProfileFormData) {
-        try {
-            setIsLoading(true)
-            const response = await fetch(`/api/users/${userId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-
+        setIsLoading(true)
+        const promise = fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        }).then(async (response) => {
             if (!response.ok) {
                 throw new Error('Failed to update profile')
             }
+            return response.json();
+        });
 
-            toast({
-                title: "Success",
-                description: "Your profile has been updated successfully."
-            })
+        toast.promise(promise, {
+            loading: 'Updating profile information...',
+            success: '✅ Profile updated successfully!',
+            error: '❌ Failed to update profile',
+        });
+
+        try {
+            await promise;
         } catch (error) {
-            toast({
-                title: "Error",
-                description: "Failed to update profile.",
-                variant: "destructive"
-            })
+            console.error(error);
         } finally {
             setIsLoading(false)
         }
