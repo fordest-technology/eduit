@@ -13,15 +13,16 @@ const linkStudentSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (
       !session ||
-      ![UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER].includes(
-        session.role
-      )
+      (session.role !== UserRole.SUPER_ADMIN &&
+        session.role !== UserRole.SCHOOL_ADMIN &&
+        session.role !== UserRole.TEACHER)
     ) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -29,7 +30,7 @@ export async function POST(
     // Get the parent - optimized query with only necessary fields
     const parent = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id: id,
         role: UserRole.PARENT,
       },
       select: {
@@ -178,15 +179,16 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (
       !session ||
-      ![UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER].includes(
-        session.role
-      )
+      (session.role !== UserRole.SUPER_ADMIN &&
+        session.role !== UserRole.SCHOOL_ADMIN &&
+        session.role !== UserRole.TEACHER)
     ) {
       return new NextResponse("Unauthorized", { status: 401 });
     }

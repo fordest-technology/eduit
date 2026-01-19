@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
     logger.info("Fetching classes", {
       schoolId: user.schoolId,
       userId: user.id,
+      role: user.role,
     });
 
     // Get current academic session
@@ -60,13 +61,40 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const levelId = searchParams.get("levelId");
 
+    // For teachers, get their teacher record to filter classes
+    let teacherRecord = null;
+    if (user.role === "TEACHER") {
+      teacherRecord = await withErrorHandling(async () => {
+        return await prisma.teacher.findUnique({
+          where: { userId: user.id },
+          select: { id: true },
+        });
+      });
+
+      if (!teacherRecord) {
+        logger.warn("Teacher user has no teacher record", { userId: user.id });
+        return NextResponse.json(
+          { error: "Teacher profile not found" },
+          { status: 404 }
+        );
+      }
+    }
+
     return await withErrorHandling(async () => {
+      // Build where clause based on role
+      const whereClause: any = {
+        schoolId: user.schoolId,
+        ...(levelId ? { levelId } : {}),
+      };
+
+      // Teachers can only see classes they are assigned to
+      if (user.role === "TEACHER" && teacherRecord) {
+        whereClause.teacherId = teacherRecord.id;
+      }
+
       // Optimized query with minimal includes and efficient counting
       const classes = await prisma.class.findMany({
-        where: {
-          schoolId: user.schoolId,
-          ...(levelId ? { levelId } : {}),
-        },
+        where: whereClause,
         select: {
           id: true,
           name: true,
@@ -125,26 +153,26 @@ export async function GET(req: NextRequest) {
       const classSubjects =
         classIds.length > 0
           ? await prisma.classSubject.findMany({
-              where: {
-                classId: { in: classIds },
-              },
-              select: {
-                classId: true,
-                subject: {
-                  select: {
-                    id: true,
-                    name: true,
-                    code: true,
-                    department: {
-                      select: {
-                        id: true,
-                        name: true,
-                      },
+            where: {
+              classId: { in: classIds },
+            },
+            select: {
+              classId: true,
+              subject: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  department: {
+                    select: {
+                      id: true,
+                      name: true,
                     },
                   },
                 },
               },
-            })
+            },
+          })
           : [];
 
       // Group subjects by class

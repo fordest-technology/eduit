@@ -1,11 +1,9 @@
 import { getSession } from "@/lib/auth";
 import { UserRole, Department } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db";
-import { writeFile } from "fs/promises";
-import { join } from "path";
-import { randomUUID } from "crypto";
-import { mkdir } from "fs/promises";
+import db from "@/lib/db";
+import { withErrorHandling } from "@/lib/prisma";
+import { uploadImage } from "@/lib/cloudinary";
 import { hash } from "bcryptjs";
 import { generatePassword } from "@/lib/utils";
 
@@ -109,39 +107,41 @@ export async function GET(request: NextRequest) {
       teacherWhereClause.departmentId = departmentId;
     }
 
-    // First fetch all teachers with detailed information
-    const users = await prisma.user.findMany({
-      where: userWhereClause,
-      include: {
-        teacher: {
-          where: teacherWhereClause,
-          include: {
-            department: true,
-            classes: {
-              include: {
-                level: true,
-                students: {
-                  where: {
-                    status: "ACTIVE",
+    // First fetch all teachers with detailed information using withErrorHandling
+    const users = await withErrorHandling(async () => {
+      return await db.user.findMany({
+        where: userWhereClause,
+        include: {
+          teacher: {
+            where: teacherWhereClause,
+            include: {
+              department: true,
+              classes: {
+                include: {
+                  level: true,
+                  students: {
+                    where: {
+                      status: "ACTIVE",
+                    },
                   },
                 },
               },
-            },
-            subjects: {
-              include: {
-                subject: {
-                  include: {
-                    department: true,
+              subjects: {
+                include: {
+                  subject: {
+                    include: {
+                      department: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-      orderBy: {
-        name: "asc",
-      },
+        orderBy: {
+          name: "asc",
+        },
+      });
     });
 
     // Filter out users that don't have teacher records
@@ -249,19 +249,21 @@ export async function GET(request: NextRequest) {
 
 // Function to generate the next employee ID
 async function generateNextEmployeeId(schoolId: string): Promise<string> {
-  // Get the latest teacher in the school
-  const latestTeacher = await prisma.teacher.findFirst({
-    where: {
-      user: {
-        schoolId: schoolId,
+  // Get the latest teacher in the school using withErrorHandling
+  const latestTeacher = await withErrorHandling(async () => {
+    return await db.teacher.findFirst({
+      where: {
+        user: {
+          schoolId: schoolId,
+        },
       },
-    },
-    orderBy: {
-      employeeId: "desc",
-    },
-    select: {
-      employeeId: true,
-    },
+      orderBy: {
+        employeeId: "desc",
+      },
+      select: {
+        employeeId: true,
+      },
+    });
   });
 
   // If no teachers exist yet, start with 1
@@ -273,7 +275,7 @@ async function generateNextEmployeeId(schoolId: string): Promise<string> {
   const lastNumber = parseInt(latestTeacher.employeeId);
 
   // Generate the next number
-  const nextNumber = lastNumber + 1;
+  const nextNumber = isNaN(lastNumber) ? 1 : lastNumber + 1;
 
   // Return the new employee ID
   return nextNumber.toString();
@@ -286,9 +288,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const schoolId = session.schoolId;
+    // Extract form data from request
+    const formData = await request.formData();
+
+    const schoolId = session.role === UserRole.SUPER_ADMIN
+      ? formData.get("schoolId") as string || session.schoolId
+      : session.schoolId;
+
     if (!schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return NextResponse.json({ error: "School context not found. Please specify a school." }, { status: 400 });
     }
 
     // Only admin can create teachers
@@ -298,8 +306,6 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const formData = await request.formData();
 
     // Extract user fields
     const name = formData.get("name") as string;
@@ -316,9 +322,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
+    const existingUser = await withErrorHandling(async () => {
+      return await db.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        select: { id: true },
+      });
     });
 
     if (existingUser) {
@@ -352,21 +360,23 @@ export async function POST(request: NextRequest) {
     const departmentId = formData.get("departmentId") as string;
 
     // Check if employeeId already exists in the same school
-    const existingTeacher = await prisma.teacher.findFirst({
-      where: {
-        employeeId,
-        user: {
-          schoolId,
-        },
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
+    const existingTeacher = await withErrorHandling(async () => {
+      return await db.teacher.findFirst({
+        where: {
+          employeeId,
+          user: {
+            schoolId,
           },
         },
-      },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
     });
 
     if (existingTeacher) {
@@ -385,45 +395,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Handle profile image upload if exists
-    let profileImagePath = null;
-    const profileImage = formData.get("profileImage") as File;
+    // Handle profile image upload to Cloudinary
+    let profileImageUrl = null;
+    const profileImage = formData.get("profileImage");
 
-    if (profileImage && profileImage.size > 0) {
+    if (profileImage instanceof File && profileImage.size > 0) {
       try {
         const bytes = await profileImage.arrayBuffer();
         const buffer = Buffer.from(bytes);
-
-        // Create directory if it doesn't exist
-        const uploadDir = join(process.cwd(), "public", "uploads", "teachers");
-        await mkdir(uploadDir, { recursive: true });
-
-        // Generate unique filename
-        const filename = `${randomUUID()}-${profileImage.name.replace(
-          /\s/g,
-          "_"
-        )}`;
-        const imagePath = join(uploadDir, filename);
-
-        // Write file
-        await writeFile(imagePath, buffer);
-
-        // Store relative path in database
-        profileImagePath = `/uploads/teachers/${filename}`;
+        const base64Image = `data:${profileImage.type};base64,${buffer.toString("base64")}`;
+        profileImageUrl = await uploadImage(base64Image);
       } catch (error) {
-        console.error("Error uploading image:", error);
+        console.error("Error uploading image to Cloudinary:", error);
         return NextResponse.json(
           { error: "Failed to upload profile image" },
           { status: 500 }
         );
       }
+    } else if (typeof profileImage === 'string' && profileImage.startsWith('data:')) {
+      profileImageUrl = await uploadImage(profileImage);
     }
 
-    // Set a default password if not provided
+    // Hash password
     const hashedPassword = await hash(teacherPassword, 10);
 
-    // Create teacher with transaction to ensure everything is created together
-    const result = await prisma.$transaction(async (tx) => {
+    // Create teacher with transaction
+    const result = await db.$transaction(async (tx) => {
       // Create the user record
       const newUser = await tx.user.create({
         data: {
@@ -432,7 +429,7 @@ export async function POST(request: NextRequest) {
           password: hashedPassword,
           role: UserRole.TEACHER,
           schoolId,
-          profileImage: profileImagePath,
+          profileImage: profileImageUrl,
           // Create the teacher record with a nested create
           teacher: {
             create: {
@@ -476,9 +473,11 @@ export async function POST(request: NextRequest) {
       const { sendTeacherCredentialsEmail } = await import("@/lib/email");
 
       // Get school information for the email
-      const school = await prisma.school.findUnique({
-        where: { id: schoolId },
-        select: { name: true, domain: true }
+      const school = await withErrorHandling(async () => {
+        return await db.school.findUnique({
+          where: { id: schoolId },
+          select: { name: true, domain: true }
+        });
       });
 
       const schoolUrl = school?.domain

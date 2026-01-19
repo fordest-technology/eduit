@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import Link from "next/link"
 import Image from "next/image"
@@ -34,6 +34,10 @@ import {
   Database,
   HeadphonesIcon
 } from "lucide-react"
+import { TrustedBy } from "@/components/landing/trusted-by"
+import { Testimonials } from "@/components/landing/testimonials"
+import { SecuritySection } from "@/components/landing/security-section"
+import { PricingSection } from "@/components/landing/pricing-section"
 
 export default function Home() {
   const fadeInUp = {
@@ -167,38 +171,38 @@ export default function Home() {
               Secured & Powered By Industry Leaders
             </p>
             <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
-               {/* GTBank */}
-               <div className="h-12 w-auto flex items-center">
-                  <Image 
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" 
-                    alt="GTBank" 
-                    width={150} 
-                    height={50} 
-                    className="h-10 w-auto object-contain"
-                  />
-               </div>
-               
-               {/* HabariPay - now local */}
-               <div className="h-12 w-auto flex items-center">
-                  <Image 
-                    src="/habaripay.jpg" 
-                    alt="HabariPay" 
-                    width={150} 
-                    height={50} 
-                    className="h-10 w-auto object-contain"
-                  />
-               </div>
+              {/* GTBank */}
+              <div className="h-12 w-auto flex items-center">
+                <Image
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png"
+                  alt="GTBank"
+                  width={150}
+                  height={50}
+                  className="h-10 w-auto object-contain"
+                />
+              </div>
 
-               {/* Squad - now local */}
-               <div className="h-12 w-auto flex items-center">
-                  <Image 
-                    src="/squad.png" 
-                    alt="Squad" 
-                    width={120} 
-                    height={40} 
-                    className="h-8 w-auto object-contain"
-                  />
-               </div>
+              {/* HabariPay - now local */}
+              <div className="h-12 w-auto flex items-center">
+                <Image
+                  src="/habaripay.jpg"
+                  alt="HabariPay"
+                  width={150}
+                  height={50}
+                  className="h-10 w-auto object-contain"
+                />
+              </div>
+
+              {/* Squad - now local */}
+              <div className="h-12 w-auto flex items-center">
+                <Image
+                  src="/squad.png"
+                  alt="Squad"
+                  width={120}
+                  height={40}
+                  className="h-8 w-auto object-contain"
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -219,20 +223,6 @@ export default function Home() {
                 <p className="text-4xl md:text-5xl font-black text-slate-900 font-sora">99.99%</p>
                 <p className="text-[15px] font-bold text-slate-500 uppercase tracking-[0.1em]">System Reliability</p>
               </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* Trusted By */}
-        <section className="py-20">
-          <div className="container mx-auto px-4 text-center">
-            <p className="text-[13px] font-black text-orange-600 uppercase tracking-[0.2em] mb-12">Powering schools, colleges, and education networks worldwide.</p>
-            <div className="flex flex-wrap justify-center items-center gap-x-16 gap-y-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
-              {["School Alpha", "Green Valley Academy", "Riverside College", "Future Scholars Institute", "Global International School"].map((school) => (
-                <span key={school} className="text-xl md:text-2xl font-black tracking-tight text-slate-900 font-sora">
-                  {school}
-                </span>
-              ))}
             </div>
           </div>
         </section>
@@ -381,193 +371,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Security, Compliance & Infrastructure */}
-        <section id="security" className="py-24 bg-slate-900 text-white overflow-hidden relative">
-          <div className="container mx-auto px-4 relative z-10">
-            <div className="grid lg:grid-cols-2 gap-20 items-center">
-              <div className="space-y-12">
-                <div className="space-y-4">
-                  <h2 className="text-sm font-black text-orange-400 uppercase tracking-[0.2em]">Security, Compliance & Infrastructure</h2>
-                  <h3 className="text-4xl md:text-6xl font-black tracking-tight font-sora leading-[1.1]">Institutional-Grade <br />Technology You Can Trust</h3>
-                  <p className="text-xl text-slate-400 font-medium leading-relaxed">EduIT is engineered to meet the highest global standards for reliability and data protection.</p>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-8">
-                  {[
-                    { title: "Zero-Trust Security Architecture", desc: "End-to-end encryption with full data ownership and role-based access control.", icon: <Shield className="h-6 w-6" /> },
-                    { title: "Distributed Cloud Infrastructure", desc: "High availability with global edge performance and ultra-low latency.", icon: <Globe className="h-6 w-6" /> },
-                    { title: "Compliance-Ready by Design", desc: "Built to support FERPA, GDPR, and local education data regulations.", icon: <ShieldCheck className="h-6 w-6" /> },
-                    { title: "Expert Architectural Support", desc: "Direct access to senior engineers and education technology specialists.", icon: <HeadphonesIcon className="h-6 w-6" /> }
-                  ].map((f) => (
-                    <div key={f.title} className="space-y-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/10 text-orange-400 flex items-center justify-center mb-4">
-                        {f.icon}
-                      </div>
-                      <h4 className="text-lg font-bold font-sora leading-snug">{f.title}</h4>
-                      <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="bg-orange-600/20 blur-[100px] w-full h-full absolute"></div>
-                <div className="bg-white/5 backdrop-blur-2xl p-10 rounded-[3rem] border border-white/10 relative z-10">
-                  <div className="space-y-8">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-2xl font-black font-sora">System Status</h4>
-                      <div className="flex items-center gap-2 text-green-400 font-bold text-sm">
-                        <span className="w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
-                        Operational
-                      </div>
-                    </div>
-                    <div className="space-y-8">
-                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Uptime</p>
-                        <p className="text-2xl font-black font-sora text-orange-400">99.99%</p>
-                      </div>
-                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Average Latency</p>
-                        <p className="text-2xl font-black font-sora">256ms</p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Requests / Hr</p>
-                        <p className="text-2xl font-black font-sora">2.4M</p>
-                      </div>
-                    </div>
-                    <div className="p-1 h-3 bg-white/5 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-orange-600 rounded-full"
-                        initial={{ width: 0 }}
-                        whileInView={{ width: "95%" }}
-                        transition={{ duration: 1.5, ease: "easeInOut" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="py-24 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
-              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">Testimonials</h2>
-              <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-sora">Trusted by Educators Like You</h3>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  quote: "EduIT completely transformed how we manage our school. What took days now takes hours.",
-                  author: "Dr. Sarah Jenkins",
-                  role: "Principal, Lincoln High School",
-                  img: "https://i.pravatar.cc/150?u=sarah"
-                },
-                {
-                  quote: "Parent engagement has never been better. Communication is now clear, fast, and reliable.",
-                  author: "Marcus Thompson",
-                  role: "Administrator, Green Valley Academy",
-                  img: "https://i.pravatar.cc/150?u=marcus"
-                },
-                {
-                  quote: "Finally, a platform teachers actually enjoy using. Clean UI and truly useful features.",
-                  author: "Elena Rodriguez",
-                  role: "Head Teacher, St. Jude’s College",
-                  img: "https://i.pravatar.cc/150?u=elena"
-                }
-              ].map((t, i) => (
-                <motion.div
-                  key={t.author}
-                  {...fadeInUp}
-                  transition={{ delay: i * 0.1 }}
-                  className="p-10 rounded-[3rem] bg-slate-50 border border-slate-100 flex flex-col justify-between hover:bg-white hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
-                >
-                  <p className="text-xl text-slate-800 font-medium leading-relaxed mb-10 italic">“{t.quote}”</p>
-                  <div className="flex items-center gap-4">
-                    <div className="relative h-14 w-14 rounded-full overflow-hidden ring-4 ring-white shadow-sm">
-                      <Image src={t.img} alt={t.author} fill className="object-cover" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900 font-sora">{t.author}</p>
-                      <p className="text-[13px] text-slate-500 font-bold uppercase tracking-wider">{t.role}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing Section */}
-        <section id="pricing" className="py-24 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
-              <h2 className="text-sm font-black text-orange-600 uppercase tracking-[0.2em]">Pricing</h2>
-              <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-sora">Flexible Plans for Every Institution</h3>
-              <p className="text-lg text-slate-600 font-medium pt-2">Transparent pricing that grows with your school.</p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {[
-                {
-                  name: "Starter",
-                  price: "1,000",
-                  desc: "Best for small schools starting their digital journey.",
-                  features: ["Up to 500 students", "Core SIS features", "Basic reports", "Public school portal", "Email support"]
-                },
-                {
-                  name: "Professional",
-                  popular: true,
-                  price: "2,000",
-                  desc: "Ideal for growing schools needing automation and insights.",
-                  features: ["Up to 2,000 students", "Advanced analytics", "Financial hub", "Priority support", "Mobile access", "Custom branding"]
-                },
-                {
-                  name: "Enterprise",
-                  price: "Custom",
-                  desc: "For large institutions and education networks.",
-                  features: ["Unlimited students", "Dedicated account manager", "Custom integrations & APIs", "On-site training", "24/7 phone support", "SLA guarantees"]
-                }
-              ].map((p, i) => (
-                <div
-                  key={p.name}
-                  className={`p-10 rounded-[3rem] border flex flex-col justify-between transition-all duration-300 ${p.popular ? 'bg-slate-900 text-white border-slate-900 shadow-2xl scale-105 relative z-10' : 'bg-white border-slate-200 hover:border-orange-500'}`}
-                >
-                  <div className="space-y-8">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        {p.popular && <span className="bg-orange-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4 inline-block">Most Popular</span>}
-                        <h4 className="text-2xl font-black font-sora">{p.name}</h4>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-bold opacity-60">₦</span>
-                        <span className="text-5xl font-black font-sora">{p.price}</span>
-                        {p.price !== "Custom" && <span className="text-sm font-bold opacity-60">/ student / mo</span>}
-                      </div>
-                      <p className={`mt-4 font-medium italic ${p.popular ? 'text-slate-400' : 'text-slate-500'}`}>{p.desc}</p>
-                    </div>
-                    <ul className="space-y-4">
-                      {p.features.map(f => (
-                        <li key={f} className="flex gap-3 text-sm font-medium items-center">
-                          <CheckCircle2 className={`h-5 w-5 shrink-0 ${p.popular ? 'text-orange-500' : 'text-green-500'}`} />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <Button size="lg" className={`w-full mt-12 rounded-2xl h-14 font-bold text-lg ${p.popular ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-900 hover:bg-slate-800'}`}>
-                    {p.name === "Enterprise" ? "Contact Sales" : "Get Started"}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <PricingSection />
 
         {/* FAQ */}
         <section className="py-24 bg-slate-50">
@@ -618,7 +422,7 @@ export default function Home() {
 
                 <div className="bg-white rounded-[3rem] p-8 md:p-12 text-slate-900 shadow-2xl">
                   <h4 className="text-2xl font-black font-sora mb-8 text-center uppercase tracking-tighter italic">Schedule Demo</h4>
-                  <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                  <form className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-black uppercase tracking-widest text-slate-400">First Name</label>
@@ -646,7 +450,7 @@ export default function Home() {
                         <option>Above 5,000</option>
                       </select>
                     </div>
-                    <Button className="w-full h-16 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl text-lg font-black shadow-xl shadow-orange-100 mt-4 transition-all hover:scale-[1.02] active:scale-100">
+                    <Button type="button" className="w-full h-16 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl text-lg font-black shadow-xl shadow-orange-100 mt-4 transition-all hover:scale-[1.02] active:scale-100">
                       Request a Live Demo
                     </Button>
                   </form>
@@ -679,33 +483,33 @@ export default function Home() {
               <p className="text-slate-500 font-medium leading-relaxed max-w-xs text-sm italic">
                 Empowering institutions through intelligent education infrastructure.
               </p>
-              
+
               <div className="pt-4 border-t border-slate-100">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Powered By</p>
                 <div className="flex items-center gap-4 opacity-70 grayscale hover:grayscale-0 transition-opacity">
-                    <Image 
-                        src="/squad.png" 
-                        alt="Squad" 
-                        width={80} 
-                        height={30} 
-                        className="h-6 w-auto object-contain"
-                    />
-                    <div className="h-4 w-px bg-slate-200"></div>
-                     <Image 
-                        src="/habaripay.jpg" 
-                        alt="HabariPay" 
-                        width={80} 
-                        height={30} 
-                        className="h-6 w-auto object-contain"
-                    />
-                     <div className="h-4 w-px bg-slate-200"></div>
-                     <Image 
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" 
-                        alt="GTBank" 
-                        width={80} 
-                        height={30} 
-                        className="h-6 w-auto object-contain"
-                    />
+                  <Image
+                    src="/squad.png"
+                    alt="Squad"
+                    width={80}
+                    height={30}
+                    className="h-6 w-auto object-contain"
+                  />
+                  <div className="h-4 w-px bg-slate-200"></div>
+                  <Image
+                    src="/habaripay.jpg"
+                    alt="HabariPay"
+                    width={80}
+                    height={30}
+                    className="h-6 w-auto object-contain"
+                  />
+                  <div className="h-4 w-px bg-slate-200"></div>
+                  <Image
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png"
+                    alt="GTBank"
+                    width={80}
+                    height={30}
+                    className="h-6 w-auto object-contain"
+                  />
                 </div>
               </div>
 

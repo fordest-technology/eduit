@@ -14,7 +14,7 @@ export async function applySchoolTemplate(
 ) {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth(); // 0-11
-  
+
   // Determine Session Name (e.g., 2023/2024 starts in Sept 2023)
   // If month is >= 8 (September), we are in the start of a year.
   // Else we are in the second half.
@@ -23,7 +23,7 @@ export async function applySchoolTemplate(
     startYear = currentYear - 1;
   }
   const sessionName = `${startYear}/${startYear + 1}`;
-  
+
   // 1. Create Academic Session
   const session = await tx.academicSession.create({
     data: {
@@ -38,7 +38,7 @@ export async function applySchoolTemplate(
   // 2. Create Departments
   // General is standard. For Secondary, we might want Science/Art/Commercial later, 
   // but "General" is a safe default for strictly class-based systems unless specified.
-  
+
   const generalDept = await tx.department.create({
     data: { name: "General", schoolId }
   });
@@ -46,9 +46,9 @@ export async function applySchoolTemplate(
 
   let scienceDept, artsDept, commercialDept;
   if (type === "secondary" || type === "combined") {
-     scienceDept = await tx.department.create({ data: { name: "Science", schoolId } });
-     artsDept = await tx.department.create({ data: { name: "Arts", schoolId } });
-     commercialDept = await tx.department.create({ data: { name: "Commercial", schoolId } });
+    scienceDept = await tx.department.create({ data: { name: "Science", schoolId } });
+    artsDept = await tx.department.create({ data: { name: "Arts", schoolId } });
+    commercialDept = await tx.department.create({ data: { name: "Commercial", schoolId } });
   }
 
   // 3. Define Structure
@@ -72,24 +72,24 @@ export async function applySchoolTemplate(
   let order = 1;
   for (const levelDef of levels) {
     const level = await tx.schoolLevel.create({
-        data: {
-            name: levelDef.name,
-            schoolId,
-            order: order++
-        }
+      data: {
+        name: levelDef.name,
+        schoolId,
+        order: order++
+      }
     });
 
     for (const className of levelDef.classes) {
-        await tx.class.create({
-            data: {
-                name: className,
-                schoolId,
-                levelId: level.id,
-                sessions: {
-                  connect: [{ id: session.id }]
-                }
-            }
-        });
+      await tx.class.create({
+        data: {
+          name: className,
+          school: { connect: { id: schoolId } },
+          level: { connect: { id: level.id } },
+          sessions: {
+            connect: [{ id: session.id }]
+          }
+        }
+      });
     }
   }
 
@@ -108,18 +108,18 @@ export async function applySchoolTemplate(
       },
       gradingScale: {
         create: [
-            { minScore: 75, maxScore: 100, grade: "A", remark: "Excellent" },
-            { minScore: 65, maxScore: 74.9, grade: "B", remark: "Very Good" },
-            { minScore: 50, maxScore: 64.9, grade: "C", remark: "Credit" },
-            { minScore: 45, maxScore: 49.9, grade: "D", remark: "Pass" },
-            { minScore: 40, maxScore: 44.9, grade: "E", remark: "Fair" },
-            { minScore: 0, maxScore: 39.9, grade: "F", remark: "Fail" },
+          { minScore: 75, maxScore: 100, grade: "A", remark: "Excellent" },
+          { minScore: 65, maxScore: 74.9, grade: "B", remark: "Very Good" },
+          { minScore: 50, maxScore: 64.9, grade: "C", remark: "Credit" },
+          { minScore: 45, maxScore: 49.9, grade: "D", remark: "Pass" },
+          { minScore: 40, maxScore: 44.9, grade: "E", remark: "Fair" },
+          { minScore: 0, maxScore: 39.9, grade: "F", remark: "Fail" },
         ]
       },
       assessmentComponents: {
         create: [
-            { name: "Test", key: "test", maxScore: 30 },
-            { name: "Exam", key: "exam", maxScore: 70 },
+          { name: "Test", key: "test", maxScore: 30 },
+          { name: "Exam", key: "exam", maxScore: 70 },
         ]
       }
     }

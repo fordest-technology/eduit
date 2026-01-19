@@ -10,7 +10,7 @@ export type UserJwtPayload = Payload;
  * Verifies a JWT token
  */
 export async function verifyJwt(token: string): Promise<UserJwtPayload | null> {
-    return verify(token);
+  return verify(token);
 }
 
 /**
@@ -28,6 +28,8 @@ export async function createSession(
     role: PrismaUserRole;
     schoolId?: string;
     name?: string;
+    profileImage?: string;
+    permissions?: any;
   },
   requestHost?: string
 ) {
@@ -38,6 +40,8 @@ export async function createSession(
     name: user.name || "",
     role: user.role as any,
     schoolId: user.schoolId,
+    profileImage: user.profileImage,
+    permissions: user.permissions,
   };
 
   const token = await signJwt(payload);
@@ -59,7 +63,7 @@ export async function createSession(
  * Deletes the session cookie
  */
 export async function deleteSession() {
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    cookieStore.delete("session");
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  cookieStore.delete("session");
 }

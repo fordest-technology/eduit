@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2 } from "lucide-react"
+import { Loader2, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Textarea } from "@/components/ui/textarea"
 import { UserRole } from "@prisma/client"
@@ -178,8 +178,8 @@ export function EditTeacherModal({
     }
 
     return (
-        <ResponsiveSheet 
-            open={open} 
+        <ResponsiveSheet
+            open={open}
             onOpenChange={onOpenChange}
             title="Edit Faculty Record"
             description="Update the personal and professional credentials for this educator."
@@ -346,8 +346,8 @@ export function EditTeacherModal({
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50">
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             type="button"
                             onClick={() => onOpenChange(false)}
                             className="flex-1 h-14 rounded-2xl font-bold text-slate-500 hover:text-slate-800"

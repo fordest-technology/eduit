@@ -11,7 +11,7 @@ import { Copy } from "lucide-react"
 import { PaymentAccountBanner } from "@/components/payment-account-banner"
 
 interface ParentFeesPageProps {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 // Define extended types for our data structures
@@ -44,6 +44,7 @@ interface ExtendedChild {
 }
 
 export default async function ParentFeesPage({ searchParams }: ParentFeesPageProps) {
+    const sParams = await searchParams;
     const session = await getSession()
 
     if (!session) {
@@ -113,7 +114,7 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
     }) as ExtendedBill[]
 
     // Fetch active payment accounts for the relevant schools
-    const paymentAccounts = childSchoolIds.length > 0 
+    const paymentAccounts = childSchoolIds.length > 0
         ? await prisma.paymentAccount.findMany({
             where: {
                 schoolId: { in: childSchoolIds },
@@ -122,7 +123,7 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
             orderBy: { updatedAt: "desc" }
         })
         : []
-    
+
     const activeAccount = paymentAccounts[0] || null
 
     if (!parent?.children.length) {
@@ -131,40 +132,12 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
                 {paymentAccounts.length > 0 && (
                     <div className="space-y-4">
                         {paymentAccounts.map((account) => (
-                            <Alert key={account.id} className="bg-blue-50 border-blue-200 text-blue-900 shadow-sm rounded-xl">
-                                <AlertTitle className="flex items-center gap-2 font-bold mb-2">
-                                    <CreditCard className="h-4 w-4" />
-                                    Active Payment Account - {childSchoolIds.length > 1 ? account.schoolId : "School Fees"}
-                                </AlertTitle>
-                                <AlertDescription>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Account Name</p>
-                                            <p className="font-bold">{account.name}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Bank Name</p>
-                                            <p className="font-bold">{account.bankName}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Account Number</p>
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-bold text-lg tracking-wider">{account.accountNo}</p>
-                                                <Button
-                                                    type="button"
-                                                    size="icon"
-                                                    variant="secondary"
-                                                    onClick={() => navigator.clipboard.writeText(account.accountNo)}
-                                                    className="h-8 w-8 rounded-lg bg-blue-100/50 hover:bg-blue-100 text-blue-600"
-                                                    aria-label="Copy account number"
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </AlertDescription>
-                            </Alert>
+                            <PaymentAccountBanner
+                                key={account.id}
+                                name={account.name}
+                                bankName={account.bankName}
+                                accountNo={account.accountNo}
+                            />
                         ))}
                     </div>
                 )}
@@ -203,19 +176,19 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
             )
         )
 
-            // Calculate totals for this student
-            studentBills.forEach(bill => {
-                // Add bill amount exactly once per student
-                totalBilled += bill.amount
-                
-                // Sum all payments for this student across all assignments of this bill
-                bill.assignments.forEach(assignment => {
-                    const studentPayments = assignment.studentPayments.filter((p: any) => p.studentId === studentId)
-                    totalPaid += studentPayments.reduce((sum: number, payment) => sum + payment.amountPaid, 0)
-                })
-            })
+        // Calculate totals for this student
+        studentBills.forEach(bill => {
+            // Add bill amount exactly once per student
+            totalBilled += bill.amount
 
-            return {
+            // Sum all payments for this student across all assignments of this bill
+            bill.assignments.forEach(assignment => {
+                const studentPayments = assignment.studentPayments.filter((p: any) => p.studentId === studentId)
+                totalPaid += studentPayments.reduce((sum: number, payment) => sum + payment.amountPaid, 0)
+            })
+        })
+
+        return {
             ...student,
             bills: studentBills
         }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { UserRole } from "@prisma/client";
+import { hash } from "bcryptjs";
 import { uploadImage } from "@/lib/cloudinary";
 
 // GET a specific student
@@ -17,7 +18,7 @@ export async function GET(
     }
 
     // Fetch student with all necessary relations including level data
-    const studentData = await prisma.student.findUnique({
+    const studentData = await db.student.findUnique({
       where: { id: id },
       include: {
         user: true,
@@ -73,7 +74,7 @@ export async function GET(
     }
 
     // Find current session for this school
-    const currentSession = await prisma.academicSession.findFirst({
+    const currentSession = await db.academicSession.findFirst({
       where: {
         schoolId: studentData.user.schoolId || "",
         isCurrent: true,
@@ -106,14 +107,14 @@ export async function GET(
     }
 
     // Fetch all departments for the school
-    const availableDepartments = await prisma.department.findMany({
+    const availableDepartments = await db.department.findMany({
       where: {
         schoolId: studentData.user.schoolId || "",
       },
     });
 
     // Fetch all classes for the school
-    const availableClasses = await prisma.class.findMany({
+    const availableClasses = await db.class.findMany({
       where: {
         schoolId: studentData.user.schoolId || "",
       },
@@ -123,14 +124,14 @@ export async function GET(
     });
 
     // Fetch all available subjects for the school
-    const availableSubjects = await prisma.subject.findMany({
+    const availableSubjects = await db.subject.findMany({
       where: {
         schoolId: studentData.user.schoolId || "",
       },
     });
 
     // Fetch all parents in the school
-    const availableParents = await prisma.parent.findMany({
+    const availableParents = await db.parent.findMany({
       where: {
         user: {
           schoolId: studentData.user.schoolId || "",
@@ -153,7 +154,7 @@ export async function GET(
       userId: studentData.userId,
       name: studentData.user.name,
       email: studentData.user.email,
-      phone: studentData.phone,
+      phone: studentData.phone, // Phone is on Student model
       profileImage: studentData.user.profileImage,
       schoolId: studentData.user.schoolId,
       departmentId: studentData.departmentId,
@@ -180,7 +181,7 @@ export async function GET(
         id: p.parent.id,
         name: p.parent.user.name,
         email: p.parent.user.email,
-        phone: p.parent.user.phone,
+        phone: p.parent.phone,
         relation: p.relation,
       })),
     };
@@ -235,7 +236,7 @@ export async function PATCH(
     const userUpdateData: Record<string, any> = {};
 
     // First, check if student exists
-    const student = await prisma.student.findUnique({
+    const student = await db.student.findUnique({
       where: { id: id },
       include: { user: true },
     });
@@ -251,21 +252,24 @@ export async function PATCH(
       }
 
       // Special handling for specific fields
-      if (["name", "email", "phone"].includes(key)) {
+      if (["name", "email"].includes(key)) {
         userUpdateData[key] = value || undefined;
+      } else if (key === "password" && value && value !== "") {
+        // Only update password if provided and not empty
+        userUpdateData.password = await hash(value.toString(), 10);
       } else if (key === "departmentId") {
         // Only include departmentId if it's a non-empty string
-        if (value && value !== "") {
+        if (value && value !== "" && value !== "none") {
           // Verify the department exists
-          const departmentExists = await prisma.department.findUnique({
+          const departmentExists = await db.department.findUnique({
             where: { id: value.toString() },
           });
 
           if (departmentExists) {
             studentData.departmentId = value.toString();
           }
-        } else if (value === "") {
-          // If empty string, set to null (if the field is nullable)
+        } else if (value === "" || value === "none") {
+          // If empty string or "none", set to null
           studentData.departmentId = null;
         }
       } else if (key === "dateOfBirth" && value) {
@@ -274,9 +278,12 @@ export async function PATCH(
       } else if (
         key !== "classId" &&
         key !== "sessionId" &&
-        key !== "rollNumber"
+        key !== "rollNumber" &&
+        key !== "levelId" &&
+        key !== "sendCredentials" &&
+        key !== "sendWelcomeEmail"
       ) {
-        // Skip class-related fields (handled separately)
+        // Skip metadata and class-related fields (handled separately)
         if (value !== "") {
           studentData[key] = value;
         } else {
@@ -289,19 +296,24 @@ export async function PATCH(
     console.log("User data to update:", userUpdateData);
 
     // Process profile image if provided
-    const profileImageFile = formData.get("profileImage") as string;
-    if (profileImageFile && profileImageFile !== student.user.profileImage) {
+    const profileImageFile = formData.get("profileImage");
+    if (profileImageFile instanceof File) {
       try {
-        const imageUrl = await uploadImage(profileImageFile);
+        const buffer = await profileImageFile.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        const dataUrl = `data:${profileImageFile.type};base64,${base64}`;
+        const imageUrl = await uploadImage(dataUrl);
         userUpdateData.profileImage = imageUrl;
       } catch (error) {
         console.error("Failed to upload image:", error);
         return new NextResponse("Failed to upload image", { status: 500 });
       }
+    } else if (typeof profileImageFile === "string" && profileImageFile.startsWith("http")) {
+      userUpdateData.profileImage = profileImageFile;
     }
 
     // Update user data (associated with the student)
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await db.user.update({
       where: {
         id: student.userId,
       },
@@ -309,7 +321,7 @@ export async function PATCH(
     });
 
     // Update student data
-    const updatedStudent = await prisma.student.update({
+    const updatedStudent = await db.student.update({
       where: {
         id: id,
       },
@@ -317,6 +329,11 @@ export async function PATCH(
       include: {
         user: true,
         department: true,
+        classes: {
+          where: {
+            status: "ACTIVE"
+          }
+        }
       },
     });
 
@@ -326,7 +343,7 @@ export async function PATCH(
 
     if (classId && sessionId) {
       // Check if the student already has this class for this session
-      const existingClass = await prisma.studentClass.findFirst({
+      const existingClass = await db.studentClass.findFirst({
         where: {
           studentId: id,
           sessionId: sessionId,
@@ -335,7 +352,7 @@ export async function PATCH(
 
       if (existingClass) {
         // Update existing record
-        await prisma.studentClass.update({
+        await db.studentClass.update({
           where: {
             id: existingClass.id,
           },
@@ -346,7 +363,7 @@ export async function PATCH(
         });
       } else {
         // Create a new record
-        await prisma.studentClass.create({
+        await db.studentClass.create({
           data: {
             studentId: id,
             classId,
@@ -362,7 +379,7 @@ export async function PATCH(
       ...updatedStudent,
       name: updatedUser.name,
       email: updatedUser.email,
-      phone: updatedUser.phone,
+      phone: updatedStudent.phone, // Phone is on Student model
       profileImage: updatedUser.profileImage,
     };
 
@@ -370,8 +387,7 @@ export async function PATCH(
   } catch (error) {
     console.error("[STUDENT_UPDATE]", error);
     return new NextResponse(
-      `Internal error: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `Internal error: ${error instanceof Error ? error.message : "Unknown error"
       }`,
       { status: 500 }
     );
@@ -391,7 +407,7 @@ export async function DELETE(
     }
 
     // Check if student exists and user has permission
-    const student = await prisma.student.findUnique({
+    const student = await db.student.findUnique({
       where: { id: id },
       include: { user: true },
     });
@@ -414,7 +430,7 @@ export async function DELETE(
     }
 
     // Delete student and related data in a transaction
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       // Delete related records first
       await tx.studentSubject.deleteMany({
         where: { studentId: id },
@@ -460,7 +476,7 @@ export async function PUT(
     }
 
     // Check if student exists and user has permission
-    const existingStudent = await prisma.student.findUnique({
+    const existingStudent = await db.student.findUnique({
       where: { id: id },
       include: { user: true },
     });
@@ -506,21 +522,19 @@ export async function PUT(
     } = body;
 
     // Update student and related data in a transaction
-    const updatedStudent = await prisma.$transaction(async (tx) => {
+    const updatedStudent = await db.$transaction(async (tx) => {
       // Update user data
       const updatedUser = await tx.user.update({
         where: { id: existingStudent.userId },
         data: {
           name,
           email,
-          phone,
           profileImage,
         },
         select: {
           id: true,
           name: true,
           email: true,
-          phone: true,
           profileImage: true,
           schoolId: true,
           createdAt: true,
@@ -531,6 +545,7 @@ export async function PUT(
       const updatedStudent = await tx.student.update({
         where: { id: id },
         data: {
+          phone, // Update phone on student model
           departmentId,
           address,
           city,
@@ -622,7 +637,7 @@ export async function PUT(
         include: {
           user: true,
           department: true,
-          studentClass: {
+          classes: {
             include: {
               class: true,
               session: true,
@@ -636,11 +651,8 @@ export async function PUT(
           parents: {
             include: {
               parent: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  phone: true,
+                include: {
+                  user: true,
                 },
               },
             },

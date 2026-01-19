@@ -2,14 +2,11 @@ import { getSession } from "@/lib/auth";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import { join } from "path";
-import { randomUUID } from "crypto";
-import { mkdir } from "fs/promises";
 import { generatePassword, hashPassword } from "@/lib/auth/password";
-import { sendEmail, sendWelcomeEmail } from "@/lib/email";
-import { hash } from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { sendWelcomeEmail } from "@/lib/email";
+import db from "@/lib/db";
+import { withErrorHandling } from "@/lib/prisma";
+import { uploadImage } from "@/lib/cloudinary";
 import * as z from "zod";
 
 const ALLOWED_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"] as const;
@@ -24,13 +21,13 @@ function isAllowedRole(role: string | undefined): role is AllowedRole {
 const parentFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
-  alternatePhone: z.string().optional(),
-  occupation: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
+  phone: z.string().nullish(),
+  alternatePhone: z.string().nullish(),
+  occupation: z.string().nullish(),
+  address: z.string().nullish(),
+  city: z.string().nullish(),
+  state: z.string().nullish(),
+  country: z.string().nullish(),
   password: z
     .string()
     .min(6, "Password is required and must be at least 6 characters"),
@@ -49,34 +46,36 @@ export async function GET() {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
-    // Fetch parents based on role - optimized query with only necessary fields
-    const parents = await prisma.user.findMany({
-      where: {
-        role: "PARENT",
-        schoolId:
-          session.role === "SCHOOL_ADMIN" ? session.schoolId : undefined,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        profileImage: true,
-        parent: {
-          select: {
-            phone: true,
-            alternatePhone: true,
-            occupation: true,
-            _count: {
-              select: {
-                children: true,
+    // Fetch parents based on role - optimized query with only necessary fields using withErrorHandling
+    const parents = await withErrorHandling(async () => {
+      return await db.user.findMany({
+        where: {
+          role: "PARENT",
+          schoolId:
+            session.role === "SCHOOL_ADMIN" ? session.schoolId : undefined,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profileImage: true,
+          parent: {
+            select: {
+              phone: true,
+              alternatePhone: true,
+              occupation: true,
+              _count: {
+                select: {
+                  children: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: {
-        name: "asc",
-      },
+        orderBy: {
+          name: "asc",
+        },
+      });
     });
 
     // Get school colors if school admin - use a single query for efficiency
@@ -86,13 +85,15 @@ export async function GET() {
     };
 
     if (session.schoolId) {
-      const school = await prisma.school.findUnique({
-        where: { id: session.schoolId },
-        select: {
-          primaryColor: true,
-          secondaryColor: true,
-          name: true,
-        },
+      const school = await withErrorHandling(async () => {
+        return await db.school.findUnique({
+          where: { id: session.schoolId! },
+          select: {
+            primaryColor: true,
+            secondaryColor: true,
+            name: true,
+          },
+        });
       });
 
       if (school?.primaryColor && school?.secondaryColor) {
@@ -181,9 +182,11 @@ export async function POST(req: Request) {
     } = validatedData;
 
     // Check if email already exists - optimize with select
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
+    const existingUser = await withErrorHandling(async () => {
+      return await db.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
     });
 
     if (existingUser) {
@@ -202,16 +205,38 @@ export async function POST(req: Request) {
     // Generate or use provided password
     const password = providedPassword || generatePassword();
 
+    // Determine schoolId - check formData for super admins
+    const schoolId = session.role === "SUPER_ADMIN"
+      ? formData.get("schoolId") as string || session.schoolId
+      : session.schoolId;
+
+    if (!schoolId) {
+      return new NextResponse(JSON.stringify({ error: "School ID is required" }), { status: 400 });
+    }
+
     // Get school information for the welcome email - optimize with select
-    const school = session.schoolId
-      ? await prisma.school.findUnique({
-          where: { id: session.schoolId },
-          select: { name: true, subdomain: true },
-        })
-      : null;
+    const school = await withErrorHandling(async () => {
+      return await db.school.findUnique({
+        where: { id: schoolId },
+        select: { name: true, subdomain: true },
+      });
+    });
+
+    // Handle profile image upload if provided using Cloudinary
+    let profileImageUrl = null;
+    if (profileImage && profileImage.size > 0) {
+      try {
+        const bytes = await profileImage.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const base64Image = `data:${profileImage.type};base64,${buffer.toString("base64")}`;
+        profileImageUrl = await uploadImage(base64Image);
+      } catch (uploadError) {
+        console.error("[IMAGE_UPLOAD_ERROR]", uploadError);
+      }
+    }
 
     // Create the parent user within a transaction
-    const parent = await prisma.$transaction(async (tx) => {
+    const parent = await db.$transaction(async (tx) => {
       // Create the user
       const user = await tx.user.create({
         data: {
@@ -219,7 +244,8 @@ export async function POST(req: Request) {
           email,
           password: await hashPassword(password),
           role: "PARENT",
-          schoolId: session.role === "SCHOOL_ADMIN" ? session.schoolId : null,
+          schoolId: schoolId,
+          profileImage: profileImageUrl,
         },
       });
 

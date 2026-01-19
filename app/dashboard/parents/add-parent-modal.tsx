@@ -239,8 +239,16 @@ export function AddParentModal({
             if (values.country) formData.append("country", values.country);
 
             if (image && image.startsWith('data:')) {
-                const response = await fetch(image);
-                const blob = await response.blob();
+                // Manually convert data URL to blob to avoid "Failed to fetch" errors
+                const parts = image.split(',');
+                const byteString = atob(parts[1]);
+                const mimeString = parts[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: mimeString });
                 formData.append("profileImage", blob, "profile.jpg");
             }
 

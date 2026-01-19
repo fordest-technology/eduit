@@ -14,7 +14,9 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Pencil, Trash, UserPlus, Search, Loader2, Users, Mail, Phone, School, Shield, Calendar, User } from "lucide-react";
+import { Pencil, Trash, UserPlus, Search, Loader2, Users, Mail, Phone, School, Shield, Calendar, User, MapPin, Briefcase, ExternalLink } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -256,238 +258,300 @@ export default function ParentDetails({
     };
 
     return (
-        <div className="space-y-6">
-            {/* Parent Information Card */}
-            <Card className="shadow-sm hover:shadow transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div>
-                        <CardTitle className="text-xl font-bold">Parent Information</CardTitle>
-                        <CardDescription>View and manage parent details</CardDescription>
-                    </div>
-                    {canManage && (
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowEditDialog(true)}
-                                className="hover:bg-muted/50"
-                            >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setShowDeleteDialog(true)}
-                                className="hover:bg-destructive/90"
-                            >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Delete
-                            </Button>
-                        </div>
-                    )}
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col lg:flex-row items-start gap-6">
-                        {/* Profile Section */}
-                        <div className="flex flex-col items-center lg:items-start gap-4">
-                            <Avatar className="h-24 w-24 border-2 border-primary/20 ring-2 ring-primary/10 ring-offset-2">
-                                <AvatarImage src={parent.profileImage || undefined} alt={parent.name} />
-                                <AvatarFallback className="text-lg bg-primary/10">
-                                    {parent.name.split(" ").map((n) => n[0]).join("")}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="text-center lg:text-left">
-                                <h3 className="text-2xl font-semibold">{parent.name}</h3>
-                                <div className="flex flex-col sm:flex-row gap-3 mt-2">
-                                    <div className="flex items-center justify-center lg:justify-start text-muted-foreground hover:text-foreground transition-colors">
-                                        <Mail className="h-4 w-4 mr-2" />
-                                        <a href={`mailto:${parent.email}`} className="hover:underline">
-                                            {parent.email}
-                                        </a>
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-6"
+        >
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Profile Summary Sidebar */}
+                <div className="lg:col-span-1 space-y-6">
+                    <Card className="overflow-hidden border-none shadow-xl bg-gradient-to-b from-white to-slate-50/50">
+                        <div className="h-24 bg-gradient-to-r from-primary/80 to-primary-foreground/20" />
+                        <CardContent className="pt-0 -mt-12 px-6 pb-6">
+                            <div className="flex flex-col items-center text-center">
+                                <Avatar className="h-24 w-24 border-4 border-white shadow-lg ring-2 ring-primary/5">
+                                    <AvatarImage src={parent.profileImage || undefined} alt={parent.name} />
+                                    <AvatarFallback className="text-2xl bg-primary/10 text-primary font-bold">
+                                        {parent.name.split(" ").map((n) => n[0]).join("")}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="mt-4 space-y-1">
+                                    <h3 className="text-2xl font-bold tracking-tight">{parent.name}</h3>
+                                    <Badge variant={parent.status === "active" ? "default" : "secondary"} className="mt-1">
+                                        {parent.status || "Active"}
+                                    </Badge>
+                                </div>
+
+                                <div className="w-full mt-6 space-y-3">
+                                    <div className="flex items-center p-3 rounded-xl bg-white/50 border border-slate-100 hover:border-primary/20 transition-colors">
+                                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center mr-3">
+                                            <Mail className="h-4 w-4 text-blue-600" />
+                                        </div>
+                                        <div className="text-left overflow-hidden">
+                                            <p className="text-[10px] uppercase font-semibold text-slate-400">Email Address</p>
+                                            <p className="text-sm font-medium truncate">{parent.email}</p>
+                                        </div>
                                     </div>
+
                                     {parent.phone && (
-                                        <div className="flex items-center justify-center lg:justify-start text-muted-foreground hover:text-foreground transition-colors">
-                                            <Phone className="h-4 w-4 mr-2" />
-                                            <a href={`tel:${parent.phone}`} className="hover:underline">
-                                                {parent.phone}
-                                            </a>
+                                        <div className="flex items-center p-3 rounded-xl bg-white/50 border border-slate-100 hover:border-primary/20 transition-colors">
+                                            <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center mr-3">
+                                                <Phone className="h-4 w-4 text-emerald-600" />
+                                            </div>
+                                            <div className="text-left overflow-hidden">
+                                                <p className="text-[10px] uppercase font-semibold text-slate-400">Phone Number</p>
+                                                <p className="text-sm font-medium">{parent.phone}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {parent.occupation && (
+                                        <div className="flex items-center p-3 rounded-xl bg-white/50 border border-slate-100 hover:border-primary/20 transition-colors">
+                                            <div className="h-8 w-8 rounded-lg bg-purple-50 flex items-center justify-center mr-3">
+                                                <Briefcase className="h-4 w-4 text-purple-600" />
+                                            </div>
+                                            <div className="text-left overflow-hidden">
+                                                <p className="text-[10px] uppercase font-semibold text-slate-400">Occupation</p>
+                                                <p className="text-sm font-medium truncate">{parent.occupation}</p>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Details Section */}
-                        <div className="flex-1 space-y-4">
-                            {/* Contact Information */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Contact Information</h4>
-                                    <div className="space-y-2">
-                                        {parent.phone && (
-                                            <div className="flex items-center text-sm">
-                                                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                                                <span className="font-medium">Primary:</span>
-                                                <span className="ml-2">{parent.phone}</span>
-                                            </div>
-                                        )}
-                                        {parent.alternatePhone && (
-                                            <div className="flex items-center text-sm">
-                                                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                                                <span className="font-medium">Alternate:</span>
-                                                <span className="ml-2">{parent.alternatePhone}</span>
-                                            </div>
-                                        )}
-                                        {parent.occupation && (
-                                            <div className="flex items-center text-sm">
-                                                <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                                                <span className="font-medium">Occupation:</span>
-                                                <span className="ml-2">{parent.occupation}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Address Information */}
-                                <div className="space-y-2">
-                                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Address</h4>
-                                    <div className="space-y-1 text-sm">
-                                        {parent.address && (
-                                            <p className="text-muted-foreground">{parent.address}</p>
-                                        )}
-                                        <div className="flex flex-wrap gap-2">
-                                            {parent.city && (
-                                                <Badge variant="outline" className="text-xs">
-                                                    {parent.city}
-                                                </Badge>
-                                            )}
-                                            {parent.state && (
-                                                <Badge variant="outline" className="text-xs">
-                                                    {parent.state}
-                                                </Badge>
-                                            )}
-                                            {parent.country && (
-                                                <Badge variant="outline" className="text-xs">
-                                                    {parent.country}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Status and Stats */}
-                            <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
-                                <Badge variant={parent.status === "active" ? "default" : "secondary"}>
-                                    {parent.status || "Active"}
-                                </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                    <Users className="h-3 w-3 mr-1" />
-                                    {children.length} {children.length === 1 ? 'Child' : 'Children'}
-                                </Badge>
-                                {parent.joinDate && (
-                                    <Badge variant="outline" className="text-xs">
-                                        <Calendar className="h-3 w-3 mr-1" />
-                                        Joined {new Date(parent.joinDate).toLocaleDateString()}
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Children Section */}
-            <Card className="shadow-sm hover:shadow transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div>
-                        <CardTitle>Children</CardTitle>
-                        <CardDescription>Manage linked students</CardDescription>
-                    </div>
-                    {canManage && (
-                        <Button
-                            onClick={() => setShowLinkDialog(true)}
-                            size="sm"
-                            className="hover:bg-primary/90"
-                        >
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Link Student
-                        </Button>
-                    )}
-                </CardHeader>
-                <CardContent>
-                    {children.length === 0 ? (
-                        <div className="text-center py-10 bg-muted/10 rounded-lg border-2 border-dashed">
-                            <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                            <h3 className="mt-4 text-sm font-semibold text-muted-foreground">
-                                No children linked
-                            </h3>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                {canManage
-                                    ? "Start by linking a student to this parent."
-                                    : "This parent has no linked students."}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="divide-y">
-                            {children.map((child) => (
-                                <div
-                                    key={child.id}
-                                    className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2">
-                                            <AvatarImage src={child.profileImage || undefined} alt={child.name} />
-                                            <AvatarFallback className="bg-primary/10">
-                                                {child.name.split(" ").map((n) => n[0]).join("")}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-medium">{child.name}</p>
-                                                {child.isPrimary && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        <Shield className="h-3 w-3 mr-1" />
-                                                        Primary
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <School className="h-3 w-3" />
-                                                {child.class}
-                                                <Separator orientation="vertical" className="h-3" />
-                                                {child.relation}
-                                                {child.enrollmentDate && (
-                                                    <>
-                                                        <Separator orientation="vertical" className="h-3" />
-                                                        <Calendar className="h-3 w-3" />
-                                                        {new Date(child.enrollmentDate).toLocaleDateString()}
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {canManage && (
+                                {canManage && (
+                                    <div className="grid grid-cols-2 gap-3 w-full mt-8">
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => {
-                                                setStudentToUnlink(child.linkId);
-                                                setShowUnlinkDialog(true);
-                                            }}
-                                            className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50"
+                                            onClick={() => setShowEditDialog(true)}
+                                            className="w-full rounded-xl hover:bg-slate-50 group"
                                         >
-                                            <Trash className="h-4 w-4" />
-                                            <span className="sr-only">Unlink {child.name}</span>
+                                            <Pencil className="mr-2 h-4 w-4 text-slate-400 group-hover:text-primary" />
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setShowDeleteDialog(true)}
+                                            className="w-full rounded-xl hover:bg-red-50 hover:text-red-600 hover:border-red-200 group"
+                                        >
+                                            <Trash className="mr-2 h-4 w-4 text-slate-400 group-hover:text-red-500" />
+                                            Delete
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Stats Card */}
+                    <Card className="border-none shadow-lg bg-slate-900 text-white overflow-hidden relative">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Users className="h-24 w-24" />
+                        </div>
+                        <CardContent className="p-6">
+                            <h4 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-4">Quick Insights</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-2xl font-bold">{children.length}</p>
+                                    <p className="text-slate-400 text-xs mt-1">Linked Children</p>
+                                </div>
+                                {parent.joinDate && (
+                                    <div>
+                                        <p className="text-sm font-medium">{new Date(parent.joinDate).getFullYear()}</p>
+                                        <p className="text-slate-400 text-xs mt-1">Join Year</p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="lg:col-span-2 space-y-6">
+                    <Tabs defaultValue="children" className="w-full">
+                        <TabsList className="bg-slate-100/50 p-1 mb-6 rounded-2xl h-12 w-full sm:w-auto">
+                            <TabsTrigger value="children" className="rounded-xl px-6 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                <Users className="h-4 w-4 mr-2" />
+                                Linked Students
+                            </TabsTrigger>
+                            <TabsTrigger value="details" className="rounded-xl px-6 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                <Shield className="h-4 w-4 mr-2" />
+                                Information
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="children" className="mt-0 focus-visible:outline-none">
+                            <Card className="border-none shadow-xl min-h-[400px]">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <CardTitle className="text-lg">Students Linked to Account</CardTitle>
+                                    {canManage && (
+                                        <Button
+                                            size="sm"
+                                            className="rounded-xl bg-slate-900 hover:bg-slate-800"
+                                            onClick={() => setShowLinkDialog(true)}
+                                        >
+                                            <UserPlus className="h-4 w-4 mr-2" />
+                                            Link New Student
                                         </Button>
                                     )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                </CardHeader>
+                                <CardContent>
+                                    <AnimatePresence mode="popLayout">
+                                        {children.length === 0 ? (
+                                            <motion.div
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="flex flex-col items-center justify-center py-20 text-center"
+                                            >
+                                                <div className="h-20 w-20 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                                                    <Users className="h-10 w-10 text-slate-300" />
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-slate-900">No students connected</h3>
+                                                <p className="text-slate-500 max-w-xs mx-auto mt-2">
+                                                    Connect students to this parent account to manage their school records and fees.
+                                                </p>
+                                            </motion.div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {children.map((child, idx) => (
+                                                    <motion.div
+                                                        key={child.id}
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        transition={{ delay: idx * 0.1 }}
+                                                        className="group p-4 rounded-2xl bg-white border border-slate-100 hover:border-primary/20 hover:shadow-md transition-all duration-300 relative"
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <Avatar className="h-12 w-12 rounded-xl ring-2 ring-slate-100">
+                                                                <AvatarImage src={child.profileImage || undefined} alt={child.name} />
+                                                                <AvatarFallback className="bg-slate-50 rounded-xl">
+                                                                    {child.name.split(" ").map(n => n[0]).join("")}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-semibold text-slate-900 truncate">{child.name}</p>
+                                                                    {child.isPrimary && (
+                                                                        <Badge variant="secondary" className="bg-slate-100 text-[10px] h-4 px-1.5 border-none">
+                                                                            Primary
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-xs text-slate-500 font-medium">{child.class}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+                                                            <div className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                <Shield className="h-3 w-3 mr-1" />
+                                                                {child.relation}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <Link href={`/dashboard/children/${child.id}`}>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-50">
+                                                                        <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                                                                    </Button>
+                                                                </Link>
+                                                                {canManage && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-500"
+                                                                        onClick={() => {
+                                                                            setStudentToUnlink(child.linkId);
+                                                                            setShowUnlinkDialog(true);
+                                                                        }}
+                                                                    >
+                                                                        <Trash className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="details" className="mt-0 focus-visible:outline-none">
+                            <Card className="border-none shadow-xl">
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Personal & Contact Details</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center">
+                                                    <MapPin className="h-5 w-5 text-slate-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Primary Address</p>
+                                                    <p className="text-sm font-medium mt-0.5">{parent.address || "No address provided"}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 pl-13">
+                                                {parent.city && <Badge variant="secondary" className="bg-slate-50 border-none">{parent.city}</Badge>}
+                                                {parent.state && <Badge variant="secondary" className="bg-slate-50 border-none">{parent.state}</Badge>}
+                                                {parent.country && <Badge variant="secondary" className="bg-slate-50 border-none">{parent.country}</Badge>}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center">
+                                                    <Mail className="h-5 w-5 text-slate-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Communication</p>
+                                                    <div className="space-y-1 mt-1">
+                                                        <p className="text-sm font-medium">{parent.email}</p>
+                                                        {parent.alternatePhone && <p className="text-sm text-slate-500">{parent.alternatePhone} (Alt)</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <Separator className="bg-slate-100" />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Account Status</p>
+                                            <div className="flex items-center gap-2">
+                                                <div className={cn("h-2 w-2 rounded-full", parent.status === "active" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-300")} />
+                                                <span className="text-sm font-semibold capitalize">{parent.status || "Active"}</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Member Since</p>
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="h-4 w-4 text-primary/60" />
+                                                <span className="text-sm font-semibold">
+                                                    {parent.joinDate ? new Date(parent.joinDate).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "N/A"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Linked School</p>
+                                            <div className="flex items-center gap-2">
+                                                <School className="h-4 w-4 text-primary/60" />
+                                                <span className="text-sm font-semibold truncate">Ref: {parent.schoolId?.slice(-8) || "N/A"}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
+                </div>
+            </div>
 
             {/* Link Student Sheet */}
             <Sheet open={showLinkDialog} onOpenChange={setShowLinkDialog}>
@@ -819,6 +883,6 @@ export default function ParentDetails({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </motion.div>
     );
 } 

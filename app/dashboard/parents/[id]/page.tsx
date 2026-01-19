@@ -6,9 +6,12 @@ import ParentDetails from "./parent-details";
 import { Metadata } from "next";
 import { DashboardHeader } from "@/app/components/dashboard-header";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Users, Phone, Mail, MapPin } from "lucide-react";
+import { ArrowLeft, User, Users, Phone, Mail, MapPin, ChevronLeft, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 // Define interface for student data
 interface StudentData {
@@ -21,11 +24,12 @@ interface StudentData {
 export const revalidate = 60; // Revalidate every 60 seconds
 
 // Generate metadata for the page
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params;
     try {
         const parent = await prisma.user.findUnique({
             where: {
-                id: params.id,
+                id,
                 role: UserRole.PARENT,
             },
             select: {
@@ -48,8 +52,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 export default async function ParentPage({
     params
 }: {
-    params: { id: string }
+    params: Promise<{ id: string }>
 }) {
+    const { id } = await params;
     try {
         const session = await getSession();
 
@@ -60,7 +65,7 @@ export default async function ParentPage({
         // Fetch parent with their children - optimized query with only necessary fields
         const parent = await prisma.user.findUnique({
             where: {
-                id: params.id,
+                id,
                 role: UserRole.PARENT,
             },
             select: {
@@ -187,7 +192,7 @@ export default async function ParentPage({
         // Format children data
         const children = parent.parent?.children.map((relation) => {
             const studentClasses = relation.student.classes || [];
-            const currentClass = studentClasses.length > 0 ? studentClasses[0].class.name : "Not assigned";
+            const currentClass = studentClasses.length > 0 ? studentClasses[0].class?.name || "Not assigned" : "Not assigned";
 
             return {
                 id: relation.student.user.id,
@@ -203,7 +208,8 @@ export default async function ParentPage({
         // Fetch all available students for linking - only if user can manage
         let availableStudents: StudentData[] = [];
 
-        if ([UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER].includes(session.role) && parent.schoolId) {
+        const isStaff = session.role === UserRole.SUPER_ADMIN || session.role === UserRole.SCHOOL_ADMIN || session.role === UserRole.TEACHER;
+        if (isStaff && parent.schoolId) {
             // Get already linked student IDs for efficient filtering
             const linkedStudentIds = children.map((child) => child.id);
 
@@ -244,7 +250,7 @@ export default async function ParentPage({
             availableStudents = unlinkedStudents.map(student => {
                 let className = "Not assigned";
                 if (student.student?.classes && student.student.classes.length > 0) {
-                    className = student.student.classes[0].class.name;
+                    className = student.student.classes[0].class?.name || "Not assigned";
                 }
 
                 return {
@@ -270,20 +276,8 @@ export default async function ParentPage({
             state: parent.parent?.state || null,
             country: parent.parent?.country || null,
             joinDate: parent.parent?.createdAt?.toISOString(),
-            status: "active", // Default status
+            status: "active" as const, // Default status
         };
-
-        // Create action buttons for the header
-        const ActionButtons = () => (
-            <div className="flex gap-2">
-                <Link href="/dashboard/parents">
-                    <Button variant="outline" size="sm">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Parents
-                    </Button>
-                </Link>
-            </div>
-        );
 
         return (
             <div className="space-y-6">
@@ -291,69 +285,58 @@ export default async function ParentPage({
                     heading={parent.name}
                     text="View and manage parent information and linked students"
                     showBanner={true}
-                    action={<ActionButtons />}
+                    action={
+                        <div className="flex gap-2">
+                            <Link href="/dashboard/parents">
+                                <Button variant="outline" size="sm">
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Back to Parents
+                                </Button>
+                            </Link>
+                        </div>
+                    }
                 />
 
-                {/* Quick Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                        <CardContent className="pt-6 flex items-center">
-                            <div className="rounded-full p-3 bg-blue-100 mr-4">
-                                <Users className="h-6 w-6 text-blue-600" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                        { label: "Linked Children", value: children.length, icon: Users, color: "blue" },
+                        { label: "Email Address", value: parent.email, icon: Mail, color: "emerald", truncate: true },
+                        { label: "Primary Phone", value: parent.parent?.phone || "Not provided", icon: Phone, color: "purple" },
+                        { label: "Account Security", value: "Verified", icon: ShieldCheck, color: "orange" }
+                    ].map((stat, i) => (
+                        <div key={i} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300">
+                            <div className={`absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity`}>
+                                <stat.icon className="h-16 w-16" />
                             </div>
-                            <div>
-                                <p className="text-sm text-blue-600">Linked Children</p>
-                                <h3 className="text-2xl font-bold text-blue-800">{children.length}</h3>
+                            <div className="flex flex-col gap-4">
+                                <div className={cn(
+                                    "flex h-10 w-10 items-center justify-center rounded-xl",
+                                    stat.color === "blue" && "bg-blue-50 text-blue-600",
+                                    stat.color === "emerald" && "bg-emerald-50 text-emerald-600",
+                                    stat.color === "purple" && "bg-purple-50 text-purple-600",
+                                    stat.color === "orange" && "bg-orange-50 text-orange-600"
+                                )}>
+                                    <stat.icon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                                    <h3 className={cn(
+                                        "text-lg font-bold text-slate-900 mt-1",
+                                        stat.truncate && "truncate max-w-[180px]"
+                                    )}>
+                                        {stat.value}
+                                    </h3>
+                                </div>
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                        <CardContent className="pt-6 flex items-center">
-                            <div className="rounded-full p-3 bg-green-100 mr-4">
-                                <Mail className="h-6 w-6 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-green-600">Email</p>
-                                <h3 className="text-sm font-medium text-green-800 truncate">{parent.email}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                        <CardContent className="pt-6 flex items-center">
-                            <div className="rounded-full p-3 bg-purple-100 mr-4">
-                                <Phone className="h-6 w-6 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-purple-600">Primary Phone</p>
-                                <h3 className="text-sm font-medium text-purple-800">
-                                    {parent.parent?.phone || "Not provided"}
-                                </h3>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                        <CardContent className="pt-6 flex items-center">
-                            <div className="rounded-full p-3 bg-orange-100 mr-4">
-                                <MapPin className="h-6 w-6 text-orange-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-orange-600">Location</p>
-                                <h3 className="text-sm font-medium text-orange-800">
-                                    {parent.parent?.city || "Not specified"}
-                                </h3>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    ))}
                 </div>
 
                 <ParentDetails
                     parent={parentData}
                     children={children}
                     availableStudents={availableStudents}
-                    canManage={[UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER].includes(session.role)}
+                    canManage={isStaff}
                 />
             </div>
         );
@@ -385,9 +368,6 @@ export default async function ParentPage({
                         <p className="text-center text-muted-foreground">
                             There was a problem loading this parent's information. Please try again later or contact support.
                         </p>
-                        <Button onClick={() => window.location.reload()}>
-                            Retry
-                        </Button>
                     </div>
                 </div>
             </div>

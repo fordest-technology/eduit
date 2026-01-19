@@ -21,7 +21,7 @@ export async function GET(
     // Find the parent with their profile and children - optimized query
     const parent = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id,
         role: UserRole.PARENT,
       },
       select: {
@@ -206,7 +206,7 @@ export async function PATCH(
     // Find the parent with their profile - optimized query
     const parent = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id,
         role: UserRole.PARENT,
       },
       select: {
@@ -406,7 +406,7 @@ export async function DELETE(
     // Find the parent - optimized query
     const parent = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id,
         role: UserRole.PARENT,
       },
       select: {

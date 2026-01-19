@@ -199,11 +199,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
         // Parse string permissions if needed (e.g. valid JSON string from DB)
         if (typeof perms === 'string') {
-           try {
-             perms = JSON.parse(perms);
-           } catch (e) {
-             // If parsing fails, keep as is
-           }
+          try {
+            perms = JSON.parse(perms);
+          } catch (e) {
+            // If parsing fails, keep as is
+          }
         }
 
         // If no permissions defined, assume legacy school admin (full access)
@@ -281,13 +281,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
           { title: "My Classes", href: "/dashboard/my-classes", icon: School },
-          { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-          {
-            title: "Results Entry",
-            href: "/dashboard/teachers/results",
-            icon: ClipboardCheck,
-          },
-          { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+          { title: "My Students", href: "/dashboard/teachers/students", icon: GraduationCap },
+          { title: "Attendance", href: "/dashboard/attendance", icon: Calendar },
+          { title: "Results", href: "/dashboard/results", icon: ClipboardCheck },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "STUDENT":

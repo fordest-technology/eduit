@@ -68,9 +68,9 @@ async function getChildDetail(childId: string, parentId: string): Promise<ChildD
         id: relationship.student.id,
         user: relationship.student.user,
         classes: relationship.student.classes.map(cls => ({
-            classId: cls.class.id,
-            className: cls.class.name,
-            section: cls.class.section,
+            classId: cls.class?.id || "",
+            className: cls.class?.name || "Unknown",
+            section: cls.class?.section || null,
         })),
         address: relationship.student.address,
         phone: relationship.student.phone,
@@ -83,8 +83,9 @@ async function getChildDetail(childId: string, parentId: string): Promise<ChildD
 export default async function ChildDetailPage({
     params,
 }: {
-    params: { id: string }
+    params: Promise<{ id: string }>
 }) {
+    const { id } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -100,7 +101,7 @@ export default async function ChildDetailPage({
         redirect("/dashboard");
     }
 
-    const child = await getChildDetail(params.id, user.parent.id);
+    const child = await getChildDetail(id, user.parent.id);
 
     if (!child) {
         redirect("/dashboard/children");

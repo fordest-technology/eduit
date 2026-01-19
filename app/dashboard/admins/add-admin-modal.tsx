@@ -144,6 +144,17 @@ export function AddAdminModal({
         form.setValue("permissions", newPerms);
     };
 
+    const selectGroupAll = (groupName: string, value: boolean) => {
+        const group = PERMISSION_GROUPS.find(g => g.name === groupName);
+        if (!group) return;
+
+        const newPerms = { ...form.getValues().permissions };
+        group.permissions.forEach(p => {
+            newPerms[p.key] = value;
+        });
+        form.setValue("permissions", newPerms);
+    };
+
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent className="sm:max-w-[700px] w-full p-0" side="right">
@@ -229,7 +240,29 @@ export function AddAdminModal({
 
                                     {PERMISSION_GROUPS.map((group) => (
                                         <div key={group.name} className="space-y-3 pt-2">
-                                            <h4 className="font-semibold text-sm text-primary uppercase tracking-wider">{group.name}</h4>
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-semibold text-sm text-primary uppercase tracking-wider">{group.name}</h4>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 text-xs"
+                                                        onClick={() => selectGroupAll(group.name, true)}
+                                                    >
+                                                        Select All
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 text-xs"
+                                                        onClick={() => selectGroupAll(group.name, false)}
+                                                    >
+                                                        Deselect All
+                                                    </Button>
+                                                </div>
+                                            </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border rounded-lg p-4 bg-gray-50/50">
                                                 {group.permissions.map((permission) => (
                                                     <FormField
