@@ -79,3 +79,32 @@ export function generateResetCode(): string {
   crypto.getRandomValues(array);
   return (1000 + (array[0] % 9000)).toString();
 }
+
+/**
+ * Recursively converts BigInt values to numbers for JSON serialization
+ * @param data The data to process
+ * @returns The data with BigInts converted to numbers
+ */
+export function serializeBigInts(data: any): any {
+  if (data === null || data === undefined) {
+    return data;
+  }
+
+  if (typeof data === "bigint") {
+    return Number(data);
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => serializeBigInts(item));
+  }
+
+  if (typeof data === "object") {
+    const result: any = {};
+    for (const key in data) {
+      result[key] = serializeBigInts(data[key]);
+    }
+    return result;
+  }
+
+  return data;
+}

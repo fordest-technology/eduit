@@ -7,9 +7,6 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -22,6 +19,7 @@ const nextConfig = {
       { protocol: "https", hostname: "logos-world.net" },
     ],
   },
+  serverExternalPackages: ["pdfkit", "fontkit"],
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,

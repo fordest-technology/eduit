@@ -5,29 +5,8 @@ import { UserRole } from "@prisma/client";
 import { serializeBigInts } from "@/lib/utils";
 
 // Helper function to convert BigInt values to numbers for serialization
-function serializeBigInts(data: any): any {
-  if (data === null || data === undefined) {
-    return data;
-  }
-
-  if (typeof data === "bigint") {
-    return Number(data);
-  }
-
-  if (Array.isArray(data)) {
-    return data.map((item) => serializeBigInts(item));
-  }
-
-  if (typeof data === "object") {
-    const result: any = {};
-    for (const key in data) {
-      result[key] = serializeBigInts(data[key]);
-    }
-    return result;
-  }
-
-  return data;
-}
+// Helper function to convert BigInt values to numbers for serialization
+// Using imported serializeBigInts from "@/lib/utils" instead of local definition
 
 export async function GET(
   request: NextRequest,

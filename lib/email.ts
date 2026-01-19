@@ -811,7 +811,7 @@ export async function sendTeacherCredentialsEmail({
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 5px; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
         .header { background-color: ${primaryColor}; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
         .header img { max-height: 60px; margin-bottom: 10px; }
         .content { padding: 30px 20px; }
@@ -834,7 +834,7 @@ export async function sendTeacherCredentialsEmail({
         </div>
         <div class="content">
           <h2>Hello, ${escapeHtml(name)}!</h2>
-          <p>Welcome to the EduIT platform. An account has been created for you as a teacher at <strong>${escapeHtml(schoolName)}</strong>.</p>
+          <p>A teacher account has been created for you at <strong>${escapeHtml(schoolName)}</strong>.</p>
           
           <div class="credentials">
             <h3 style="margin-top: 0;">Your Login Credentials</h3>
@@ -848,7 +848,7 @@ export async function sendTeacherCredentialsEmail({
           </div>
           
           <div style="text-align: center; margin-top: 30px;">
-            <a href="${schoolUrl}" class="button">Access Your Account</a>
+            <a href="${schoolUrl}" class="button">Login Now</a>
           </div>
         </div>
         <div class="footer">
@@ -860,8 +860,134 @@ export async function sendTeacherCredentialsEmail({
     </html>
   `;
 
-  return await sendEmail({ to: email, subject, html });
+  return await sendEmail({
+    to: email,
+    subject,
+    html,
+  });
 }
+
+interface PaymentNotificationEmailParams {
+  to: string;
+  recipientName: string;
+  studentName: string;
+  amount: number;
+  billName: string;
+  transactionRef: string;
+  date: Date;
+  schoolName: string;
+  schoolLogo?: string;
+  isParent: boolean;
+}
+
+export async function sendPaymentNotificationEmail({
+  to,
+  recipientName,
+  studentName,
+  amount,
+  billName,
+  transactionRef,
+  date,
+  schoolName,
+  schoolLogo = "https://eduit.app/logo.png",
+  isParent,
+}: PaymentNotificationEmailParams) {
+  const subject = isParent
+    ? `Payment Receipt: ${billName} for ${studentName}`
+    : `New Payment Received: ${billName} from ${studentName}`;
+
+  const formattedAmount = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+  }).format(amount);
+
+  const formattedDate = new Intl.DateTimeFormat("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+
+  // Default colors
+  const primaryColor = "#22c55e"; 
+  const secondaryColor = "#4f46e5";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background-color: ${primaryColor}; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .header img { max-height: 60px; margin-bottom: 10px; }
+        .content { padding: 30px 20px; }
+        .footer { background-color: #f7f7f7; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px; }
+        h1 { color: #ffffff; font-size: 24px; margin: 0; font-weight: 600; }
+        .receipt-box { border: 1px solid #e5e5e5; border-radius: 8px; padding: 20px; margin: 20px 0; background-color: #fafafa; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #e5e5e5; padding-bottom: 10px; }
+        .row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .label { color: #666; font-size: 14px; }
+        .value { font-weight: 600; color: #333; }
+        .total { font-size: 18px; color: ${primaryColor}; }
+        .button { display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 4px; font-weight: 500; margin-top: 15px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <img src="${schoolLogo}" alt="${schoolName} Logo" />
+          <h1>${isParent ? "Payment Receipt" : "Payment Received"}</h1>
+        </div>
+        <div class="content">
+          <h2>Hello, ${escapeHtml(recipientName)}</h2>
+          <p>${
+            isParent
+              ? `We have received your payment for <strong>${escapeHtml(billName)}</strong>.`
+              : `A new payment has been recorded for <strong>${escapeHtml(billName)}</strong>.`
+          }</p>
+          
+          <div class="receipt-box">
+            <div class="row">
+              <span class="label">Student</span>
+              <span class="value">${escapeHtml(studentName)}</span>
+            </div>
+            <div class="row">
+              <span class="label">Transaction Ref</span>
+              <span class="value" style="font-family: monospace;">${transactionRef}</span>
+            </div>
+            <div class="row">
+              <span class="label">Date</span>
+              <span class="value">${formattedDate}</span>
+            </div>
+            <div class="row">
+              <span class="label">Status</span>
+              <span class="value" style="color: ${primaryColor};">SUCCESSFUL</span>
+            </div>
+            <div class="row" style="margin-top: 15px; border-top: 2px solid #e5e5e5; padding-top: 15px;">
+              <span class="label" style="font-weight: bold;">Amount Paid</span>
+              <span class="value total">${formattedAmount}</span>
+            </div>
+          </div>
+          
+          <p>Thank you for using EduIT.</p>
+        </div>
+        <div class="footer">
+          <p>&copy; ${new Date().getFullYear()} ${schoolName}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to,
+    subject,
+    html,
+  });
+}
+
+
+
 
 interface ResultPublishedEmailParams {
   studentName: string;
