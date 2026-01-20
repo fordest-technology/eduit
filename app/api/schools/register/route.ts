@@ -223,13 +223,18 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Apply school template
-        await applySchoolTemplate(tx, school.id, "combined");
-
         return { school, admin };
-      }, {
-        timeout: 120000 // 120 seconds for template application
       });
+
+      // Apply school template (outside of the initial user creation transaction to reduce lock time)
+      // If this fails, the school exists but has no classes - which is a "soft failure" we can recover from or let the user configure manually.
+      // In a strict environment, we might want tocompensate, but for now preventing the timeout 500 is priority.
+      try {
+        await applySchoolTemplate(prisma, result.school.id, "combined");
+      } catch (templateError) {
+        console.error("Warning: Failed to apply school template:", templateError);
+        // Continue - do not fail the request. The user can set up classes manually.
+      }
 
       // Send welcome email to school admin (and copy school email)
       try {
