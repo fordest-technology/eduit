@@ -67,16 +67,7 @@ export async function GET(request: NextRequest) {
   const departmentId = searchParams.get("departmentId");
 
   try {
-    // Test database connection
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (error) {
-      console.error("Database connection error:", error);
-      return NextResponse.json(
-        { message: "Database connection error. Please try again later." },
-        { status: 503 }
-      );
-    }
+
 
     const schoolId = session.schoolId;
     // Allow both super_admin and school_admin to access
