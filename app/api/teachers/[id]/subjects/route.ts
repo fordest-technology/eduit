@@ -19,16 +19,7 @@ export async function GET(
   const teacherId = params.id;
 
   try {
-    // Test database connection
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (error) {
-      console.error("Database connection error:", error);
-      return NextResponse.json(
-        { message: "Database connection error. Please try again later." },
-        { status: 503 }
-      );
-    }
+
 
     const teacherWithSubjects = await prisma.teacher.findUnique({
       where: {
@@ -82,16 +73,7 @@ export async function POST(
   const teacherId = params.id;
 
   try {
-    // Test database connection
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (error) {
-      console.error("Database connection error:", error);
-      return NextResponse.json(
-        { message: "Database connection error. Please try again later." },
-        { status: 503 }
-      );
-    }
+
 
     const teacher = await prisma.teacher.findUnique({
       where: {
