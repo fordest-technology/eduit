@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { ResultsConfigurationFormContainer } from '@/app/dashboard/results/_components/results-configuration-form-container';
+import { ResultsConfigurationFormContainer, ResultsConfigFormWithData } from '@/app/dashboard/results/_components/results-configuration-form-container';
 import { ResultsConfigurationForm } from '@/app/dashboard/results/_components/results-configuration-form';
 import { prisma, withErrorHandling } from '@/lib/prisma';
 
@@ -30,9 +30,8 @@ describe('ResultsConfigurationFormContainer', () => {
         (prisma.academicSession.findFirst as jest.Mock).mockResolvedValue(null);
 
         // Act
-        const { findByText } = render(
-            <ResultsConfigurationFormContainer schoolId="test-school" />
-        );
+        const ui = await ResultsConfigurationFormContainer({ schoolId: "test-school" });
+        const { findByText } = render(ui);
 
         // Assert
         expect(await findByText(/No active academic session found/i)).toBeInTheDocument();
@@ -91,7 +90,15 @@ describe('ResultsConfigurationFormContainer', () => {
             .mockResolvedValueOnce(mockGrades);
 
         // Act
-        render(<ResultsConfigurationFormContainer schoolId="test-school" />);
+        // Act
+        const ui = await ResultsConfigFormWithData({ 
+            schoolId: 'test-school',
+            sessionId: 'session1',
+            sessionName: '2023/2024',
+            selectedClassId: null,
+            teacherInfo: null
+        });
+        render(ui);
 
         // Assert
         await screen.findByTestId('results-form');
@@ -149,7 +156,15 @@ describe('ResultsConfigurationFormContainer', () => {
             ]);
 
         // Act
-        render(<ResultsConfigurationFormContainer schoolId="test-school" />);
+        // Act
+        const ui = await ResultsConfigFormWithData({ 
+            schoolId: 'test-school',
+            sessionId: 'session1',
+            sessionName: '2023/2024',
+            selectedClassId: null,
+            teacherInfo: null
+        });
+        render(ui);
 
         // Assert
         await screen.findByTestId('results-form');
@@ -175,9 +190,9 @@ describe('ResultsConfigurationFormContainer', () => {
         });
 
         // Act
-        const { findByText } = render(
-            <ResultsConfigurationFormContainer schoolId="test-school" />
-        );
+        // Act
+        const ui = await ResultsConfigurationFormContainer({ schoolId: "test-school" });
+        const { findByText } = render(ui);
 
         // Assert
         expect(await findByText(/An error occurred/i)).toBeInTheDocument();

@@ -1283,13 +1283,13 @@ import { Button } from <span class="cstat-no" title="statement not covered" >"@/
 import { Input } from <span class="cstat-no" title="statement not covered" >"@/components/ui/input"</span>
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from <span class="cstat-no" title="statement not covered" >"@/components/ui/select"</span>
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet"</span>
 import { Textarea } from <span class="cstat-no" title="statement not covered" >"@/components/ui/textarea"</span>
 import type { UserRole } from "@/lib/auth"
 import { Calendar, Edit, Loader2, Plus, Trash } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
@@ -1574,7 +1574,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             className="w-full sm:w-[300px]"
           /&gt;
 &nbsp;
-          {<span class="branch-0 cbranch-no" title="branch not covered" >userRole === "super_admin" &amp;&amp; (</span>
+          {<span class="branch-0 cbranch-no" title="branch not covered" >userRole === "SUPER_ADMIN" &amp;&amp; (</span>
             &lt;Select value={formData.schoolId} onValueChange={<span class="fstat-no" title="function not covered" >(v</span>alue) =&gt; <span class="cstat-no" title="statement not covered" >handleSelectChange("schoolId", value)}&gt;</span>
               &lt;SelectTrigger className="w-[200px]"&gt;
                 &lt;SelectValue placeholder="All Schools" /&gt;
@@ -1668,13 +1668,13 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
         &lt;/Table&gt;
       &lt;/div&gt;
 &nbsp;
-      {/* Add Event Dialog */}
-      &lt;Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}&gt;
-        &lt;DialogContent className="sm:max-w-[500px]"&gt;
-          &lt;DialogHeader&gt;
-            &lt;DialogTitle&gt;Add New Event&lt;/DialogTitle&gt;
-            &lt;DialogDescription&gt;Create a new event for your school.&lt;/DialogDescription&gt;
-          &lt;/DialogHeader&gt;
+      {/* Add Event Sheet */}
+      &lt;Sheet open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}&gt;
+        &lt;SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right"&gt;
+          &lt;SheetHeader&gt;
+            &lt;SheetTitle&gt;Add New Event&lt;/SheetTitle&gt;
+            &lt;SheetDescription&gt;Create a new event for your school.&lt;/SheetDescription&gt;
+          &lt;/SheetHeader&gt;
           &lt;div className="grid gap-4 py-4"&gt;
             &lt;div className="space-y-2"&gt;
               &lt;Label htmlFor="title"&gt;Event Title&lt;/Label&gt;
@@ -1744,7 +1744,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               &lt;Label htmlFor="isPublic"&gt;Make this event public to all users&lt;/Label&gt;
             &lt;/div&gt;
 &nbsp;
-            {<span class="branch-0 cbranch-no" title="branch not covered" >userRole === "super_admin" &amp;&amp; (</span>
+            {<span class="branch-0 cbranch-no" title="branch not covered" >userRole === "SUPER_ADMIN" &amp;&amp; (</span>
               &lt;div className="space-y-2"&gt;
                 &lt;Label htmlFor="schoolId"&gt;School&lt;/Label&gt;
                 &lt;Select
@@ -1766,7 +1766,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               &lt;/div&gt;
             )}
           &lt;/div&gt;
-          &lt;DialogFooter&gt;
+          &lt;SheetFooter className="mt-6"&gt;
             &lt;Button variant="outline" onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >s</span>etIsAddDialogOpen(false)}&gt;</span>
               Cancel
             &lt;/Button&gt;
@@ -1774,17 +1774,17 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               {<span class="branch-0 cbranch-no" title="branch not covered" >submitting &amp;&amp; &lt;</span>Loader2 className="mr-2 h-4 w-4 animate-spin" /&gt;}
               Add Event
             &lt;/Button&gt;
-          &lt;/DialogFooter&gt;
-        &lt;/DialogContent&gt;
-      &lt;/Dialog&gt;
+          &lt;/SheetFooter&gt;
+        &lt;/SheetContent&gt;
+      &lt;/Sheet&gt;
 &nbsp;
-      {/* Edit Event Dialog */}
-      &lt;Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}&gt;
-        &lt;DialogContent className="sm:max-w-[500px]"&gt;
-          &lt;DialogHeader&gt;
-            &lt;DialogTitle&gt;Edit Event&lt;/DialogTitle&gt;
-            &lt;DialogDescription&gt;Update event details.&lt;/DialogDescription&gt;
-          &lt;/DialogHeader&gt;
+      {/* Edit Event Sheet */}
+      &lt;Sheet open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}&gt;
+        &lt;SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right"&gt;
+          &lt;SheetHeader&gt;
+            &lt;SheetTitle&gt;Edit Event&lt;/SheetTitle&gt;
+            &lt;SheetDescription&gt;Update event details.&lt;/SheetDescription&gt;
+          &lt;/SheetHeader&gt;
           &lt;div className="grid gap-4 py-4"&gt;
             &lt;div className="space-y-2"&gt;
               &lt;Label htmlFor="edit-title"&gt;Event Title&lt;/Label&gt;
@@ -1841,7 +1841,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               &lt;Label htmlFor="edit-isPublic"&gt;Make this event public to all users&lt;/Label&gt;
             &lt;/div&gt;
 &nbsp;
-            {<span class="branch-0 cbranch-no" title="branch not covered" >userRole === "super_admin" &amp;&amp; (</span>
+            {<span class="branch-0 cbranch-no" title="branch not covered" >userRole === "SUPER_ADMIN" &amp;&amp; (</span>
               &lt;div className="space-y-2"&gt;
                 &lt;Label htmlFor="edit-schoolId"&gt;School&lt;/Label&gt;
                 &lt;Select
@@ -1863,7 +1863,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               &lt;/div&gt;
             )}
           &lt;/div&gt;
-          &lt;DialogFooter&gt;
+          &lt;SheetFooter className="mt-6"&gt;
             &lt;Button variant="outline" onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >s</span>etIsEditDialogOpen(false)}&gt;</span>
               Cancel
             &lt;/Button&gt;
@@ -1871,9 +1871,9 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               {<span class="branch-0 cbranch-no" title="branch not covered" >submitting &amp;&amp; &lt;</span>Loader2 className="mr-2 h-4 w-4 animate-spin" /&gt;}
               Update Event
             &lt;/Button&gt;
-          &lt;/DialogFooter&gt;
-        &lt;/DialogContent&gt;
-      &lt;/Dialog&gt;
+          &lt;/SheetFooter&gt;
+        &lt;/SheetContent&gt;
+      &lt;/Sheet&gt;
     &lt;/div&gt;
   )
 }
@@ -1885,7 +1885,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

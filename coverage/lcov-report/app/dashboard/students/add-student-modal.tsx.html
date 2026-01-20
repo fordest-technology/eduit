@@ -32,7 +32,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/103</span>
+                <span class='fraction'>0/106</span>
             </div>
         
             
@@ -971,7 +971,11 @@
 <a name='L906'></a><a href='#L906'>906</a>
 <a name='L907'></a><a href='#L907'>907</a>
 <a name='L908'></a><a href='#L908'>908</a>
-<a name='L909'></a><a href='#L909'>909</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L909'></a><a href='#L909'>909</a>
+<a name='L910'></a><a href='#L910'>910</a>
+<a name='L911'></a><a href='#L911'>911</a>
+<a name='L912'></a><a href='#L912'>912</a>
+<a name='L913'></a><a href='#L913'>913</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1139,21 +1143,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1161,6 +1150,24 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1189,6 +1196,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1887,13 +1895,13 @@ import { zodResolver } from <span class="cstat-no" title="statement not covered"
 import * as z from <span class="cstat-no" title="statement not covered" >"zod"</span>
 import { toast } from <span class="cstat-no" title="statement not covered" >"sonner"</span>
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet";</span>
 import {
     Form,
     FormControl,
@@ -1998,6 +2006,7 @@ const formSchema = <span class="cstat-no" title="statement not covered" >z.objec
     // StudentClass relationship - all optional
     levelId: z.string().optional(),
     classId: z.string().optional(),
+    section: z.string().optional(),
     sessionId: z.string().optional(),
     rollNumber: z.string().optional(),
 })
@@ -2086,7 +2095,9 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             // Relationships
             departmentId: "",
             levelId: "",
+            levelId: "",
             classId: "",
+            section: "",
             sessionId: "",
             rollNumber: "",
         },
@@ -2118,6 +2129,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                 departmentId: studentToEdit.departmentId || "",
                 levelId: studentToEdit.levelId || studentToEdit.class?.levelId || "",
                 classId: studentToEdit.classId || "",
+                section: studentToEdit.section || (studentToEdit.class?.section) || "", // Handle both direct section (new) or fallback
                 sessionId: studentToEdit.sessionId || "",
                 rollNumber: studentToEdit.rollNumber || "",
             });
@@ -2273,17 +2285,17 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
     };
 &nbsp;
     return (
-        &lt;Dialog
+        &lt;Sheet
             open={open}
             onOpenChange={onOpenChange}
         &gt;
-            &lt;DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]"&gt;
-                &lt;DialogHeader&gt;
-                    &lt;DialogTitle&gt;{studentToEdit ? "Edit Student" : "Add New Student"}&lt;/DialogTitle&gt;
-                    &lt;DialogDescription&gt;
+            &lt;SheetContent className="max-w-2xl w-full overflow-y-auto" side="right"&gt;
+                &lt;SheetHeader className="pb-6"&gt;
+                    &lt;SheetTitle&gt;{studentToEdit ? "Edit Student" : "Add New Student"}&lt;/SheetTitle&gt;
+                    &lt;SheetDescription&gt;
                         {studentToEdit ? "Update student details in the system." : "Enter student details to add them to the system."}
-                    &lt;/DialogDescription&gt;
-                &lt;/DialogHeader&gt;
+                    &lt;/SheetDescription&gt;
+                &lt;/SheetHeader&gt;
 &nbsp;
                 &lt;div className="mb-6"&gt;
                     &lt;div className="flex items-center gap-6"&gt;
@@ -2763,7 +2775,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                             &lt;/div&gt;
                         &lt;/div&gt;
 &nbsp;
-                        &lt;DialogFooter&gt;
+                        &lt;SheetFooter className="mt-8 pb-4"&gt;
                             &lt;Button
                                 type="button"
                                 variant="outline"
@@ -2781,11 +2793,11 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                     studentToEdit ? "Update Student" : "Add Student"
                                 )}
                             &lt;/Button&gt;
-                        &lt;/DialogFooter&gt;
+                        &lt;/SheetFooter&gt;
                     &lt;/form&gt;
                 &lt;/Form&gt;
-            &lt;/DialogContent&gt;
-        &lt;/Dialog&gt;
+            &lt;/SheetContent&gt;
+        &lt;/Sheet&gt;
     )
 }</pre></td></tr></table></pre>
 
@@ -2794,7 +2806,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/120</span>
+                <span class='fraction'>0/124</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/116</span>
+                <span class='fraction'>0/120</span>
             </div>
         
             
@@ -512,7 +512,12 @@
 <a name='L447'></a><a href='#L447'>447</a>
 <a name='L448'></a><a href='#L448'>448</a>
 <a name='L449'></a><a href='#L449'>449</a>
-<a name='L450'></a><a href='#L450'>450</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L450'></a><a href='#L450'>450</a>
+<a name='L451'></a><a href='#L451'>451</a>
+<a name='L452'></a><a href='#L452'>452</a>
+<a name='L453'></a><a href='#L453'>453</a>
+<a name='L454'></a><a href='#L454'>454</a>
+<a name='L455'></a><a href='#L455'>455</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -548,6 +553,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -616,6 +622,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -743,7 +750,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -820,6 +829,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -994,9 +1004,10 @@ function <span class="fstat-no" title="function not covered" >serializeBigInts(d
 // GET: Fetch teachers assigned to a subject
 export async function <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >GET(</span></span>
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise&lt;{ id: string }&gt; }
 ) {
 <span class="cstat-no" title="statement not covered" >  try {</span>
+    const { id } = <span class="cstat-no" title="statement not covered" >await params;</span>
     // Check session and authorization
     const session = <span class="cstat-no" title="statement not covered" >await getSession();</span>
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!session) {</span>
@@ -1006,7 +1017,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
     // Fetch the subject to ensure it exists and belongs to the school
     const subject = <span class="cstat-no" title="statement not covered" >await prisma.subject.findUnique({</span>
       where: {
-        id: params.id,
+        id: id,
       },
     });
 &nbsp;
@@ -1022,7 +1033,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
     // Fetch teachers assigned to this subject
     const subjectTeachers = <span class="cstat-no" title="statement not covered" >await prisma.subjectTeacher.findMany({</span>
       where: {
-        subjectId: params.id,
+        subjectId: id,
       },
       include: {
         teacher: {
@@ -1063,9 +1074,10 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
 // POST: Assign a teacher to a subject
 export async function <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >POST(</span></span>
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise&lt;{ id: string }&gt; }
 ) {
 <span class="cstat-no" title="statement not covered" >  try {</span>
+    const { id } = <span class="cstat-no" title="statement not covered" >await params;</span>
     // Check session and authorization
     const session = <span class="cstat-no" title="statement not covered" >await getSession();</span>
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!session) {</span>
@@ -1094,7 +1106,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
     // Fetch the subject to ensure it exists and belongs to the school
     const subject = <span class="cstat-no" title="statement not covered" >await prisma.subject.findUnique({</span>
       where: {
-        id: params.id,
+        id: id,
       },
     });
 &nbsp;
@@ -1131,7 +1143,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
     // Check if assignment already exists
     const existingAssignment = <span class="cstat-no" title="statement not covered" >await prisma.subjectTeacher.findFirst({</span>
       where: {
-        subjectId: params.id,
+        subjectId: id,
         teacherId: teacherId,
       },
     });
@@ -1146,7 +1158,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
     // Create the assignment
     const subjectTeacher = <span class="cstat-no" title="statement not covered" >await prisma.subjectTeacher.create({</span>
       data: {
-        subjectId: params.id,
+        subjectId: id,
         teacherId: teacherId,
       },
       include: {
@@ -1189,9 +1201,11 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
 // DELETE: Remove a teacher from a subject
 export async function <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >DELETE(</span></span>
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise&lt;{ id: string }&gt; }
 ) {
 <span class="cstat-no" title="statement not covered" >  try {</span>
+    const { id } = <span class="cstat-no" title="statement not covered" >await params;</span>
+    
     // Check session and authorization
     const session = <span class="cstat-no" title="statement not covered" >await getSession();</span>
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!session) {</span>
@@ -1235,7 +1249,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
     }
 &nbsp;
     // Verify the assignment is for the requested subject
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (assignment.subjectId !== params.id) {</span>
+<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (assignment.subjectId !== id) {</span>
 <span class="cstat-no" title="statement not covered" >      return NextResponse.json(</span>
         { error: "Assignment does not belong to this subject" },
         { status: 400 }
@@ -1267,9 +1281,10 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
 // PUT: Update all teacher assignments for a subject
 export async function <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >PUT(</span></span>
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise&lt;{ id: string }&gt; }
 ) {
 <span class="cstat-no" title="statement not covered" >  try {</span>
+    const { id } = <span class="cstat-no" title="statement not covered" >await params;</span>
     // Check session and authorization
     const session = <span class="cstat-no" title="statement not covered" >await getSession();</span>
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!session) {</span>
@@ -1287,7 +1302,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
     // Fetch the subject to ensure it exists and belongs to the user's school
     const subject = <span class="cstat-no" title="statement not covered" >await prisma.subject.findUnique({</span>
       where: {
-        id: params.id,
+        id: id,
       },
     });
 &nbsp;
@@ -1349,7 +1364,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
       // First, remove all existing assignments
 <span class="cstat-no" title="statement not covered" >      await tx.subjectTeacher.deleteMany({</span>
         where: {
-          subjectId: params.id,
+          subjectId: id,
         },
       });
 &nbsp;
@@ -1357,7 +1372,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
 <span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (teacherIds.length &gt; 0) {</span>
 <span class="cstat-no" title="statement not covered" >        await tx.subjectTeacher.createMany({</span>
           data: teacherIds.map(<span class="fstat-no" title="function not covered" >(t</span>eacherId) =&gt; (<span class="cstat-no" title="statement not covered" >{</span>
-            subjectId: params.id,
+            subjectId: id,
             teacherId,
           })),
         });
@@ -1366,7 +1381,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
       // Fetch the updated assignments with teacher details
       const updatedAssignments = <span class="cstat-no" title="statement not covered" >await tx.subjectTeacher.findMany({</span>
         where: {
-          subjectId: params.id,
+          subjectId: id,
         },
         include: {
           teacher: {
@@ -1417,7 +1432,7 @@ export async function <span class="cstat-no" title="statement not covered" ><spa
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../../prettify.js"></script>
         <script>

@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/43</span>
+                <span class='fraction'>0/45</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>0/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/35</span>
+                <span class='fraction'>0/37</span>
             </div>
         
             
@@ -254,7 +254,12 @@
 <a name='L189'></a><a href='#L189'>189</a>
 <a name='L190'></a><a href='#L190'>190</a>
 <a name='L191'></a><a href='#L191'>191</a>
-<a name='L192'></a><a href='#L192'>192</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -297,6 +302,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -451,7 +461,7 @@ import { redirect } from <span class="cstat-no" title="statement not covered" >"
 import { ParentDashboard } from <span class="cstat-no" title="statement not covered" >"./_components/parent-dashboard"</span>
 import { DashboardHeader } from <span class="cstat-no" title="statement not covered" >"@/app/components/dashboard-header"</span>
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >metadata </span>= <span class="cstat-no" title="statement not covered" >{</span>
+export const <span class="cstat-no" title="statement not covered" >metadata = <span class="cstat-no" title="statement not covered" >{</span></span>
     title: "Parent Dashboard | EduIT",
     description: "Monitor your children's academic progress, fees, and school activities",
 }
@@ -490,10 +500,15 @@ export default async function <span class="cstat-no" title="statement not covere
         }
     })
 &nbsp;
-    // Fetch upcoming events
+    // Get all school IDs from the children to fetch relevant events, bills, etc.
+    const childSchoolIds = <span class="cstat-no" title="statement not covered" >Array.from(new Set(</span>
+        children.map(<span class="fstat-no" title="function not covered" >c =&gt; <span class="cstat-no" title="statement not covered" >c</span>.student.user.schoolId)</span>.filter(Boolean) as string[]
+    ))
+&nbsp;
+    // Fetch upcoming events from all relevant schools
     const upcomingEvents = <span class="cstat-no" title="statement not covered" >await prisma.event.findMany({</span>
         where: {
-            schoolId: session.schoolId,
+            schoolId: { in: childSchoolIds },
             endDate: {
                 gte: new Date()
             }
@@ -507,10 +522,10 @@ export default async function <span class="cstat-no" title="statement not covere
     // Fetch fee information
     const studentIds = <span class="cstat-no" title="statement not covered" >children.map(<span class="fstat-no" title="function not covered" >child =&gt; <span class="cstat-no" title="statement not covered" >c</span>hild.student.id)</span></span>
 &nbsp;
-    // Fetch bills assigned to the children or their classes
+    // Fetch bills assigned to the children or their classes from all relevant schools
     const bills = <span class="cstat-no" title="statement not covered" >await prisma.bill.findMany({</span>
         where: {
-            schoolId: session.schoolId,
+            schoolId: { in: childSchoolIds },
             assignments: {
                 some: {
                     OR: [
@@ -535,10 +550,10 @@ export default async function <span class="cstat-no" title="statement not covere
         }
     })
 &nbsp;
-    // Fetch payment accounts
+    // Fetch payment accounts from all relevant schools
     const paymentAccounts = <span class="cstat-no" title="statement not covered" >await prisma.paymentAccount.findMany({</span>
         where: {
-            schoolId: session.schoolId,
+            schoolId: { in: childSchoolIds },
             isActive: true
         }
     })
@@ -643,7 +658,7 @@ export default async function <span class="cstat-no" title="statement not covere
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

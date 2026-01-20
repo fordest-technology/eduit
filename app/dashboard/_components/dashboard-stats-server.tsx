@@ -23,6 +23,16 @@ export async function DashboardStatsSection() {
   const canViewSubjects = fullAccess || hasPermission(perms, "manage_subjects", session.role);
 
   const stats = await withErrorHandling(async () => {
+    if (!session.schoolId) {
+      return {
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalClasses: 0,
+        totalSubjects: 0,
+        walletBalance: 0,
+      }
+    }
+
     const [totalStudents, totalTeachers, uniqueClasses, totalSubjects, wallet] = await Promise.all([
       prisma.student.count({ where: { user: { schoolId: session.schoolId } } }),
       prisma.teacher.count({ where: { user: { schoolId: session.schoolId } } }),

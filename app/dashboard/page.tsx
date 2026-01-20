@@ -59,7 +59,7 @@ export default async function DashboardPage() {
       where: {
         AND: [
           { targetType: 'STUDENT', targetId: { in: childrenIds } },
-          { bill: { schoolId: session.schoolId! } }
+          ...(session.schoolId ? [{ bill: { schoolId: session.schoolId } }] : [])
         ]
       },
       include: {
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
           <Suspense fallback={<div className="p-8 space-y-4"><div className="h-8 w-1/2 bg-slate-100 animate-pulse rounded" /><div className="h-64 bg-slate-50 animate-pulse rounded-2xl" /></div>}>
             <div className="p-8">
               <UpcomingEvents
-                schoolId={session.schoolId}
+                schoolId={session.schoolId || undefined}
                 limit={5}
                 showIcon={true}
               />

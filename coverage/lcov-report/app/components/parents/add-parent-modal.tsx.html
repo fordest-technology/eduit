@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/78</span>
+                <span class='fraction'>0/79</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/57</span>
+                <span class='fraction'>0/55</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/76</span>
+                <span class='fraction'>0/77</span>
             </div>
         
             
@@ -396,17 +396,7 @@
 <a name='L331'></a><a href='#L331'>331</a>
 <a name='L332'></a><a href='#L332'>332</a>
 <a name='L333'></a><a href='#L333'>333</a>
-<a name='L334'></a><a href='#L334'>334</a>
-<a name='L335'></a><a href='#L335'>335</a>
-<a name='L336'></a><a href='#L336'>336</a>
-<a name='L337'></a><a href='#L337'>337</a>
-<a name='L338'></a><a href='#L338'>338</a>
-<a name='L339'></a><a href='#L339'>339</a>
-<a name='L340'></a><a href='#L340'>340</a>
-<a name='L341'></a><a href='#L341'>341</a>
-<a name='L342'></a><a href='#L342'>342</a>
-<a name='L343'></a><a href='#L343'>343</a>
-<a name='L344'></a><a href='#L344'>344</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L334'></a><a href='#L334'>334</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -414,13 +404,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -434,6 +417,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -598,7 +582,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -724,10 +707,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -757,14 +737,7 @@ import { zodResolver } from <span class="cstat-no" title="statement not covered"
 import { useForm } from <span class="cstat-no" title="statement not covered" >"react-hook-form"</span>
 import * as z from <span class="cstat-no" title="statement not covered" >"zod"</span>
 import { toast } from <span class="cstat-no" title="statement not covered" >"sonner"</span>
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+import { ResponsiveSheet } from <span class="cstat-no" title="statement not covered" >"@/components/ui/responsive-sheet"</span>
 import {
     Form,
     FormControl,
@@ -774,6 +747,7 @@ import {
     FormMessage,
 } from <span class="cstat-no" title="statement not covered" >"@/components/ui/form"</span>
 import { Input } from <span class="cstat-no" title="statement not covered" >"@/components/ui/input"</span>
+import { PasswordInput } from <span class="cstat-no" title="statement not covered" >"@/components/ui/password-input"</span>
 import { Button } from <span class="cstat-no" title="statement not covered" >"@/components/ui/button"</span>
 import { Loader2, Mail, CheckCircle, AlertCircle } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
 import { Alert, AlertDescription, AlertTitle } from <span class="cstat-no" title="statement not covered" >"@/components/ui/alert"</span>
@@ -945,24 +919,20 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
     }
 &nbsp;
     return (
-        &lt;Dialog open={open} onOpenChange={onOpenChange}&gt;
-            &lt;DialogContent className="sm:max-w-[425px]"&gt;
-                &lt;DialogHeader&gt;
-                    &lt;DialogTitle&gt;
-                        {isEditMode ? "Edit Parent" : "Add New Parent"}
-                    &lt;/DialogTitle&gt;
-                    &lt;DialogDescription&gt;
-                        {isEditMode
-                            ? "Update the parent's information"
-                            : "Add a new parent to your school. They will receive an email with login credentials."}
-                    &lt;/DialogDescription&gt;
-                &lt;/DialogHeader&gt;
-&nbsp;
+        &lt;ResponsiveSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            title={isEditMode ? "Edit Parent" : "Add New Parent"}
+            description={isEditMode
+                ? "Update the parent's information"
+                : "Add a new parent to your school. They will receive an email with login credentials."}
+        &gt;
+            &lt;div className="flex flex-col gap-6"&gt;
                 {<span class="branch-0 cbranch-no" title="branch not covered" >!isEditMode &amp;&amp; (</span>
-                    &lt;Alert className="bg-blue-50"&gt;
-                        &lt;AlertCircle className="h-4 w-4" /&gt;
-                        &lt;AlertTitle&gt;Automatic credential generation&lt;/AlertTitle&gt;
-                        &lt;AlertDescription&gt;
+                    &lt;Alert className="bg-indigo-50 border-indigo-100 rounded-2xl"&gt;
+                        &lt;AlertCircle className="h-4 w-4 text-indigo-600" /&gt;
+                        &lt;AlertTitle className="text-indigo-900 font-bold"&gt;Automatic credential generation&lt;/AlertTitle&gt;
+                        &lt;AlertDescription className="text-indigo-700"&gt;
                             When you create a new parent, the system will automatically generate a secure password and send the
                             login credentials to the parent's email address if you don't provide a password.
                         &lt;/AlertDescription&gt;
@@ -970,15 +940,15 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                 )}
 &nbsp;
                 &lt;Form {...form}&gt;
-                    &lt;form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"&gt;
+                    &lt;form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6"&gt;
                         &lt;FormField
                             control={form.control}
                             name="name"
                             render={({ field }) =&gt; (
                                 &lt;FormItem&gt;
-                                    &lt;FormLabel&gt;Full Name&lt;/FormLabel&gt;
+                                    &lt;FormLabel className="text-xs font-bold text-slate-500"&gt;Full Name&lt;/FormLabel&gt;
                                     &lt;FormControl&gt;
-                                        &lt;Input placeholder="Enter parent's full name" {...field} /&gt;
+                                        &lt;Input placeholder="Enter parent's full name" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold text-lg" {...field} /&gt;
                                     &lt;/FormControl&gt;
                                     &lt;FormMessage /&gt;
                                 &lt;/FormItem&gt;
@@ -990,9 +960,9 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                             name="email"
                             render={({ field }) =&gt; (
                                 &lt;FormItem&gt;
-                                    &lt;FormLabel&gt;Email Address&lt;/FormLabel&gt;
+                                    &lt;FormLabel className="text-xs font-bold text-slate-500"&gt;Email Address&lt;/FormLabel&gt;
                                     &lt;FormControl&gt;
-                                        &lt;Input type="email" placeholder="Enter email address" {...field} /&gt;
+                                        &lt;Input type="email" placeholder="Enter email address" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold" {...field} /&gt;
                                     &lt;/FormControl&gt;
                                     &lt;FormMessage /&gt;
                                 &lt;/FormItem&gt;
@@ -1004,9 +974,9 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                             name="phone"
                             render={({ field }) =&gt; (
                                 &lt;FormItem&gt;
-                                    &lt;FormLabel&gt;Phone Number (Optional)&lt;/FormLabel&gt;
+                                    &lt;FormLabel className="text-xs font-bold text-slate-500"&gt;Phone Number (Optional)&lt;/FormLabel&gt;
                                     &lt;FormControl&gt;
-                                        &lt;Input placeholder="Enter phone number" {...field} /&gt;
+                                        &lt;Input placeholder="Enter phone number" className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold" {...field} /&gt;
                                     &lt;/FormControl&gt;
                                     &lt;FormMessage /&gt;
                                 &lt;/FormItem&gt;
@@ -1018,18 +988,18 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                             name="password"
                             render={({ field }) =&gt; (
                                 &lt;FormItem&gt;
-                                    &lt;FormLabel&gt;
+                                    &lt;FormLabel className="text-xs font-bold text-slate-500"&gt;
                                         {isEditMode ? "New Password (leave blank to keep current)" : "Password (Optional)"}
                                     &lt;/FormLabel&gt;
                                     &lt;FormControl&gt;
-                                        &lt;Input
-                                            type="password"
+                                        &lt;PasswordInput
                                             placeholder={isEditMode ? "New password" : "Leave blank to auto-generate"}
+                                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-mono font-bold"
                                             {...field}
                                         /&gt;
                                     &lt;/FormControl&gt;
                                     {<span class="branch-0 cbranch-no" title="branch not covered" >!isEditMode &amp;&amp; (</span>
-                                        &lt;p className="text-sm text-muted-foreground"&gt;
+                                        &lt;p className="text-xs text-slate-400 font-medium"&gt;
                                             If left blank, a secure password will be generated and sent to the parent's email.
                                         &lt;/p&gt;
                                     )}
@@ -1039,58 +1009,58 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                         /&gt;
 &nbsp;
                         {<span class="branch-0 cbranch-no" title="branch not covered" >!isEditMode &amp;&amp; (</span>
-                            &lt;div className="bg-muted/50 p-3 rounded-md"&gt;
-                                &lt;div className="flex items-center text-sm"&gt;
-                                    &lt;Mail className="h-4 w-4 mr-2" /&gt;
-                                    &lt;p&gt;A welcome email with login credentials will be sent automatically to the provided email address.&lt;/p&gt;
+                            &lt;div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"&gt;
+                                &lt;div className="flex items-center text-xs font-medium text-slate-600"&gt;
+                                    &lt;Mail className="h-4 w-4 mr-2 text-indigo-500" /&gt;
+                                    &lt;p&gt;A welcome email with login credentials will be sent automatically.&lt;/p&gt;
                                 &lt;/div&gt;
                                 {<span class="branch-0 cbranch-no" title="branch not covered" >emailStatus === 'sending' &amp;&amp; (</span>
-                                    &lt;div className="flex items-center mt-2 text-sm text-amber-600"&gt;
+                                    &lt;div className="flex items-center mt-2 text-xs text-amber-600 font-bold"&gt;
                                         &lt;Loader2 className="h-3 w-3 mr-2 animate-spin" /&gt;
-                                        &lt;p&gt;Sending login credentials to email...&lt;/p&gt;
+                                        &lt;p&gt;Dispatching credentials...&lt;/p&gt;
                                     &lt;/div&gt;
                                 )}
                                 {<span class="branch-0 cbranch-no" title="branch not covered" >emailStatus === 'success' &amp;&amp; (</span>
-                                    &lt;div className="flex items-center mt-2 text-sm text-green-600"&gt;
+                                    &lt;div className="flex items-center mt-2 text-xs text-green-600 font-bold"&gt;
                                         &lt;CheckCircle className="h-3 w-3 mr-2" /&gt;
-                                        &lt;p&gt;Login credentials sent successfully!&lt;/p&gt;
+                                        &lt;p&gt;Credentials dispatched successfully!&lt;/p&gt;
                                     &lt;/div&gt;
                                 )}
                                 {<span class="branch-0 cbranch-no" title="branch not covered" >emailStatus === 'error' &amp;&amp; (</span>
-                                    &lt;div className="flex items-center mt-2 text-sm text-red-600"&gt;
+                                    &lt;div className="flex items-center mt-2 text-xs text-red-600 font-bold"&gt;
                                         &lt;AlertCircle className="h-3 w-3 mr-2" /&gt;
-                                        &lt;p&gt;{emailError || "Failed to send email with credentials. Please contact the user directly."}&lt;/p&gt;
+                                        &lt;p&gt;{emailError || "Dispatch failed. Manual intervention required."}&lt;/p&gt;
                                     &lt;/div&gt;
                                 )}
                             &lt;/div&gt;
                         )}
 &nbsp;
-                        &lt;DialogFooter&gt;
+                        &lt;div className="flex flex-col sm:flex-row gap-3 pt-6"&gt;
                             &lt;Button
                                 type="button"
                                 variant="outline"
+                                className="flex-1 h-14 rounded-[1.25rem] border-slate-200 font-bold hover:bg-slate-50"
                                 onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >o</span>nOpenChange(false)}</span>
                                 disabled={isLoading}
                             &gt;
-                                Cancel
+                                Discard
                             &lt;/Button&gt;
-                            &lt;Button type="submit" disabled={isLoading}&gt;
+                            &lt;Button 
+                                type="submit" 
+                                disabled={isLoading}
+                                className="flex-[2] h-14 rounded-[1.25rem] bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            &gt;
                                 {isLoading ? (
-                                    &lt;&gt;
-                                        &lt;Loader2 className="mr-2 h-4 w-4 animate-spin" /&gt;
-                                        {isEditMode ? "Saving..." : "Creating..."}
-                                    &lt;/&gt;
-                                ) : isEditMode ? (
-                                    "Save Changes"
+                                    &lt;Loader2 className="h-5 w-5 animate-spin" /&gt;
                                 ) : (
-                                    "Create Parent"
+                                    isEditMode ? "Update Profile" : "Create Parent Account"
                                 )}
                             &lt;/Button&gt;
-                        &lt;/DialogFooter&gt;
+                        &lt;/div&gt;
                     &lt;/form&gt;
                 &lt;/Form&gt;
-            &lt;/DialogContent&gt;
-        &lt;/Dialog&gt;
+            &lt;/div&gt;
+        &lt;/ResponsiveSheet&gt;
     )
 } </pre></td></tr></table></pre>
 
@@ -1099,7 +1069,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

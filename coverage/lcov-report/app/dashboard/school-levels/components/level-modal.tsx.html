@@ -32,7 +32,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/20</span>
+                <span class='fraction'>0/18</span>
             </div>
         
             
@@ -209,12 +209,7 @@
 <a name='L144'></a><a href='#L144'>144</a>
 <a name='L145'></a><a href='#L145'>145</a>
 <a name='L146'></a><a href='#L146'>146</a>
-<a name='L147'></a><a href='#L147'>147</a>
-<a name='L148'></a><a href='#L148'>148</a>
-<a name='L149'></a><a href='#L149'>149</a>
-<a name='L150'></a><a href='#L150'>150</a>
-<a name='L151'></a><a href='#L151'>151</a>
-<a name='L152'></a><a href='#L152'>152</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L147'></a><a href='#L147'>147</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -222,12 +217,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -292,6 +281,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -308,18 +308,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -327,6 +315,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -373,13 +363,7 @@ import { Input } from <span class="cstat-no" title="statement not covered" >"@/c
 import { Textarea } from <span class="cstat-no" title="statement not covered" >"@/components/ui/textarea"</span>
 import { Label } from <span class="cstat-no" title="statement not covered" >"@/components/ui/label"</span>
 import { Loader2 } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+import { ResponsiveSheet } from <span class="cstat-no" title="statement not covered" >"@/components/ui/responsive-sheet";</span>
 &nbsp;
 interface SchoolLevel {
     id: string
@@ -425,22 +409,19 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
     }
 &nbsp;
     return (
-        &lt;Dialog open={open} onOpenChange={onOpenChange}&gt;
-            &lt;DialogContent&gt;
-                &lt;DialogHeader&gt;
-                    &lt;DialogTitle&gt;
-                        {mode === "create" ? "Create New Level" : "Edit Level"}
-                    &lt;/DialogTitle&gt;
-                    &lt;DialogDescription&gt;
-                        {mode === "create"
-                            ? "Add a new academic level to your school"
-                            : "Update the academic level details"}
-                    &lt;/DialogDescription&gt;
-                &lt;/DialogHeader&gt;
-&nbsp;
-                &lt;form onSubmit={handleSubmit} className="space-y-4"&gt;
+        &lt;ResponsiveSheet 
+            open={open} 
+            onOpenChange={onOpenChange}
+            title={mode === "create" ? "Create Academic Level" : "Edit Level Registry"}
+            description={mode === "create"
+                ? "Define a new organizational tier for your institution's curriculum."
+                : "Modify the configuration and display priority of this academic level."}
+            className="sm:max-w-md"
+        &gt;
+            &lt;form onSubmit={handleSubmit} className="flex flex-col gap-6"&gt;
+                &lt;div className="space-y-4"&gt;
                     &lt;div className="space-y-2"&gt;
-                        &lt;Label htmlFor="name"&gt;Level Name&lt;/Label&gt;
+                        &lt;Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400"&gt;Level Designation&lt;/Label&gt;
                         &lt;Input
                             id="name"
                             placeholder="e.g., Primary 1, JSS 1, SSS 1"
@@ -448,15 +429,16 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                             onChange={<span class="fstat-no" title="function not covered" >(e</span>) =&gt;
 <span class="cstat-no" title="statement not covered" >                                setFormData({ ...formData, name: e.target.value })</span>
                             }
+                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold"
                             required
                         /&gt;
                     &lt;/div&gt;
 &nbsp;
                     &lt;div className="space-y-2"&gt;
-                        &lt;Label htmlFor="description"&gt;Description&lt;/Label&gt;
+                        &lt;Label htmlFor="description" className="text-[10px] font-black uppercase tracking-widest text-slate-400"&gt;Administrative Notes&lt;/Label&gt;
                         &lt;Textarea
                             id="description"
-                            placeholder="Brief description of this level..."
+                            placeholder="Brief description of this level's scope..."
                             value={formData.description || ""}
                             onChange={<span class="fstat-no" title="function not covered" >(e</span>) =&gt;
 <span class="cstat-no" title="statement not covered" >                                setFormData({</span>
@@ -464,12 +446,13 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                     description: e.target.value,
                                 })
                             }
+                            className="rounded-2xl bg-slate-50 border-slate-100 focus:bg-white font-medium min-h-[120px]"
                             rows={3}
                         /&gt;
                     &lt;/div&gt;
 &nbsp;
                     &lt;div className="space-y-2"&gt;
-                        &lt;Label htmlFor="order"&gt;Display Order&lt;/Label&gt;
+                        &lt;Label htmlFor="order" className="text-[10px] font-black uppercase tracking-widest text-slate-400"&gt;Display Hierarchy Order&lt;/Label&gt;
                         &lt;Input
                             id="order"
                             type="number"
@@ -482,48 +465,50 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                     order: parseInt(e.target.value) || 0,
                                 })
                             }
+                            className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-lg font-bold"
                         /&gt;
-                        &lt;p className="text-sm text-muted-foreground"&gt;
-                            Lower numbers will be displayed first
+                        &lt;p className="text-[10px] font-medium text-slate-400 italic"&gt;
+                            Lower numbers prioritize this level in lists and dashboards.
                         &lt;/p&gt;
                     &lt;/div&gt;
+                &lt;/div&gt;
 &nbsp;
-                    &lt;div className="flex justify-end gap-3 pt-4"&gt;
-                        &lt;Button
-                            type="button"
-                            variant="outline"
-                            onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >o</span>nOpenChange(false)}</span>
-                            disabled={isSubmitting}
-                        &gt;
-                            Cancel
-                        &lt;/Button&gt;
-                        &lt;Button type="submit" disabled={isSubmitting}&gt;
-                            {isSubmitting ? (
-                                &lt;&gt;
-                                    &lt;Loader2 className="mr-2 h-4 w-4 animate-spin" /&gt;
-                                    {mode === "create"
-                                        ? "Creating..."
-                                        : "Updating..."}
-                                &lt;/&gt;
-                            ) : mode === "create" ? (
-                                "Create Level"
-                            ) : (
-                                "Update Level"
-                            )}
-                        &lt;/Button&gt;
-                    &lt;/div&gt;
-                &lt;/form&gt;
-            &lt;/DialogContent&gt;
-        &lt;/Dialog&gt;
+                &lt;div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-50"&gt;
+                    &lt;Button
+                        type="button"
+                        variant="ghost"
+                        onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >o</span>nOpenChange(false)}</span>
+                        disabled={isSubmitting}
+                        className="flex-1 h-14 rounded-2xl font-bold text-slate-500 hover:text-slate-800"
+                    &gt;
+                        Discard
+                    &lt;/Button&gt;
+                    &lt;Button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="flex-[2] h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    &gt;
+                        {isSubmitting ? (
+                            &lt;Loader2 className="h-5 w-5 animate-spin" /&gt;
+                        ) : mode === "create" ? (
+                            "Finalize Level"
+                        ) : (
+                            "Update Level"
+                        )}
+                    &lt;/Button&gt;
+                &lt;/div&gt;
+            &lt;/form&gt;
+        &lt;/ResponsiveSheet&gt;
     )
-} </pre></td></tr></table></pre>
+} 
+&nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

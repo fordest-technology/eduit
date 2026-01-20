@@ -747,7 +747,8 @@
 <a name='L682'></a><a href='#L682'>682</a>
 <a name='L683'></a><a href='#L683'>683</a>
 <a name='L684'></a><a href='#L684'>684</a>
-<a name='L685'></a><a href='#L685'>685</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L685'></a><a href='#L685'>685</a>
+<a name='L686'></a><a href='#L686'>686</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -773,6 +774,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1450,13 +1452,13 @@ import {
     TableRow,
 } from <span class="cstat-no" title="statement not covered" >"@/components/ui/table"</span>
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet"</span>
 import {
     Form,
     FormControl,
@@ -1464,6 +1466,7 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
+    FormDescription,
 } from <span class="cstat-no" title="statement not covered" >"@/components/ui/form"</span>
 import { Input } from <span class="cstat-no" title="statement not covered" >"@/components/ui/input"</span>
 import { zodResolver } from <span class="cstat-no" title="statement not covered" >"@hookform/resolvers/zod"</span>
@@ -1774,15 +1777,15 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                 &lt;/Card&gt;
             &lt;/div&gt;
 &nbsp;
-            {/* Add Session Modal */}
-            &lt;Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}&gt;
-                &lt;DialogContent className="sm:max-w-[500px]"&gt;
-                    &lt;DialogHeader&gt;
-                        &lt;DialogTitle&gt;Add Academic Session&lt;/DialogTitle&gt;
-                        &lt;DialogDescription&gt;
+            {/* Add Session Sheet */}
+            &lt;Sheet open={isAddModalOpen} onOpenChange={setIsAddModalOpen}&gt;
+                &lt;SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right"&gt;
+                    &lt;SheetHeader&gt;
+                        &lt;SheetTitle&gt;Add Academic Session&lt;/SheetTitle&gt;
+                        &lt;SheetDescription&gt;
                             Create a new academic session for student enrollments.
-                        &lt;/DialogDescription&gt;
-                    &lt;/DialogHeader&gt;
+                        &lt;/SheetDescription&gt;
+                    &lt;/SheetHeader&gt;
                     &lt;Form {...form}&gt;
                         &lt;form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"&gt;
                             &lt;FormField
@@ -1905,7 +1908,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                 )}
                             /&gt;
 &nbsp;
-                            &lt;DialogFooter className="pt-4"&gt;
+                            &lt;SheetFooter className="pt-4 mt-6"&gt;
                                 &lt;Button
                                     variant="outline"
                                     onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >s</span>etIsAddModalOpen(false)}</span>
@@ -1923,21 +1926,21 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                         &lt;&gt;Create Session&lt;/&gt;
                                     )}
                                 &lt;/Button&gt;
-                            &lt;/DialogFooter&gt;
+                            &lt;/SheetFooter&gt;
                         &lt;/form&gt;
                     &lt;/Form&gt;
-                &lt;/DialogContent&gt;
-            &lt;/Dialog&gt;
+                &lt;/SheetContent&gt;
+            &lt;/Sheet&gt;
 &nbsp;
-            {/* Edit Session Modal */}
-            &lt;Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}&gt;
-                &lt;DialogContent className="sm:max-w-[500px]"&gt;
-                    &lt;DialogHeader&gt;
-                        &lt;DialogTitle&gt;Edit Academic Session&lt;/DialogTitle&gt;
-                        &lt;DialogDescription&gt;
+            {/* Edit Session Sheet */}
+            &lt;Sheet open={isEditModalOpen} onOpenChange={setIsEditModalOpen}&gt;
+                &lt;SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right"&gt;
+                    &lt;SheetHeader&gt;
+                        &lt;SheetTitle&gt;Edit Academic Session&lt;/SheetTitle&gt;
+                        &lt;SheetDescription&gt;
                             Update the details of this academic session.
-                        &lt;/DialogDescription&gt;
-                    &lt;/DialogHeader&gt;
+                        &lt;/SheetDescription&gt;
+                    &lt;/SheetHeader&gt;
                     &lt;Form {...form}&gt;
                         &lt;form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"&gt;
                             &lt;FormField
@@ -2060,7 +2063,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                 )}
                             /&gt;
 &nbsp;
-                            &lt;DialogFooter className="pt-4"&gt;
+                            &lt;SheetFooter className="pt-4 mt-6"&gt;
                                 &lt;Button
                                     variant="outline"
                                     onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >s</span>etIsEditModalOpen(false)}</span>
@@ -2078,11 +2081,11 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                         &lt;&gt;Update Session&lt;/&gt;
                                     )}
                                 &lt;/Button&gt;
-                            &lt;/DialogFooter&gt;
+                            &lt;/SheetFooter&gt;
                         &lt;/form&gt;
                     &lt;/Form&gt;
-                &lt;/DialogContent&gt;
-            &lt;/Dialog&gt;
+                &lt;/SheetContent&gt;
+            &lt;/Sheet&gt;
 &nbsp;
             {/* Delete Confirmation */}
             &lt;AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}&gt;
@@ -2122,7 +2125,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/157</span>
+                <span class='fraction'>0/150</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/152</span>
+                <span class='fraction'>0/145</span>
             </div>
         
             
@@ -946,14 +946,7 @@
 <a name='L881'></a><a href='#L881'>881</a>
 <a name='L882'></a><a href='#L882'>882</a>
 <a name='L883'></a><a href='#L883'>883</a>
-<a name='L884'></a><a href='#L884'>884</a>
-<a name='L885'></a><a href='#L885'>885</a>
-<a name='L886'></a><a href='#L886'>886</a>
-<a name='L887'></a><a href='#L887'>887</a>
-<a name='L888'></a><a href='#L888'>888</a>
-<a name='L889'></a><a href='#L889'>889</a>
-<a name='L890'></a><a href='#L890'>890</a>
-<a name='L891'></a><a href='#L891'>891</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L884'></a><a href='#L884'>884</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1215,15 +1208,12 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1232,7 +1222,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1300,7 +1289,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1359,12 +1347,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1859,13 +1845,13 @@ import { DashboardHeader } from <span class="cstat-no" title="statement not cove
 import { Card, CardContent } from <span class="cstat-no" title="statement not covered" >"@/components/ui/card"</span>
 import StudentModal from <span class="cstat-no" title="statement not covered" >"../student-modal"</span>
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet"</span>
 import {
     Form,
     FormControl,
@@ -2104,24 +2090,20 @@ export default function <span class="cstat-no" title="statement not covered" ><s
 <span class="cstat-no" title="statement not covered" >            setLoading(true)</span>
 <span class="cstat-no" title="statement not covered" >            try {</span>
                 // Fetch student data with detailed error handling
-<span class="cstat-no" title="statement not covered" >                console.log("Fetching student with ID:", params.id);</span>
                 const studentRes = <span class="cstat-no" title="statement not covered" >await fetch(`/api/students/${params.id}`);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >                <span class="missing-if-branch" title="if path not taken" >I</span>if (!studentRes.ok) {</span>
                     const errorData = <span class="cstat-no" title="statement not covered" >await studentRes.json().catch(<span class="fstat-no" title="function not covered" >() =&gt; (<span class="cstat-no" title="statement not covered" >{</span>}));</span></span>
-<span class="cstat-no" title="statement not covered" >                    console.error("API Error Response:", errorData);</span>
 <span class="cstat-no" title="statement not covered" >                    throw new Error(errorData.message || `Failed to fetch student: ${studentRes.status} ${studentRes.statusText}`);</span>
                 }
 &nbsp;
                 const responseData = <span class="cstat-no" title="statement not covered" >await studentRes.json();</span>
-<span class="cstat-no" title="statement not covered" >                console.log("API Response:", responseData);</span>
 &nbsp;
                 // The API returns data in { student: {...}, availableDepartments: [...], ... } format
                 const studentData = <span class="cstat-no" title="statement not covered" >responseData.student;</span>
                 const activeSession = <span class="cstat-no" title="statement not covered" >responseData.currentSession;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >                <span class="missing-if-branch" title="if path not taken" >I</span>if (!studentData) {</span>
-<span class="cstat-no" title="statement not covered" >                    console.error("No student data in response:", responseData);</span>
 <span class="cstat-no" title="statement not covered" >                    throw new Error('Student data not found in response');</span>
                 }
 &nbsp;
@@ -2190,7 +2172,6 @@ export default function <span class="cstat-no" title="statement not covered" ><s
                 }
 &nbsp;
             } catch (error) {
-<span class="cstat-no" title="statement not covered" >                console.error('Error fetching data:', error)</span>
 <span class="cstat-no" title="statement not covered" >                setError(error instanceof Error ? error.message : 'Failed to load student data')</span>
 <span class="cstat-no" title="statement not covered" >                toast.error('Error loading student details: ' + (error instanceof Error ? error.message : 'Unknown error'))</span>
             } finally {
@@ -2248,14 +2229,12 @@ export default function <span class="cstat-no" title="statement not covered" ><s
                 }
             })
             .catch(<span class="fstat-no" title="function not covered" >err =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                console.error('Error refreshing data:', err);</span>
 <span class="cstat-no" title="statement not covered" >                toast.error('Failed to refresh student data');</span>
             })
             .finally(<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >s</span>etLoading(false));</span>
     };
 &nbsp;
     const handleAddToClass = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
-<span class="cstat-no" title="statement not covered" >        console.log("Opening add to class modal");</span>
 <span class="cstat-no" title="statement not covered" >        setShowClassModal(true);</span>
 <span class="cstat-no" title="statement not covered" >        setStudentClassConflict(null);</span>
 <span class="cstat-no" title="statement not covered" >        setIsAddingToClass(false);</span>
@@ -2587,15 +2566,15 @@ export default function <span class="cstat-no" title="statement not covered" ><s
                 /&gt;
             )}
 &nbsp;
-            {/* Add to Class Dialog - Improved for better user experience */}
-            &lt;Dialog open={showClassModal} onOpenChange={setShowClassModal}&gt;
-                &lt;DialogContent className="sm:max-w-[500px]"&gt;
-                    &lt;DialogHeader&gt;
-                        &lt;DialogTitle&gt;Add Student to Class&lt;/DialogTitle&gt;
-                        &lt;DialogDescription&gt;
+            {/* Add to Class Sheet - Improved for better user experience */}
+            &lt;Sheet open={showClassModal} onOpenChange={setShowClassModal}&gt;
+                &lt;SheetContent className="sm:max-w-[500px] w-full overflow-y-auto" side="right"&gt;
+                    &lt;SheetHeader&gt;
+                        &lt;SheetTitle&gt;Add Student to Class&lt;/SheetTitle&gt;
+                        &lt;SheetDescription&gt;
                             Select a class and academic session to add the student to.
-                        &lt;/DialogDescription&gt;
-                    &lt;/DialogHeader&gt;
+                        &lt;/SheetDescription&gt;
+                    &lt;/SheetHeader&gt;
 &nbsp;
                     {<span class="branch-0 cbranch-no" title="branch not covered" >studentClassConflict &amp;&amp; (</span>
                         &lt;Alert className="mb-4 border-amber-500 bg-amber-50"&gt;
@@ -2707,7 +2686,7 @@ export default function <span class="cstat-no" title="statement not covered" ><s
                                 )}
                             /&gt;
 &nbsp;
-                            &lt;DialogFooter&gt;
+                            &lt;SheetFooter className="mt-6"&gt;
                                 &lt;Button
                                     type="button"
                                     variant="outline"
@@ -2726,11 +2705,11 @@ export default function <span class="cstat-no" title="statement not covered" ><s
                                         "Add to Class"
                                     )}
                                 &lt;/Button&gt;
-                            &lt;/DialogFooter&gt;
+                            &lt;/SheetFooter&gt;
                         &lt;/form&gt;
                     &lt;/Form&gt;
-                &lt;/DialogContent&gt;
-            &lt;/Dialog&gt;
+                &lt;/SheetContent&gt;
+            &lt;/Sheet&gt;
         &lt;/div&gt;
     )
 } </pre></td></tr></table></pre>
@@ -2740,7 +2719,7 @@ export default function <span class="cstat-no" title="statement not covered" ><s
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>
