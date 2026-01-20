@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth"
 import { Wallet, Coins, Users, UserCheck, GraduationCap, BookOpen, LayoutDashboard } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { hasPermission } from "@/lib/permissions"
+import { hasPermission, hasFullAccess, can } from "@/lib/permissions"
 import { BillingStatus } from "./billing-status"
 import { withErrorHandling } from "@/lib/prisma"
 
@@ -12,20 +12,15 @@ export async function DashboardStatsSection() {
   if (!session) return null
 
   // Check permissions
-  let perms = session.permissions;
-  if (typeof perms === 'string') {
-    try { perms = JSON.parse(perms); } catch (e) {}
-  }
-
   const isSuperAdmin = session.role === "SUPER_ADMIN";
-  const isSchoolAdmin = session.role === "SCHOOL_ADMIN";
-  const hasFullAccess = isSuperAdmin || (isSchoolAdmin && (!perms || (Array.isArray(perms) && perms.length === 0)));
+  const fullAccess = hasFullAccess(session);
+  const perms = session.permissions;
 
-  const canViewFinance = hasFullAccess || hasPermission(perms, "view_fees") || hasPermission(perms, "manage_fees") || hasPermission(perms, "view_wallet") || hasPermission(perms, "manage_wallet");
-  const canViewStudents = hasFullAccess || hasPermission(perms, "view_students") || hasPermission(perms, "manage_students");
-  const canViewTeachers = hasFullAccess || hasPermission(perms, "view_teachers") || hasPermission(perms, "manage_teachers");
-  const canViewClasses = hasFullAccess || hasPermission(perms, "manage_classes");
-  const canViewSubjects = hasFullAccess || hasPermission(perms, "manage_subjects");
+  const canViewFinance = fullAccess || hasPermission(perms, "view_fees", session.role) || hasPermission(perms, "manage_fees", session.role) || hasPermission(perms, "view_wallet", session.role) || hasPermission(perms, "manage_wallet", session.role);
+  const canViewStudents = fullAccess || hasPermission(perms, "view_students", session.role) || hasPermission(perms, "manage_students", session.role);
+  const canViewTeachers = fullAccess || hasPermission(perms, "view_teachers", session.role) || hasPermission(perms, "manage_teachers", session.role);
+  const canViewClasses = fullAccess || hasPermission(perms, "manage_classes", session.role);
+  const canViewSubjects = fullAccess || hasPermission(perms, "manage_subjects", session.role);
 
   const stats = await withErrorHandling(async () => {
     const [totalStudents, totalTeachers, uniqueClasses, totalSubjects, wallet] = await Promise.all([
@@ -109,12 +104,12 @@ export async function DashboardStatsSection() {
 }
 
 export function StatsSkeleton() {
-    return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="h-44 border-none shadow-xl shadow-black/5 rounded-[2rem] bg-slate-100/50 animate-pulse" />
-            ))}
-            <div className="sm:col-span-2 h-44 border-none shadow-xl shadow-black/5 rounded-[2rem] bg-slate-100/50 animate-pulse" />
-        </div>
-    )
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i} className="h-44 border-none shadow-xl shadow-black/5 rounded-[2rem] bg-slate-100/50 animate-pulse" />
+      ))}
+      <div className="sm:col-span-2 h-44 border-none shadow-xl shadow-black/5 rounded-[2rem] bg-slate-100/50 animate-pulse" />
+    </div>
+  )
 }

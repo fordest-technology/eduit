@@ -4,6 +4,7 @@ import { DashboardHeader } from "../components/dashboard-header"
 import { getSession } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import dynamic from "next/dynamic"
+import { prisma } from "@/lib/db"
 
 // New server components for PPR
 import { DashboardStatsSection, StatsSkeleton } from "./_components/dashboard-stats-server"
@@ -12,8 +13,9 @@ import { RecentActivitiesSection, ActivitiesSkeleton } from "./_components/recen
 const TeacherDashboard = dynamic(() => import("./_components/teacher-dashboard"))
 const ParentDashboardLoading = () => <div className="p-8"><StatsSkeleton /></div>
 const ParentDashboard = dynamic(() => import("./parent/_components/parent-dashboard").then(mod => mod.ParentDashboard), {
-    loading: ParentDashboardLoading
+  loading: ParentDashboardLoading
 })
+const StudentDashboard = dynamic(() => import("./_components/student-dashboard"))
 const UpcomingEvents = dynamic(() => import("./upcoming-events").then(mod => mod.UpcomingEvents))
 
 export default async function DashboardPage() {
@@ -30,8 +32,68 @@ export default async function DashboardPage() {
 
   // Parent specific dashboard
   if (session.role === "PARENT") {
-    // Note: Parent dashboard might need its own PPR refactor later if it's slow
-    return <ParentDashboard data={{ children: [], bills: [], paymentAccounts: [], paymentRequests: [], paymentHistory: [], approvedResults: [], upcomingEvents: [], stats: { totalBilled: 0, totalPaid: 0, pendingPayments: 0, approvedPayments: 0, remainingBalance: 0 } }} />
+    const parent = await prisma.parent.findUnique({
+      where: { userId: session.id },
+      include: {
+        children: {
+          include: {
+            student: {
+              include: {
+                user: { select: { name: true, profileImage: true } },
+                classes: {
+                  include: { class: true },
+                  where: { session: { isCurrent: true } },
+                  take: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    const childrenIds = parent?.children.map(c => c.studentId) || []
+
+    // Get fee stats for all children
+    const billAssignments = await prisma.billAssignment.findMany({
+      where: {
+        AND: [
+          { targetType: 'STUDENT', targetId: { in: childrenIds } },
+          { bill: { schoolId: session.schoolId! } }
+        ]
+      },
+      include: {
+        bill: true,
+        studentPayments: true
+      }
+    })
+
+    const stats = billAssignments.reduce((acc, curr) => {
+      acc.totalBilled += curr.bill.amount
+      const paid = curr.studentPayments.reduce((pAcc, p) => pAcc + p.amountPaid, 0)
+      acc.totalPaid += paid
+      if (curr.status === 'PENDING') acc.pendingPayments++
+      return acc
+    }, { totalBilled: 0, totalPaid: 0, pendingPayments: 0 })
+
+    return <ParentDashboard data={{
+      children: parent?.children.map(c => ({
+        id: c.student.id,
+        name: c.student.user.name,
+        profileImage: c.student.user.profileImage,
+        class: c.student.classes[0]?.class.name
+      })) || [],
+      stats: {
+        ...stats,
+        approvedPayments: billAssignments.filter(b => b.status === 'PAID').length,
+        remainingBalance: stats.totalBilled - stats.totalPaid
+      }
+    }} />
+  }
+
+  // Student specific dashboard
+  if (session.role === "STUDENT") {
+    return <StudentDashboard />
   }
 
   const roleTitle = {
@@ -71,15 +133,15 @@ export default async function DashboardPage() {
 
         {/* Timeline - Also streamed */}
         <div className="lg:col-span-4 border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden relative min-h-[400px]">
-           <Suspense fallback={<div className="p-8 space-y-4"><div className="h-8 w-1/2 bg-slate-100 animate-pulse rounded" /><div className="h-64 bg-slate-50 animate-pulse rounded-2xl" /></div>}>
-             <div className="p-8">
-                <UpcomingEvents
-                    schoolId={session.schoolId}
-                    limit={5}
-                    showIcon={true}
-                />
-             </div>
-           </Suspense>
+          <Suspense fallback={<div className="p-8 space-y-4"><div className="h-8 w-1/2 bg-slate-100 animate-pulse rounded" /><div className="h-64 bg-slate-50 animate-pulse rounded-2xl" /></div>}>
+            <div className="p-8">
+              <UpcomingEvents
+                schoolId={session.schoolId}
+                limit={5}
+                showIcon={true}
+              />
+            </div>
+          </Suspense>
         </div>
       </div>
     </div>

@@ -17,12 +17,27 @@ export async function GET(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch student with all necessary relations including level data
+    // Fetch student with all necessary relations including level data, attendance and results
     const studentData = await db.student.findUnique({
       where: { id: id },
       include: {
         user: true,
         department: true,
+        attendance: {
+          orderBy: {
+            date: "desc",
+          },
+          take: 50, // Limit to recent records for the detail view
+        },
+        results: {
+          include: {
+            subject: true,
+            period: true,
+          },
+          orderBy: {
+            updatedAt: "desc"
+          }
+        },
         classes: {
           include: {
             class: {
@@ -130,65 +145,41 @@ export async function GET(
       },
     });
 
-    // Fetch all parents in the school
+    // Fetch all parents in the school for selection/linking
     const availableParents = await db.parent.findMany({
       where: {
         user: {
           schoolId: studentData.user.schoolId || "",
         },
       },
-      select: {
-        id: true,
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: {
+        user: true
+      }
     });
 
-    // Prepare data for the form
-    const formData = {
-      id: studentData.id,
-      userId: studentData.userId,
+    // Prepare student object with user fields flattened but maintaining relations
+    const student = {
+      ...studentData,
+      // Flatten common user fields
       name: studentData.user.name,
       email: studentData.user.email,
-      phone: studentData.phone, // Phone is on Student model
       profileImage: studentData.user.profileImage,
       schoolId: studentData.user.schoolId,
-      departmentId: studentData.departmentId,
-      address: studentData.address,
-      city: studentData.city,
-      state: studentData.state,
-      country: studentData.country,
-      dateOfBirth: studentData.dateOfBirth,
-      gender: studentData.gender,
-      religion: studentData.religion,
-      bloodGroup: studentData.bloodGroup,
-      subjectIds: studentData.subjects.map((s) => s.subject.id),
-      parentIds: studentData.parents.map((p) => p.parent.id),
-      currentClass: currentClass,
-      currentSession: currentSession,
-      classId: currentClassRecord?.classId,
-      sessionId: currentClassRecord?.sessionId,
-      rollNumber: currentClassRecord?.rollNumber,
-      classes: studentData.classes, // Include all classes
-
-      // Add formatted data for display
-      subjects: studentData.subjects.map((s) => s.subject),
-      parents: studentData.parents.map((p) => ({
-        id: p.parent.id,
-        name: p.parent.user.name,
-        email: p.parent.user.email,
-        phone: p.parent.phone,
-        relation: p.relation,
+      // Map parents to the structure expected by the frontend (StudentParentRecord[])
+      parents: studentData.parents.map(p => ({
+        ...p,
+        parent: {
+          ...p.parent.user,
+          phone: p.parent.phone,
+          address: p.parent.address,
+        }
       })),
+      currentClass,
     };
 
     // Format the response with all available data
     const responseData = {
-      student: formData,
+      student,
       availableDepartments,
       availableClasses,
       availableSubjects,
@@ -196,6 +187,7 @@ export async function GET(
         id: p.id,
         name: p.user.name,
         email: p.user.email,
+        profileImage: p.user.profileImage
       })),
       currentSession,
     };

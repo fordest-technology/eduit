@@ -1,14 +1,34 @@
 "use client"
 
-import Link from "next/link"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CreditCard, DollarSign, Clock, Users, CalendarDays, GraduationCap } from "lucide-react"
+import Link from "next/link"
+import { motion } from "framer-motion"
+import {
+    CreditCard,
+    DollarSign,
+    Clock,
+    Users,
+    CalendarDays,
+    GraduationCap,
+    TrendingUp,
+    Bell,
+    ChevronRight,
+    ClipboardCheck,
+    Calendar
+} from "lucide-react"
 import { DashboardHeader } from "@/app/components/dashboard-header"
 
 interface ParentDashboardProps {
     data: {
-        children: any[]
+        children: {
+            id: string;
+            name: string;
+            profileImage: string | null;
+            class?: string;
+        }[]
         stats: {
             totalBilled: number
             totalPaid: number
@@ -21,99 +41,224 @@ interface ParentDashboardProps {
 
 export function ParentDashboard({ data }: ParentDashboardProps) {
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("en-NG", {
             style: "currency",
-            currency: "USD",
+            currency: "NGN",
+            minimumFractionDigits: 0
         }).format(amount)
     }
 
+    const container = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    }
+
+    const item = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
+    }
+
     return (
-        <div className="space-y-6">
+        <div className="flex-1 space-y-8 p-8 pt-6 min-h-screen bg-slate-50/50 relative overflow-hidden">
+            {/* Decorative Background Elements */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl -z-10 -mr-64 -mt-64" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-50/50 rounded-full blur-3xl -z-10 -ml-64 -mb-64" />
+
             <DashboardHeader
                 heading="Parent Dashboard"
-                text="Monitor your children's academic progress, fees, and school activities"
+                text="Monitor your children's academic journey and institutional engagements"
                 showBanner={true}
+                icon={<GraduationCap className="h-8 w-8 text-white" />}
             />
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-blue-700">
-                            <Users className="mr-2 h-5 w-5" />
-                            Children
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-blue-800">{data.children.length}</p>
-                        <p className="text-sm text-blue-600 mt-1">Students linked to your account</p>
-                    </CardContent>
-                </Card>
 
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-green-700">
-                            <DollarSign className="mr-2 h-5 w-5" />
-                            Total Billed
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-green-800">{formatCurrency(data.stats.totalBilled)}</p>
-                        <p className="text-sm text-green-600 mt-1">Total fees for your children</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-amber-700">
-                            <Clock className="mr-2 h-5 w-5" />
-                            Pending Payments
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-amber-800">{data.stats.pendingPayments}</p>
-                        <p className="text-sm text-amber-600 mt-1">Awaiting approval</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium flex items-center text-purple-700">
-                            <CreditCard className="mr-2 h-5 w-5" />
-                            Remaining Balance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-purple-800">{formatCurrency(data.stats.remainingBalance)}</p>
-                        <p className="text-sm text-purple-600 mt-1">Outstanding balance</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Quick Access Links */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link href="/dashboard/cfees">
-                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-md transition-all cursor-pointer">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg font-medium text-blue-700">Fee Management</CardTitle>
-                                <CreditCard className="h-5 w-5 text-blue-700" />
+            {/* Financial Overview Section */}
+            <motion.div
+                variants={container}
+                initial="hidden"
+                animate="show"
+                className="grid grid-cols-1 md:grid-cols-4 gap-6"
+            >
+                <motion.div variants={item}>
+                    <Card className="border-none shadow-xl shadow-black/5 rounded-[2rem] overflow-hidden bg-white group hover:shadow-indigo-500/10 transition-all duration-500">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Commitment</CardTitle>
+                            <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform duration-500">
+                                <DollarSign className="h-5 w-5" />
                             </div>
-                            <CardDescription className="text-blue-600">View and manage school fees</CardDescription>
                         </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-black font-sora text-slate-800">{formatCurrency(data.stats.totalBilled)}</div>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Accumulated School Fees</p>
+                        </CardContent>
                     </Card>
-                </Link>
+                </motion.div>
 
-                <Link href="/dashboard/pevents">
-                    <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-md transition-all cursor-pointer">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg font-medium text-green-700">School Events</CardTitle>
-                                <CalendarDays className="h-5 w-5 text-green-700" />
+                <motion.div variants={item}>
+                    <Card className="border-none shadow-xl shadow-black/5 rounded-[2rem] overflow-hidden bg-white group hover:shadow-emerald-500/10 transition-all duration-500">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Liquidated</CardTitle>
+                            <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform duration-500">
+                                <ClipboardCheck className="h-5 w-5" />
                             </div>
-                            <CardDescription className="text-green-600">View upcoming school events</CardDescription>
                         </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-black font-sora text-slate-800">{formatCurrency(data.stats.totalPaid)}</div>
+                            <p className="text-[10px] font-bold text-emerald-500 mt-1 uppercase tracking-wider">Successfully Paid</p>
+                        </CardContent>
                     </Card>
-                </Link>
+                </motion.div>
+
+                <motion.div variants={item}>
+                    <Card className="border-none shadow-xl shadow-black/5 rounded-[2rem] overflow-hidden bg-white group hover:shadow-rose-500/10 transition-all duration-500">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Outstanding</CardTitle>
+                            <div className="h-10 w-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform duration-500">
+                                <Clock className="h-5 w-5" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-black font-sora text-slate-800">{formatCurrency(data.stats.remainingBalance)}</div>
+                            <p className="text-[10px] font-bold text-rose-500 mt-1 uppercase tracking-wider">Balance Due</p>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+
+                <motion.div variants={item}>
+                    <Card className="border-none shadow-xl shadow-black/5 rounded-[2rem] overflow-hidden bg-white group hover:shadow-amber-500/10 transition-all duration-500">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Dependencies</CardTitle>
+                            <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform duration-500">
+                                <Users className="h-5 w-5" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-black font-sora text-slate-800">{data.children.length}</div>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Linked Student Profiles</p>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Children Section */}
+                <div className="lg:col-span-8 space-y-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-2xl font-black font-sora text-slate-800">My Children</h2>
+                        <Link href="/dashboard/children">
+                            <Button variant="ghost" size="sm" className="font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl gap-2 tracking-tight">
+                                Manage Profiles <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {data.children.map((child, idx) => (
+                            <motion.div
+                                key={child.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.2 + idx * 0.1 }}
+                            >
+                                <Card className="border-none shadow-xl shadow-black/5 rounded-[2.5rem] overflow-hidden bg-white group hover:shadow-2xl hover:shadow-black/10 transition-all duration-500 p-6 flex flex-col items-center text-center">
+                                    <Avatar className="h-24 w-24 rounded-[2rem] shadow-2xl shadow-indigo-500/20 mb-4 transition-transform duration-500 group-hover:scale-105 border-4 border-white">
+                                        <AvatarImage src={child.profileImage || undefined} className="object-cover" />
+                                        <AvatarFallback className="bg-indigo-50 text-indigo-600 font-black text-2xl uppercase">
+                                            {child.name.substring(0, 2)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <h3 className="text-xl font-bold font-sora text-slate-800 mb-1">{child.name}</h3>
+                                    <Badge className="bg-indigo-50 text-indigo-600 border-none px-4 py-1 rounded-xl font-bold text-[10px] tracking-widest uppercase mb-6">
+                                        {child.class || "Class Pending"}
+                                    </Badge>
+
+                                    <div className="grid grid-cols-2 w-full gap-3 mt-auto">
+                                        <Link href={`/dashboard/p-attendance?childId=${child.id}`} className="w-full">
+                                            <Button variant="outline" className="w-full rounded-2xl border-slate-100 font-bold text-xs h-11 hover:bg-slate-50">
+                                                Attendance
+                                            </Button>
+                                        </Link>
+                                        <Link href={`/dashboard/p-results?childId=${child.id}`} className="w-full">
+                                            <Button variant="outline" className="w-full rounded-2xl border-slate-100 font-bold text-xs h-11 hover:bg-slate-50">
+                                                Results
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            </motion.div>
+                        ))}
+                        {data.children.length === 0 && (
+                            <Card className="col-span-2 border-dashed border-2 border-slate-200 shadow-none rounded-[2.5rem] p-12 flex flex-col items-center justify-center text-center bg-slate-50/50">
+                                <Users className="h-12 w-12 text-slate-200 mb-4" />
+                                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No Children Registered</p>
+                                <p className="text-slate-300 text-sm max-w-[250px] mt-2 font-medium">Please contact the school administrator to link your children to your account.</p>
+                            </Card>
+                        )}
+                    </div>
+                </div>
+
+                {/* Quick Access Sidebar */}
+                <div className="lg:col-span-4 space-y-10">
+                    <div className="mb-2">
+                        <h2 className="text-2xl font-black font-sora text-slate-800 tracking-tight">Quick Access</h2>
+                    </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="flex flex-col gap-6"
+                    >
+                        <Link href="/dashboard/cfees">
+                            <Card className="border-none shadow-xl shadow-black/5 rounded-[2rem] p-6 bg-white hover:bg-indigo-600 group transition-all duration-500 cursor-pointer">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-white/20 group-hover:text-white transition-colors">
+                                        <CreditCard className="h-6 w-6" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-slate-800 font-sora group-hover:text-white transition-colors">Fee Management</h4>
+                                        <p className="text-xs text-slate-400 font-medium group-hover:text-white/60 transition-colors tracking-tight">View and settle school obligations</p>
+                                    </div>
+                                    <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-white transition-colors" />
+                                </div>
+                            </Card>
+                        </Link>
+
+                        <Link href="/dashboard/calendar">
+                            <Card className="border-none shadow-xl shadow-black/5 rounded-[2rem] p-6 bg-white hover:bg-emerald-600 group transition-all duration-500 cursor-pointer">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-white/20 group-hover:text-white transition-colors">
+                                        <Calendar className="h-6 w-6" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-slate-800 font-sora group-hover:text-white transition-colors">Academic Calendar</h4>
+                                        <p className="text-xs text-slate-400 font-medium group-hover:text-white/60 transition-colors tracking-tight">Track important institutional dates</p>
+                                    </div>
+                                    <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-white transition-colors" />
+                                </div>
+                            </Card>
+                        </Link>
+
+                        <Link href="/dashboard/announcements">
+                            <Card className="border-none shadow-xl shadow-black/5 rounded-[2rem] p-6 bg-white hover:bg-amber-600 group transition-all duration-500 cursor-pointer">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-white/20 group-hover:text-white transition-colors">
+                                        <Bell className="h-6 w-6" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-slate-800 font-sora group-hover:text-white transition-colors">Announcements</h4>
+                                        <p className="text-xs text-slate-400 font-medium group-hover:text-white/60 transition-colors tracking-tight">Stay updated with institution news</p>
+                                    </div>
+                                    <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-white transition-colors" />
+                                </div>
+                            </Card>
+                        </Link>
+                    </motion.div>
+                </div>
             </div>
         </div>
     )

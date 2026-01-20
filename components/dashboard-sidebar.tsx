@@ -29,9 +29,12 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Bell,
+  MessageSquare,
+  CalendarDays
 } from "lucide-react"
-import { hasPermission, type Permission } from "@/lib/permissions"
+import { hasPermission, hasFullAccess, type Permission } from "@/lib/permissions"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
@@ -195,19 +198,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "SCHOOL_ADMIN":
-        let perms = user.permissions;
+        const fullAccess = hasFullAccess(user);
+        const perms = user.permissions;
 
-        // Parse string permissions if needed (e.g. valid JSON string from DB)
-        if (typeof perms === 'string') {
-          try {
-            perms = JSON.parse(perms);
-          } catch (e) {
-            // If parsing fails, keep as is
-          }
-        }
-
-        // If no permissions defined, assume legacy school admin (full access)
-        if (!perms || (Array.isArray(perms) && perms.length === 0)) {
+        // If primary admin or super admin with full access, return all items
+        if (fullAccess) {
           return [
             { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
             { title: "Wallet", href: "/dashboard/wallet", icon: Wallet },
@@ -289,16 +284,21 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       case "STUDENT":
         return [
           { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { title: "My Classes", href: "/dashboard/my-classes", icon: School },
+          { title: "My Class", href: "/dashboard/my-classes", icon: School },
+          { title: "My Results", href: "/dashboard/my-results", icon: ClipboardCheck },
           { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+          { title: "Announcements", href: "/dashboard/announcements", icon: Bell },
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "PARENT":
         return [
           { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
           { title: "My Children", href: "/dashboard/children", icon: GraduationCap },
+          { title: "Attendance", href: "/dashboard/p-attendance", icon: CalendarDays },
+          { title: "Academic Results", href: "/dashboard/p-results", icon: ClipboardCheck },
+          { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+          { title: "Announcements", href: "/dashboard/announcements", icon: Bell },
           { title: "School Fees", href: "/dashboard/cfees", icon: Coins },
-          { title: "Events", href: "/dashboard/pevents", icon: Calendar },
           { title: "Settings", href: "/dashboard/p-settings", icon: Settings },
         ]
       default:

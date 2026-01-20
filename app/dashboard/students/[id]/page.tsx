@@ -130,11 +130,9 @@ interface ResultRecord {
     studentId: string;
     subjectId: string;
     sessionId: string;
-    examType: ExamType;
-    marks: number;
-    totalMarks: number;
+    total: number;
     grade?: string | null;
-    remarks?: string | null;
+    remark?: string | null;
     isApproved: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -254,103 +252,102 @@ export default function StudentDetailsPage() {
         },
     })
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true)
-            try {
-                // Fetch student data with detailed error handling
-                const studentRes = await fetch(`/api/students/${params.id}`);
+    const handleRefresh = async () => {
+        setLoading(true)
+        try {
+            // Fetch student data with detailed error handling
+            const studentRes = await fetch(`/api/students/${params.id}`);
 
-                if (!studentRes.ok) {
-                    const errorData = await studentRes.json().catch(() => ({}));
-                    throw new Error(errorData.message || `Failed to fetch student: ${studentRes.status} ${studentRes.statusText}`);
-                }
+            if (!studentRes.ok) {
+                const errorData = await studentRes.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to fetch student: ${studentRes.status} ${studentRes.statusText}`);
+            }
 
-                const responseData = await studentRes.json();
+            const responseData = await studentRes.json();
 
-                // The API returns data in { student: {...}, availableDepartments: [...], ... } format
-                const studentData = responseData.student;
-                const activeSession = responseData.currentSession;
+            // The API returns data in { student: {...}, availableDepartments: [...], ... } format
+            const studentData = responseData.student;
+            const activeSession = responseData.currentSession;
 
-                if (!studentData) {
-                    throw new Error('Student data not found in response');
-                }
+            if (!studentData) {
+                throw new Error('Student data not found in response');
+            }
 
-                // Set current class and session directly from API response
-                let currentClassObj = studentData.currentClass;
-                setCurrentClass(currentClassObj);
-                setCurrentSession(activeSession);
+            // Set current class and session directly from API response
+            let currentClassObj = studentData.currentClass;
+            setCurrentClass(currentClassObj);
+            setCurrentSession(activeSession);
 
-                // Set student data with all classes included
-                const formattedStudent = {
-                    ...studentData,
-                    // Include nested properties at the top level for ComplexStudent type
+            // Set student data with all classes included
+            const formattedStudent = {
+                ...studentData,
+                // Include nested properties at the top level for ComplexStudent type
+                id: studentData.id,
+                name: studentData.name,
+                email: studentData.email,
+                phone: studentData.phone,
+                gender: studentData.gender,
+                profileImage: studentData.profileImage,
+                dateOfBirth: studentData.dateOfBirth,
+                department: studentData.departmentId ? {
+                    id: studentData.departmentId,
+                    name: studentData.department?.name || 'Unknown Department',
+                    schoolId: studentData.schoolId,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                } : null,
+                studentClass: studentData.classes || [],
+                // Set arrays for properties required by ComplexStudent type
+                parents: studentData.parents || [],
+                attendance: studentData.attendance || [],
+                results: studentData.results || [],
+            }
+
+            setStudent(formattedStudent);
+
+            // Format student data for edit form
+            if (studentData) {
+                const formattedStudentData = {
                     id: studentData.id,
                     name: studentData.name,
                     email: studentData.email,
-                    phone: studentData.phone,
-                    gender: studentData.gender,
-                    profileImage: studentData.profileImage,
+                    phone: studentData.phone || "",
+                    gender: studentData.gender || "MALE",
                     dateOfBirth: studentData.dateOfBirth,
-                    department: studentData.departmentId ? {
-                        id: studentData.departmentId,
-                        name: studentData.department?.name || 'Unknown Department',
-                        schoolId: studentData.schoolId,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                    } : null,
-                    studentClass: studentData.classes || [],
-                    // Set arrays for properties required by ComplexStudent type
-                    parents: studentData.parents || [],
-                    attendance: studentData.attendance || [],
-                    results: studentData.results || [],
+                    profileImage: studentData.profileImage,
+                    address: studentData.address || "",
+                    city: studentData.city || "",
+                    state: studentData.state || "",
+                    country: studentData.country || "",
+                    religion: studentData.religion || "",
+                    department: studentData.department || null
                 }
-
-                setStudent(formattedStudent);
-
-                // Format student data for edit form
-                if (studentData) {
-                    const formattedStudentData = {
-                        id: studentData.id,
-                        name: studentData.name,
-                        email: studentData.email,
-                        phone: studentData.phone || "",
-                        gender: studentData.gender || "MALE",
-                        dateOfBirth: studentData.dateOfBirth,
-                        profileImage: studentData.profileImage,
-                        address: studentData.address || "",
-                        city: studentData.city || "",
-                        state: studentData.state || "",
-                        country: studentData.country || "",
-                        religion: studentData.religion || "",
-                        department: studentData.department || null
-                    }
-                    setEditingStudent(formattedStudentData)
-                }
-
-                // Set available data from API response
-                if (responseData.availableDepartments) {
-                    setDepartments(responseData.availableDepartments)
-                }
-
-                // Fetch current school info for UI styling
-                const schoolRes = await fetch('/api/schools/current')
-                if (schoolRes.ok) {
-                    const schoolData = await schoolRes.json()
-                    setSchoolInfo(schoolData)
-                }
-
-            } catch (error) {
-                setError(error instanceof Error ? error.message : 'Failed to load student data')
-                toast.error('Error loading student details: ' + (error instanceof Error ? error.message : 'Unknown error'))
-            } finally {
-                setLoading(false)
+                setEditingStudent(formattedStudentData)
             }
-        }
 
-        if (params.id) {
-            fetchData()
+            // Set available data from API response
+            if (responseData.availableDepartments) {
+                setDepartments(responseData.availableDepartments)
+            }
+
+            // Fetch current school info for UI styling
+            const schoolRes = await fetch('/api/schools/current')
+            if (schoolRes.ok) {
+                const schoolData = await schoolRes.json()
+                setSchoolInfo(schoolData)
+            }
+
+        } catch (error) {
+            console.error("Error fetching data:", error)
+            setError(error instanceof Error ? error.message : "An unexpected error occurred")
+            toast.error(error instanceof Error ? error.message : "An unexpected error occurred")
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
+        handleRefresh()
     }, [params.id])
 
     const refreshData = () => {
@@ -544,179 +541,53 @@ export default function StudentDetailsPage() {
 
             <div className="container max-w-6xl mx-auto px-4">
                 {/* Summary Cards - Using consistent design patterns */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {/* Main student details - The centerpiece of the page */}
+                <div className="w-full">
                     {loading ? (
-                        <>
-                            <StudentCardSkeleton />
-                            <StudentCardSkeleton />
-                            <StudentCardSkeleton />
-                        </>
-                    ) : (
-                        <>
-                            <Card className="overflow-hidden border border-slate-200 shadow-sm hover:shadow transition-all duration-200">
-                                <div className="h-2 bg-blue-500" aria-hidden="true"></div>
-                                <CardContent className="p-6">
-                                    <div className="flex items-center mb-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                                            <Mail className="h-5 w-5 text-blue-600" />
-                                        </div>
-                                        <h3 className="font-medium text-slate-900">Contact</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-sm text-slate-500">Email Address</p>
-                                            <p className="font-medium text-slate-900 truncate max-w-[220px]" title={student?.email || ""}>
-                                                {student?.email}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500">Phone Number</p>
-                                            <p className="font-medium text-slate-900">
-                                                {student?.phone || "Not provided"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="overflow-hidden border border-slate-200 shadow-sm hover:shadow transition-all duration-200">
-                                <div className="h-2 bg-emerald-500" aria-hidden="true"></div>
-                                <CardContent className="p-6">
-                                    <div className="flex items-center mb-4">
-                                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mr-4">
-                                            <School className="h-5 w-5 text-emerald-600" />
-                                        </div>
-                                        <h3 className="font-medium text-slate-900">Class Information</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-sm text-slate-500">Current Class</p>
-                                            <p className="font-medium text-slate-900">
-                                                {currentClass ?
-                                                    `${currentClass.name}${currentClass.section ? ` - ${currentClass.section}` : ''}`
-                                                    : "Not Assigned"}
-                                            </p>
-                                        </div>
-                                        {currentClass && currentClass.level && (
-                                            <div>
-                                                <p className="text-sm text-slate-500">Level</p>
-                                                <p className="font-medium text-slate-900">
-                                                    {currentClass.level.name}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {currentClass && (
-                                            <div>
-                                                <p className="text-sm text-slate-500">Roll Number</p>
-                                                <p className="font-medium text-slate-900">
-                                                    {currentClass.rollNumber || "Not assigned"}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="overflow-hidden border border-slate-200 shadow-sm hover:shadow transition-all duration-200">
-                                <div className="h-2 bg-purple-500" aria-hidden="true"></div>
-                                <CardContent className="p-6">
-                                    <div className="flex items-center mb-4">
-                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-4">
-                                            <GraduationCap className="h-5 w-5 text-purple-600" />
-                                        </div>
-                                        <h3 className="font-medium text-slate-900">Academic</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-sm text-slate-500">Department</p>
-                                            <p className="font-medium text-slate-900">
-                                                {student?.department?.name || "Not Assigned"}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500">Session</p>
-                                            <p className="font-medium text-slate-900">
-                                                {currentSession?.name || currentClass?.session?.name || "Not Available"}
-                                                {currentSession?.isCurrent && " (Current)"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </>
-                    )}
-                </div>
-
-                {/* Main student details in a clean card with improved visual hierarchy */}
-                <Card className="overflow-hidden border border-slate-200 shadow-sm">
-                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-slate-900">Student Information</h3>
-                        {!loading && (
-                            <div className="flex items-center space-x-2">
-                                <div className="flex items-center bg-blue-50 text-blue-700 text-xs font-medium rounded-full px-3 py-1">
-                                    <span>ID: {student?.id.slice(0, 8)}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    {loading ? (
-                        <div className="p-6">
+                        <Card className="border-none shadow-sm bg-white p-12">
                             <StudentDetailsSkeleton />
-                        </div>
+                        </Card>
                     ) : (
                         <StudentDetails
                             student={student as ComplexStudent}
                             currentClass={currentClass}
                             currentSession={currentSession}
+                            onRefresh={handleRefresh}
                         />
                     )}
-                </Card>
+                </div>
 
-                {/* Quick Actions Section - Added for better usability */}
+                {/* Quick Academic Actions */}
                 {!loading && student && (
-                    <div className="mt-8">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <Button
-                                variant="outline"
-                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
-                                onClick={() => {
-                                    setShowEditModal(true)
-                                    setEditingStudent(student)
-                                }}
-                            >
-                                <Pencil className="h-5 w-5 text-slate-600" />
-                                <span className="text-sm font-medium">Edit Details</span>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
-                                onClick={handleAddToClass}
-                            >
-                                <UserPlus className="h-5 w-5 text-slate-600" />
-                                <span className="text-sm font-medium">Manage Class</span>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
-                                asChild
-                            >
-                                <Link href={`/dashboard/students/${student.id}/attendance`}>
-                                    <Calendar className="h-5 w-5 text-slate-600" />
-                                    <span className="text-sm font-medium">Attendance</span>
-                                </Link>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="h-auto py-6 flex flex-col items-center justify-center gap-2 border-slate-200 hover:bg-slate-50"
-                                asChild
-                            >
-                                <Link href={`/dashboard/students/${student.id}/results`}>
-                                    <GraduationCap className="h-5 w-5 text-slate-600" />
-                                    <span className="text-sm font-medium">Results</span>
-                                </Link>
-                            </Button>
-                        </div>
+                    <div className="mt-12 flex flex-wrap gap-4 justify-center">
+                        <Button
+                            variant="secondary"
+                            className="rounded-2xl h-12 px-6 font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
+                            onClick={handleAddToClass}
+                        >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Update Classification
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            className="rounded-2xl h-12 px-6 font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
+                            asChild
+                        >
+                            <Link href={`/dashboard/students/${student.id}/attendance`}>
+                                <Calendar className="h-4 w-4 mr-2" />
+                                Full History
+                            </Link>
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            className="rounded-2xl h-12 px-6 font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
+                            asChild
+                        >
+                            <Link href={`/dashboard/students/${student.id}/results`}>
+                                <GraduationCap className="h-4 w-4 mr-2" />
+                                Record Archive
+                            </Link>
+                        </Button>
                     </div>
                 )}
             </div>

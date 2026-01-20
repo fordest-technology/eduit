@@ -88,7 +88,37 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     },
 ];
 
-export function hasPermission(userPermissions: any, requiredPermission: Permission): boolean {
+/**
+ * Checks if a user has a specific permission based on their stored permissions and role.
+ * 
+ * Logic for SCHOOL_ADMIN:
+ * - If they have NO permissions stored (null/undefined/empty), they have FULL ACCESS.
+ * - If they have permissions stored, we check the specific permission.
+ */
+export function hasPermission(userPermissions: any, requiredPermission: Permission, userRole?: string): boolean {
+    // Super Admins always have access to everything
+    if (userRole === "SUPER_ADMIN") return true;
+
+    // For School Admins, we treat missing or empty permissions as FULL ACCESS (Primary Admin)
+    if (userRole === "SCHOOL_ADMIN") {
+        if (!userPermissions) return true;
+
+        let perms = userPermissions;
+        if (typeof userPermissions === 'string') {
+            try {
+                perms = JSON.parse(userPermissions);
+            } catch (e) {
+                return true; // If it's saved as an empty string or invalid, assume full access for school admin
+            }
+        }
+
+        // Handle empty array or object
+        if (Array.isArray(perms) && perms.length === 0) return true;
+        if (typeof perms === 'object' && perms !== null && Object.keys(perms).length === 0) return true;
+
+        // If they have permissions, we proceed to check the specific one below
+    }
+
     if (!userPermissions) return false;
 
     // If it's a string (e.g. from database storage)
@@ -104,9 +134,42 @@ export function hasPermission(userPermissions: any, requiredPermission: Permissi
     // Handle array of strings or object map
     if (Array.isArray(perms)) {
         return perms.includes(requiredPermission);
-    } else if (typeof perms === 'object') {
+    } else if (typeof perms === 'object' && perms !== null) {
         return perms[requiredPermission] === true;
     }
 
     return false;
 }
+
+/**
+ * Convenience helper that takes a session object
+ */
+export function can(session: any, requiredPermission: Permission): boolean {
+    if (!session) return false;
+    return hasPermission(session.permissions, requiredPermission, session.role);
+}
+
+/**
+ * Checks if the user should have full administrative access
+ */
+export function hasFullAccess(session: any): boolean {
+    if (!session) return false;
+    if (session.role === "SUPER_ADMIN") return true;
+    if (session.role === "SCHOOL_ADMIN") {
+        const perms = session.permissions;
+        if (!perms) return true;
+
+        let parsedPerms = perms;
+        if (typeof perms === 'string') {
+            try { parsedPerms = JSON.parse(perms); } catch (e) { return true; }
+        }
+
+        if (Array.isArray(parsedPerms) && parsedPerms.length === 0) return true;
+        if (typeof parsedPerms === 'object' && parsedPerms !== null && Object.keys(parsedPerms).length === 0) return true;
+
+        // Optionally: if all permissions are true, it's also full access
+        // But usually, an empty set is the marker for the "Owner"
+    }
+    return false;
+}
+

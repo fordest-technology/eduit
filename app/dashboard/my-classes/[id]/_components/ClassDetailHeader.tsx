@@ -8,6 +8,8 @@ import { GraduationCap, Users, BookOpen, Calendar, TrendingUp } from "lucide-rea
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+import { getSession, UserRole } from "@/lib/auth-client";
+
 interface ClassDetailHeaderProps {
     classData: {
         id: string;
@@ -43,9 +45,10 @@ interface ClassDetailHeaderProps {
             };
         };
     };
+    userRole?: UserRole;
 }
 
-export function ClassDetailHeader({ classData }: ClassDetailHeaderProps) {
+export function ClassDetailHeader({ classData, userRole }: ClassDetailHeaderProps) {
     const attendancePercentage = classData.stats.attendance.total > 0
         ? Math.round((classData.stats.attendance.present / classData.stats.attendance.total) * 100)
         : 0;
@@ -188,37 +191,39 @@ export function ClassDetailHeader({ classData }: ClassDetailHeaderProps) {
                 </motion.div>
             </div>
 
-            {/* Quick Actions */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-            >
-                <Card className="border-none shadow-lg">
-                    <CardContent className="p-4">
-                        <div className="flex flex-wrap gap-3">
-                            <Link href={`/dashboard/attendance?classId=${classData.id}`}>
-                                <Button variant="default" className="rounded-xl">
-                                    <Calendar className="h-4 w-4 mr-2" />
-                                    Mark Attendance
-                                </Button>
-                            </Link>
-                            <Link href={`/dashboard/results/entry?classId=${classData.id}`}>
-                                <Button variant="outline" className="rounded-xl">
-                                    <BookOpen className="h-4 w-4 mr-2" />
-                                    Enter Results
-                                </Button>
-                            </Link>
-                            <Link href={`/dashboard/my-classes/${classData.id}/performance`}>
-                                <Button variant="outline" className="rounded-xl">
-                                    <TrendingUp className="h-4 w-4 mr-2" />
-                                    View Performance
-                                </Button>
-                            </Link>
-                        </div>
-                    </CardContent>
-                </Card>
-            </motion.div>
+            {/* Quick Actions - Only for Teachers */}
+            {(userRole === "TEACHER" || !userRole) && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                >
+                    <Card className="border-none shadow-lg">
+                        <CardContent className="p-4">
+                            <div className="flex flex-wrap gap-3">
+                                <Link href={`/dashboard/attendance?classId=${classData.id}`}>
+                                    <Button variant="default" className="rounded-xl">
+                                        <Calendar className="h-4 w-4 mr-2" />
+                                        Mark Attendance
+                                    </Button>
+                                </Link>
+                                <Link href={`/dashboard/results/entry?classId=${classData.id}`}>
+                                    <Button variant="outline" className="rounded-xl">
+                                        <BookOpen className="h-4 w-4 mr-2" />
+                                        Enter Results
+                                    </Button>
+                                </Link>
+                                <Link href={`/dashboard/my-classes/${classData.id}/performance`}>
+                                    <Button variant="outline" className="rounded-xl">
+                                        <TrendingUp className="h-4 w-4 mr-2" />
+                                        View Performance
+                                    </Button>
+                                </Link>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
         </div>
     );
 }

@@ -8,8 +8,34 @@ import { GraduationCap } from "lucide-react"
 
 export default async function MyClassesPage() {
     const session = await getSession()
-    if (!session || session.role !== "TEACHER") {
+    if (!session) {
         redirect("/login")
+    }
+
+    // If student, redirect to their specific class page
+    if (session.role === "STUDENT") {
+        const student = await prisma.student.findUnique({
+            where: { userId: session.id },
+            include: {
+                classes: {
+                    where: { status: 'ACTIVE' },
+                    include: { class: true },
+                    take: 1
+                }
+            }
+        })
+
+        const activeClass = student?.classes[0]
+        if (activeClass) {
+            redirect(`/dashboard/my-classes/${activeClass.classId}`)
+        } else {
+            // If no active class, show empty state or redirect to dashboard
+            redirect("/dashboard")
+        }
+    }
+
+    if (session.role !== "TEACHER") {
+        redirect("/dashboard")
     }
 
     // Fetch classes assigned to this teacher, including students and their user info

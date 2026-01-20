@@ -1,13 +1,12 @@
-// import { DashboardHeader } from "@/components/dashboard-header"
 import { ParentFeeDashboard } from "../fees/_components/parent-fee-dashboard"
 import { getSession } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { prisma } from "@/lib/prisma"
+import { prisma, withErrorHandling } from "@/lib/prisma"
 import { DashboardHeader } from "@/app/components/dashboard-header"
-import { UserRole, Bill, BillAssignment, PaymentRequest, Student, Class, User, PaymentAccount } from "@prisma/client"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { UserRole, Bill, BillAssignment, PaymentRequest, Student, Class, User } from "@prisma/client"
 import { Button } from "@/components/ui/button"
-import { Copy } from "lucide-react"
+import Link from "next/link"
+import { ChevronLeft, Wallet } from "lucide-react"
 import { PaymentAccountBanner } from "@/components/payment-account-banner"
 
 interface ParentFeesPageProps {
@@ -23,24 +22,7 @@ interface ExtendedBillAssignment extends BillAssignment {
 
 interface ExtendedBill extends Bill {
     assignments: ExtendedBillAssignment[];
-}
-
-interface ExtendedStudent extends Student {
-    user: User;
-    classes: {
-        class: Class;
-    }[];
-    paymentRequests: (PaymentRequest & {
-        bill: Bill;
-        billAssignment: BillAssignment;
-        studentPayment: {
-            amountPaid: number;
-        } | null;
-    })[];
-}
-
-interface ExtendedChild {
-    student: ExtendedStudent;
+    items: any[];
 }
 
 export default async function ParentFeesPage({ searchParams }: ParentFeesPageProps) {
@@ -48,7 +30,7 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
     const session = await getSession()
 
     if (!session) {
-        redirect("/auth/login")
+        redirect("/login")
     }
 
     // Check if user is a parent
@@ -56,25 +38,34 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
         redirect("/dashboard")
     }
 
-    // Get parent data with children and their bills
-    const parent = await prisma.parent.findUnique({
+    // STEP 1: Get parent data with children (Minimal fetch to release connection fast)
+    const parentData = await withErrorHandling(() => prisma.parent.findUnique({
         where: { userId: session.id },
-        include: {
+        select: {
+            id: true,
             children: {
-                include: {
+                select: {
                     student: {
-                        include: {
-                            user: true,
-                            classes: {
-                                include: {
-                                    class: true
+                        select: {
+                            id: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    schoolId: true,
+                                    profileImage: true,
+                                    email: true
                                 }
                             },
-                            paymentRequests: {
-                                include: {
-                                    bill: true,
-                                    billAssignment: true,
-                                    studentPayment: true
+                            classes: {
+                                where: { session: { isCurrent: true } },
+                                select: {
+                                    class: {
+                                        select: {
+                                            id: true,
+                                            name: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -82,128 +73,124 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
                 }
             }
         }
-    })
+    }))
 
-    // Get all school IDs from the parent's children to fetch relevant bills
-    const childSchoolIds = Array.from(new Set(
-        parent?.children.map(child => child.student.user.schoolId).filter(Boolean) as string[]
-    ))
-
-    // Fetch all bills and their assignments for the relevant schools
-    const bills = await prisma.bill.findMany({
-        where: {
-            schoolId: { in: childSchoolIds.length > 0 ? childSchoolIds : [session.schoolId as string] },
-            // Get bills that have active assignments
-            assignments: {
-                some: {
-                    OR: [
-                        { targetType: "STUDENT" },
-                        { targetType: "CLASS" }
-                    ]
-                }
-            }
-        },
-        include: {
-            items: true,
-            assignments: {
-                include: {
-                    studentPayments: true
-                }
-            }
-        }
-    }) as ExtendedBill[]
-
-    // Fetch active payment accounts for the relevant schools
-    const paymentAccounts = childSchoolIds.length > 0
-        ? await prisma.paymentAccount.findMany({
-            where: {
-                schoolId: { in: childSchoolIds },
-                isActive: true
-            },
-            orderBy: { updatedAt: "desc" }
-        })
-        : []
-
-    const activeAccount = paymentAccounts[0] || null
-
-    if (!parent?.children.length) {
+    if (!parentData?.children.length) {
         return (
             <div className="space-y-6">
-                {paymentAccounts.length > 0 && (
-                    <div className="space-y-4">
-                        {paymentAccounts.map((account) => (
-                            <PaymentAccountBanner
-                                key={account.id}
-                                name={account.name}
-                                bankName={account.bankName}
-                                accountNo={account.accountNo}
-                            />
-                        ))}
-                    </div>
-                )}
                 <DashboardHeader
                     heading="Fee Management"
                     text="View and manage school fees for your children"
                     showBanner={true}
+                    icon={<Wallet className="h-8 w-8 text-white" />}
+                    action={
+                        <Link href="/dashboard">
+                            <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30 rounded-2xl font-bold gap-2 backdrop-blur-md">
+                                <ChevronLeft className="h-4 w-4" /> Back to Dashboard
+                            </Button>
+                        </Link>
+                    }
                 />
-                <div className="rounded-lg border bg-card p-8 text-card-foreground shadow-sm">
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                        <h2 className="text-xl font-bold">No Children Found</h2>
-                        <p className="text-center text-muted-foreground">
-                            You don't have any children registered in the system.
-                        </p>
-                    </div>
+                <div className="rounded-[2.5rem] border-none bg-white p-12 text-center text-slate-400 shadow-xl shadow-black/5 font-medium">
+                    You don't have any children registered in the system.
                 </div>
             </div>
         )
     }
 
-    // Calculate payment statistics
+    const studentIds = parentData.children.map(c => c.student.id)
+    const schoolIds = Array.from(new Set(
+        parentData.children.map(c => c.student.user.schoolId).filter(Boolean) as string[]
+    ))
+
+    // STEP 2: Fetch bills and payment accounts for the relevant schools
+    const [bills, paymentAccounts] = await Promise.all([
+        withErrorHandling(() => prisma.bill.findMany({
+            where: {
+                schoolId: { in: schoolIds.length > 0 ? schoolIds : [session.schoolId as string] },
+                assignments: {
+                    some: {
+                        OR: [
+                            { targetType: "STUDENT", targetId: { in: studentIds } },
+                            { targetType: "CLASS" } // We filter these later based on student classes
+                        ]
+                    }
+                }
+            },
+            include: {
+                items: true,
+                assignments: {
+                    include: {
+                        studentPayments: true
+                    }
+                }
+            }
+        })),
+        schoolIds.length > 0
+            ? withErrorHandling(() => prisma.paymentAccount.findMany({
+                where: {
+                    schoolId: { in: schoolIds },
+                    isActive: true
+                },
+                orderBy: { updatedAt: "desc" }
+            }))
+            : Promise.resolve([])
+    ])
+
+    // STEP 3: Fetch payment requests for these students
+    const paymentRequestsAll = await withErrorHandling(() => prisma.paymentRequest.findMany({
+        where: {
+            studentId: { in: studentIds }
+        },
+        include: {
+            bill: true,
+            billAssignment: true,
+            studentPayment: true
+        }
+    }))
+
+    const activeAccount = (paymentAccounts as any[])[0] || null
+
+    // Calculate payment statistics and prepare children data
     let totalBilled = 0
     let totalPaid = 0
 
-    // Process bills and assignments for each child
-    const children = parent.children.map((child: ExtendedChild) => {
+    const children = parentData.children.map((child: any) => {
         const student = child.student
         const studentId = student.id
-        const classIds = student.classes.map(c => c.class.id)
+        const classIds = student.classes.map((c: any) => c.class.id)
 
-        // Find all bill assignments for this student
-        const studentBills = bills.filter(bill =>
-            bill.assignments.some(assignment =>
+        const studentBills = (bills as any[]).filter(bill =>
+            bill.assignments.some((assignment: any) =>
                 (assignment.targetType === "STUDENT" && assignment.targetId === studentId) ||
                 (assignment.targetType === "CLASS" && classIds.includes(assignment.targetId))
             )
         )
 
-        // Calculate totals for this student
         studentBills.forEach(bill => {
-            // Add bill amount exactly once per student
             totalBilled += bill.amount
-
-            // Sum all payments for this student across all assignments of this bill
-            bill.assignments.forEach(assignment => {
+            bill.assignments.forEach((assignment: any) => {
                 const studentPayments = assignment.studentPayments.filter((p: any) => p.studentId === studentId)
-                totalPaid += studentPayments.reduce((sum: number, payment) => sum + payment.amountPaid, 0)
+                totalPaid += studentPayments.reduce((sum: number, payment: any) => sum + payment.amountPaid, 0)
             })
         })
 
+        const studentRequests = paymentRequestsAll.filter(p => p.studentId === studentId)
+
         return {
             ...student,
+            paymentRequests: studentRequests,
             bills: studentBills
         }
     })
 
-    // Transform data for the dashboard
-    const paymentRequests = parent.children.flatMap(c => c.student.paymentRequests)
-        .filter(p => p.status === "PENDING");
-    const paymentHistory = parent.children.flatMap(c => c.student.paymentRequests)
-        .filter(p => p.status === "APPROVED");
+    const paymentRequests = paymentRequestsAll.filter(p => p.status === "PENDING");
+    const paymentHistory = paymentRequestsAll.filter(p => p.status === "APPROVED");
 
     const data = {
         children,
-        bills,
-        paymentAccounts,
+        bills: bills as any[],
+        paymentAccounts: paymentAccounts as any[],
         paymentRequests,
         paymentHistory,
         stats: {
@@ -228,6 +215,14 @@ export default async function ParentFeesPage({ searchParams }: ParentFeesPagePro
                 heading="Fee Management"
                 text="View and manage school fees for your children"
                 showBanner={true}
+                icon={<Wallet className="h-8 w-8 text-white" />}
+                action={
+                    <Link href="/dashboard">
+                        <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30 rounded-2xl font-bold gap-2 backdrop-blur-md">
+                            <ChevronLeft className="h-4 w-4" /> Back to Dashboard
+                        </Button>
+                    </Link>
+                }
             />
             <ParentFeeDashboard data={data} />
         </div>

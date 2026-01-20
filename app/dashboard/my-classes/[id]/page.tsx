@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { getSession, UserRole } from "@/lib/auth-client";
 
 interface ClassDetail {
     id: string;
@@ -76,6 +77,7 @@ export default function ClassDetailPage() {
     const [classData, setClassData] = useState<ClassDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [userRole, setUserRole] = useState<UserRole | null>(null);
 
     useEffect(() => {
         async function fetchClassDetail() {
@@ -83,7 +85,14 @@ export default function ClassDetailPage() {
                 setLoading(true);
                 setError(null);
 
-                const response = await fetch(`/api/classes/${id}/detail`);
+                const [session, response] = await Promise.all([
+                    getSession(),
+                    fetch(`/api/classes/${id}/detail`)
+                ]);
+
+                if (session) {
+                    setUserRole(session.role);
+                }
 
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -140,14 +149,14 @@ export default function ClassDetailPage() {
 
     return (
         <div className="space-y-6">
-            <Link href="/dashboard/my-classes">
+            <Link href={userRole === "STUDENT" ? "/dashboard" : "/dashboard/my-classes"}>
                 <Button variant="ghost" className="rounded-xl">
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back to My Classes
+                    {userRole === "STUDENT" ? "Back to Dashboard" : "Back to My Classes"}
                 </Button>
             </Link>
 
-            <ClassDetailHeader classData={classData} />
+            <ClassDetailHeader classData={classData} userRole={userRole || undefined} />
             <ClassStudentList students={classData.students} />
         </div>
     );
