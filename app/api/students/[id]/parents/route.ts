@@ -1,73 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 
 // GET all parents for a student
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: studentId } = await params;
     const session = await getSession();
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const student = await prisma.user.findUnique({
+    const studentData = await prisma.student.findUnique({
       where: {
-        id: params.id,
-        role: Role.STUDENT,
+        id: studentId,
       },
       include: {
+        user: true,
         parents: {
           include: {
-            parent: true,
+            parent: {
+              include: {
+                user: true,
+              },
+            },
           },
         },
       },
     });
 
-    if (!student) {
+    if (!studentData) {
       return new NextResponse("Student not found", { status: 404 });
     }
 
-    // Get all parents to allow adding new ones
-    const allParents = await prisma.user.findMany({
+    // Get all parents in the same school to allow adding new ones
+    const availableParents = await prisma.parent.findMany({
       where: {
-        role: Role.PARENT,
-        schoolId: student.schoolId,
+        user: {
+          schoolId: studentData.user.schoolId,
+        },
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        profileImage: true,
-        phone: true,
+      include: {
+        user: true,
       },
     });
 
     // Format already linked parents
-    const linkedParents = student.parents.map((sp) => ({
+    const linkedParents = studentData.parents.map((sp) => ({
       id: sp.id,
       parentId: sp.parentId,
       studentId: sp.studentId,
       relation: sp.relation,
       parent: {
-        id: sp.parent.id,
-        name: sp.parent.name,
-        email: sp.parent.email,
-        profileImage: sp.parent.profileImage,
+        id: sp.parent.id, // This is Parent.id
+        name: sp.parent.user.name,
+        email: sp.parent.user.email,
+        profileImage: sp.parent.user.profileImage,
         phone: sp.parent.phone,
       },
     }));
 
     // Return all parents and the linked parents
+    // availableParents should exclude already linked ones
     return NextResponse.json({
       studentParents: linkedParents,
-      availableParents: allParents.filter(
-        (p) => !linkedParents.some((lp) => lp.parentId === p.id)
-      ),
+      availableParents: availableParents
+        .filter((p) => !linkedParents.some((lp) => lp.parentId === p.id))
+        .map((p) => ({
+          id: p.id, // This is Parent.id
+          name: p.user.name,
+          email: p.user.email,
+          profileImage: p.user.profileImage,
+          phone: p.phone,
+        })),
     });
   } catch (error) {
     console.error("[STUDENT_PARENTS_GET]", error);
@@ -78,9 +87,10 @@ export async function GET(
 // POST to link a parent to a student
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: studentId } = await params;
     const session = await getSession();
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -88,9 +98,9 @@ export async function POST(
 
     // Check permission (only admins and teachers can manage parent links)
     if (
-      session.role !== Role.SUPER_ADMIN &&
-      session.role !== Role.SCHOOL_ADMIN &&
-      session.role !== Role.TEACHER
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN &&
+      session.role !== UserRole.TEACHER
     ) {
       return new NextResponse("Forbidden", { status: 403 });
     }
@@ -103,10 +113,9 @@ export async function POST(
     }
 
     // Verify student exists
-    const student = await prisma.user.findUnique({
+    const student = await prisma.student.findUnique({
       where: {
-        id: params.id,
-        role: Role.STUDENT,
+        id: studentId,
       },
     });
 
@@ -115,10 +124,9 @@ export async function POST(
     }
 
     // Verify parent exists
-    const parent = await prisma.user.findUnique({
+    const parent = await prisma.parent.findUnique({
       where: {
         id: parentId,
-        role: Role.PARENT,
       },
     });
 
@@ -127,10 +135,12 @@ export async function POST(
     }
 
     // Check if the relationship already exists
-    const existingRelation = await prisma.studentParent.findFirst({
+    const existingRelation = await prisma.studentParent.findUnique({
       where: {
-        studentId: params.id,
-        parentId,
+        studentId_parentId: {
+          studentId,
+          parentId,
+        },
       },
     });
 
@@ -145,7 +155,11 @@ export async function POST(
             relation,
           },
           include: {
-            parent: true,
+            parent: {
+              include: {
+                user: true,
+              },
+            },
           },
         });
         return NextResponse.json(updatedRelation);
@@ -159,12 +173,16 @@ export async function POST(
     // Create the relationship
     const studentParent = await prisma.studentParent.create({
       data: {
-        studentId: params.id,
+        studentId,
         parentId,
         relation: relation || null,
       },
       include: {
-        parent: true,
+        parent: {
+          include: {
+            user: true,
+          },
+        },
       },
     });
 
@@ -178,9 +196,10 @@ export async function POST(
 // DELETE to remove a parent link
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: studentId } = await params;
     const session = await getSession();
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -188,9 +207,9 @@ export async function DELETE(
 
     // Check permission (only admins and teachers can manage parent links)
     if (
-      session.role !== Role.SUPER_ADMIN &&
-      session.role !== Role.SCHOOL_ADMIN &&
-      session.role !== Role.TEACHER
+      session.role !== UserRole.SUPER_ADMIN &&
+      session.role !== UserRole.SCHOOL_ADMIN &&
+      session.role !== UserRole.TEACHER
     ) {
       return new NextResponse("Forbidden", { status: 403 });
     }
@@ -206,7 +225,7 @@ export async function DELETE(
     const existingRelation = await prisma.studentParent.findUnique({
       where: {
         id: parentLinkId,
-        studentId: params.id,
+        studentId: studentId,
       },
     });
 
@@ -227,3 +246,4 @@ export async function DELETE(
     return new NextResponse("Internal error", { status: 500 });
   }
 }
+

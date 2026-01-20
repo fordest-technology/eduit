@@ -83,6 +83,26 @@ export async function GET(
             }
         }
 
+        // If user is a student, verify they are in this class
+        if (user.role === UserRole.STUDENT) {
+            const studentInClass = await prisma.studentClass.findFirst({
+                where: {
+                    student: { userId: user.id },
+                    classId: classId,
+                    status: "ACTIVE",
+                    sessionId: currentSession.id
+                },
+                select: { id: true }
+            });
+
+            if (!studentInClass) {
+                return NextResponse.json(
+                    { error: "You are not enrolled in this class" },
+                    { status: 403 }
+                );
+            }
+        }
+
         // Get students in this class
         const students = await prisma.studentClass.findMany({
             where: {

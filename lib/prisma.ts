@@ -12,15 +12,15 @@ const prisma = globalThis.prisma ?? prismaClientSingleton();
 
 export async function withErrorHandling<T>(operation: () => Promise<T>, retries = 3): Promise<T> {
   let lastError: any;
-  
+
   for (let i = 0; i < retries; i++) {
     try {
       return await operation();
     } catch (error: any) {
       lastError = error;
-      
+
       // Retry on connection/timeout issues
-      const isRetryable = 
+      const isRetryable =
         error.code === 'P1001' || // Can't reach database server
         error.code === 'P1008' || // Operations timeout
         error.code === 'P2024' || // Connection timeout
@@ -32,14 +32,14 @@ export async function withErrorHandling<T>(operation: () => Promise<T>, retries 
       if (!isRetryable || i === retries - 1) {
         break;
       }
-      
-      console.warn(`Database operation failed (attempt ${i + 1}/${retries}), retrying...`, error.message);
+
+      console.warn(`Database operation failed (attempt ${i + 1}/${retries}), retrying in ${i + 1}s...`, error.message, error.code);
       // Brief delay before retry
       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
   }
-  
-  console.error("Prisma Operation Error after retries:", lastError);
+
+  console.error("Prisma Operation Error after retries:", lastError.message, lastError.code);
   throw lastError;
 }
 

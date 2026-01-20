@@ -4,22 +4,16 @@ import { getSession } from "@/lib/auth"
 import { Bell, BookText } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { format } from "date-fns"
-import { hasPermission } from "@/lib/permissions"
+import { hasPermission, hasFullAccess } from "@/lib/permissions"
 
 export async function RecentActivitiesSection() {
   const session = await getSession()
   if (!session) return null
 
   // Check permissions
-  let perms = session.permissions;
-  if (typeof perms === 'string') {
-    try { perms = JSON.parse(perms); } catch (e) {}
-  }
-
-  const isSuperAdmin = session.role === "SUPER_ADMIN";
-  const isSchoolAdmin = session.role === "SCHOOL_ADMIN";
-  const hasFullAccess = isSuperAdmin || (isSchoolAdmin && (!perms || (Array.isArray(perms) && perms.length === 0)));
-  const canViewResults = hasFullAccess || hasPermission(perms, "view_results");
+  const fullAccess = hasFullAccess(session);
+  const perms = session.permissions;
+  const canViewResults = fullAccess || hasPermission(perms, "view_results", session.role);
 
   if (!canViewResults) return null;
 
@@ -86,7 +80,7 @@ export async function RecentActivitiesSection() {
 }
 
 export function ActivitiesSkeleton() {
-    return (
-        <Card className="lg:col-span-8 h-[500px] border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-slate-50 animate-pulse" />
-    )
+  return (
+    <Card className="lg:col-span-8 h-[500px] border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-slate-50 animate-pulse" />
+  )
 }

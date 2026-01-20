@@ -104,10 +104,7 @@ export default function TeachersPage() {
                     router.push("/login")
                     return
                 }
-
-                const isSuperAdmin = sessionData.role === UserRole.SUPER_ADMIN;
-                const isSchoolAdmin = sessionData.role === UserRole.SCHOOL_ADMIN;
-                const canViewTeachers = isSuperAdmin || (isSchoolAdmin && (!sessionData.permissions || hasPermission(sessionData.permissions, "view_teachers")));
+                const canViewTeachers = hasPermission(sessionData.permissions, "view_teachers", sessionData.role);
 
                 if (!canViewTeachers) {
                     router.push("/dashboard")

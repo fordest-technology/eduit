@@ -43,13 +43,49 @@ export async function GET(request: NextRequest) {
 
     // Filter by student ID if provided or if user is a student/parent
     if (studentId) {
+      // If user is a parent, verify student is their child
+      if (session.role === "PARENT") {
+        const parent = await prisma.parent.findUnique({
+          where: { userId: session.id },
+          select: { id: true }
+        });
+        if (!parent) return NextResponse.json({ error: "Parent profile not found" }, { status: 404 });
+
+        const relation = await prisma.studentParent.findUnique({
+          where: { studentId_parentId: { studentId, parentId: parent.id } }
+        });
+        if (!relation) return NextResponse.json({ error: "Unauthorized access to student record" }, { status: 403 });
+      }
+
+      // If user is a student, verify they are requesting their own record
+      if (session.role === "STUDENT") {
+        const student = await prisma.student.findUnique({
+          where: { userId: session.id },
+          select: { id: true }
+        });
+        if (!student || student.id !== studentId) {
+          return NextResponse.json({ error: "Unauthorized access to student record" }, { status: 403 });
+        }
+      }
+
       where.studentId = studentId;
-    } else if (session.role === "student") {
-      where.studentId = session.id;
-    } else if (session.role === "parent") {
+    } else if (session.role === "STUDENT") {
+      const student = await prisma.student.findUnique({
+        where: { userId: session.id },
+        select: { id: true }
+      });
+      if (!student) return NextResponse.json({ error: "Student profile not found" }, { status: 404 });
+      where.studentId = student.id;
+    } else if (session.role === "PARENT") {
       // Get parent's children
+      const parent = await prisma.parent.findUnique({
+        where: { userId: session.id },
+        select: { id: true }
+      });
+      if (!parent) return NextResponse.json({ error: "Parent profile not found" }, { status: 404 });
+
       const children = await prisma.studentParent.findMany({
-        where: { parentId: session.id },
+        where: { parentId: parent.id },
         select: { studentId: true },
       });
 
@@ -73,12 +109,18 @@ export async function GET(request: NextRequest) {
           },
         },
       };
-    } else if (session.role === "teacher") {
+    } else if (session.role === "TEACHER") {
+      const teacher = await prisma.teacher.findUnique({
+        where: { userId: session.id },
+        select: { id: true }
+      });
+      if (!teacher) return NextResponse.json({ error: "Teacher profile not found" }, { status: 404 });
+
       where.student = {
         studentClass: {
           some: {
             class: {
-              teacherId: session.id,
+              teacherId: teacher.id,
             },
             sessionId,
           },
@@ -87,7 +129,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Add school filter for school admins and teachers
-    if (session.role === "school_admin" || session.role === "teacher") {
+    if (session.role === "SCHOOL_ADMIN" || session.role === "TEACHER") {
       where.student = {
         ...where.student,
         schoolId: session.schoolId,
@@ -147,9 +189,9 @@ export async function POST(request: NextRequest) {
 
   if (
     !session ||
-    (session.role !== "teacher" &&
-      session.role !== "school_admin" &&
-      session.role !== "super_admin")
+    (session.role !== "TEACHER" &&
+      session.role !== "SCHOOL_ADMIN" &&
+      session.role !== "SUPER_ADMIN")
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
