@@ -67,7 +67,63 @@ export async function GET(
       );
     }
 
-    if (
+    // Verify access to this school's data
+    if (session.role === "PARENT") {
+      const parent = await prisma.parent.findUnique({
+        where: { userId: session.id },
+        select: {
+          children: {
+            select: {
+              student: {
+                select: {
+                  user: {
+                    select: {
+                      schoolId: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!parent) {
+        return new NextResponse(
+          JSON.stringify({ message: "Parent profile not found" }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const hasAccessToSchool = parent.children.some(
+        (child) => child.student.user.schoolId === schoolId
+      );
+
+      if (!hasAccessToSchool) {
+        return new NextResponse(
+          JSON.stringify({ message: "Forbidden: Access denied for this school" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    } else if (session.role === "STUDENT") {
+      const student = await prisma.student.findUnique({
+        where: { userId: session.id },
+        select: {
+          user: {
+            select: {
+              schoolId: true,
+            },
+          },
+        },
+      });
+
+      if (!student || student.user.schoolId !== schoolId) {
+        return new NextResponse(
+          JSON.stringify({ message: "Forbidden: Access denied for this school" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    } else if (
       session.role !== "SUPER_ADMIN" &&
       session.schoolId !== schoolId
     ) {
@@ -79,19 +135,37 @@ export async function GET(
 
     console.log("[CONFIG_CLIENT] Fetching config for schoolId:", schoolId);
 
-    // 1. Get the current active academic session for the school
-    let currentAcademicSession = await prisma.academicSession.findFirst({
-      where: {
-        schoolId: schoolId,
-        isCurrent: true,
-      },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    // Get sessionId from query params if provided
+    const url = new URL(request.url);
+    const sessionIdParam = url.searchParams.get("sessionId");
 
-    console.log("[CONFIG_CLIENT] Current session (isCurrent=true):", currentAcademicSession);
+    // 1. Get the academic session
+    let currentAcademicSession;
+
+    if (sessionIdParam) {
+      // If sessionId is provided, use it
+      currentAcademicSession = await prisma.academicSession.findUnique({
+        where: { id: sessionIdParam },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+    } else {
+      // Otherwise, get the current active session
+      currentAcademicSession = await prisma.academicSession.findFirst({
+        where: {
+          schoolId: schoolId,
+          isCurrent: true,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+    }
+
+    console.log("[CONFIG_CLIENT] Academic session:", currentAcademicSession);
 
     // If no current session, try to get the most recent one
     if (!currentAcademicSession) {

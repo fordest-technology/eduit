@@ -1,3 +1,4 @@
+import { type NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { UserRole } from '@prisma/client';
@@ -21,7 +22,15 @@ export async function GET(
         // Fetch student for access verification
         const student = await prisma.student.findUnique({
             where: { id: studentId },
-            select: { id: true, userId: true, schoolId: true }
+            select: {
+                id: true,
+                userId: true,
+                user: {
+                    select: {
+                        schoolId: true
+                    }
+                }
+            }
         });
 
         if (!student) {
@@ -126,15 +135,16 @@ async function verifyResultAccess(
 ): Promise<boolean> {
     const { id: userId, role, schoolId: userSchoolId } = session;
     const studentId = student.id;
+    const studentSchoolId = student.user?.schoolId;
 
     // 1. Super Admin access
     if (role === UserRole.SUPER_ADMIN) return true;
 
     // 2. School Admin access (same school)
-    if (role === UserRole.SCHOOL_ADMIN && userSchoolId === student.schoolId) return true;
+    if (role === UserRole.SCHOOL_ADMIN && userSchoolId === studentSchoolId) return true;
 
     // 3. Teacher access (same school)
-    if (role === UserRole.TEACHER && userSchoolId === student.schoolId) return true;
+    if (role === UserRole.TEACHER && userSchoolId === studentSchoolId) return true;
 
     // 4. Student access (own results)
     if (role === UserRole.STUDENT && student.userId === userId) return true;
