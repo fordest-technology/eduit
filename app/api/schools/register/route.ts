@@ -15,14 +15,14 @@ import { sanitizeInput } from "@/lib/security";
 const registrationSchema = z.object({
   schoolName: z.string().min(3).max(100),
   shortName: z.string().min(2).max(20).regex(/^[a-zA-Z0-9-]+$/, "Short name can only contain alphanumeric characters and hyphens"),
-  address: z.string().optional(),
-  phone: z.string().optional(),
+  address: z.string().nullish(),
+  phone: z.string().nullish(),
   email: z.string().email(),
   adminName: z.string().min(2).max(100),
   adminEmail: z.string().email(),
   adminPassword: z.string().min(8),
-  primaryColor: z.string().regex(/^#([A-Fa-f0-9]{3}){1,2}$/).optional(),
-  secondaryColor: z.string().regex(/^#([A-Fa-f0-9]{3}){1,2}$/).optional(),
+  primaryColor: z.string().regex(/^#([A-Fa-f0-9]{3}){1,2}$/).nullish(),
+  secondaryColor: z.string().regex(/^#([A-Fa-f0-9]{3}){1,2}$/).nullish(),
 });
 
 // Helper function to handle file uploads locally if Cloudinary is not available
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       // Handle regular JSON request
       body = await request.json();
     }
-    
+
     // Sanitize everything before validation
     const sanitizedBody = sanitizeInput(body);
 

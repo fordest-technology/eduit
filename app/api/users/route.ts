@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     } else {
       const formData = await request.formData();
       body = sanitizeInput(Object.fromEntries(formData.entries()));
-      
+
       // Parse nested objects that might be stringified in FormData
       ['teacherData', 'studentData', 'parentData', 'adminData'].forEach(key => {
         if (body[key] && typeof body[key] === 'string') {
@@ -159,16 +159,17 @@ export async function POST(request: NextRequest) {
 
     // Role-based privilege escalation prevention
     if (session.role === UserRole.SCHOOL_ADMIN) {
-      if (role === UserRole.SUPER_ADMIN || role === UserRole.SCHOOL_ADMIN) {
+      // School admins cannot create super admins
+      if (role === UserRole.SUPER_ADMIN) {
         return new NextResponse("Unauthorized to create this role type", { status: 403 });
       }
     }
 
-    const finalSchoolId = session.schoolId;
-    if (
-      session.role === UserRole.SUPER_ADMIN &&
-      role !== UserRole.SUPER_ADMIN
-    ) {
+    const finalSchoolId = session.role === UserRole.SUPER_ADMIN
+      ? body.schoolId || session.schoolId
+      : session.schoolId;
+
+    if (!finalSchoolId && role !== UserRole.SUPER_ADMIN) {
       return new NextResponse("School ID is required for this user role", {
         status: 400,
       });

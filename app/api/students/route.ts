@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import db from "@/lib/db";
 import { uploadImage } from "@/lib/cloudinary";
+import { hash } from "bcryptjs";
 import { generatePassword } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { sendStudentCredentialsEmail } from "@/lib/email";
@@ -238,9 +239,9 @@ export async function POST(req: Request) {
     const billingInfo = await billingService.getBillingInfo(session.schoolId);
     if (billingInfo.billingStatus === BillingStatus.BLOCKED) {
       return NextResponse.json(
-        { 
+        {
           message: "Account Blocked: Please complete your usage payment to continue onboarding students.",
-          billingInfo 
+          billingInfo
         },
         { status: 403 }
       );
@@ -383,6 +384,9 @@ export async function POST(req: Request) {
       }
     }
 
+    // Hash the password before saving
+    const hashedPassword = await hash(studentPassword, 10);
+
     // 7. Create user and student in a transaction
     const transactionResult = await db.$transaction(async (tx) => {
       // Create user
@@ -390,7 +394,7 @@ export async function POST(req: Request) {
         data: {
           name: name.trim(),
           email: email.toLowerCase().trim(),
-          password: studentPassword,
+          password: hashedPassword,
           role: UserRole.STUDENT,
           schoolId: session.schoolId,
           profileImage: profileImageUrl,

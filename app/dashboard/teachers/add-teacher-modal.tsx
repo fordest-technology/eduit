@@ -75,7 +75,7 @@ export function AddTeacherModal({
     const [allClasses, setAllClasses] = useState<any[]>([])
     const [allDepartments, setAllDepartments] = useState<any[]>([])
     const [allLevels, setAllLevels] = useState<any[]>([])
-    
+
     const fileInputRef = useRef<HTMLInputElement>(null)
     const router = useRouter()
     const isEditMode = Boolean(teacherToEdit);
@@ -107,7 +107,7 @@ export function AddTeacherModal({
             const classesData = await classesRes.json()
             const deptsData = await deptsRes.json()
             const levelsData = await levelsRes.json()
-            
+
             setAllClasses(Array.isArray(classesData) ? classesData : [])
             setAllDepartments(Array.isArray(deptsData) ? deptsData : [])
             setAllLevels(Array.isArray(levelsData) ? levelsData : [])
@@ -181,7 +181,15 @@ export function AddTeacherModal({
             });
 
             if (image && image.startsWith("data:")) {
-                const blob = await (await fetch(image)).blob();
+                const parts = image.split(',');
+                const byteString = atob(parts[1]);
+                const mimeString = parts[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: mimeString });
                 formData.append("profileImage", blob, "profile.jpg");
             }
 
@@ -213,8 +221,8 @@ export function AddTeacherModal({
     }, {});
 
     return (
-        <ResponsiveSheet 
-            open={open} 
+        <ResponsiveSheet
+            open={open}
             onOpenChange={onOpenChange}
             title={isEditMode ? "Edit Profile" : "Staff Onboarding"}
             description={isEditMode ? "Update faculty member credentials and assignments." : "Provision a new academic educator for your institution."}
@@ -223,7 +231,7 @@ export function AddTeacherModal({
             <div className="flex flex-col gap-8">
                 {/* Profile Portrait Selection */}
                 <div className="flex flex-col items-center group relative z-10 self-center">
-                    <div 
+                    <div
                         className="h-28 w-28 rounded-[2rem] bg-slate-100 border-4 border-white shadow-xl overflow-hidden cursor-pointer hover:scale-105 transition-all relative"
                         onClick={() => fileInputRef.current?.click()}
                     >
@@ -304,7 +312,7 @@ export function AddTeacherModal({
                                         </Select>
                                     </FormItem>
                                 )} />
-                                
+
                                 {/* Class Assignment with Section/Arm logic built in */}
                                 <FormField control={form.control} name="classId" render={({ field }) => (
                                     <FormItem>
@@ -354,8 +362,8 @@ export function AddTeacherModal({
 
                         <div className="flex flex-col sm:flex-row gap-3 pt-4">
                             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="h-16 px-8 rounded-2xl font-bold text-slate-500 hover:text-slate-800">Discard Changes</Button>
-                            <Button 
-                                onClick={form.handleSubmit(onSubmit)} 
+                            <Button
+                                onClick={form.handleSubmit(onSubmit)}
                                 disabled={isLoading}
                                 className="h-16 px-10 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-100 flex items-center gap-2 transition-all active:scale-[0.98]"
                             >

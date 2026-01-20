@@ -47,6 +47,8 @@ export default function LoginForm() {
             // Clear any previous errors
             form.clearErrors()
 
+            console.log('Attempting login with:', { email: data.email })
+
             const response = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: {
@@ -56,10 +58,16 @@ export default function LoginForm() {
                 credentials: "include", // Important! This ensures cookies are sent with the request
             })
 
+            console.log('Login response status:', response.status)
+
             if (!response.ok) {
                 const errorData = await response.json()
-                throw new Error(errorData.error || "Failed to login")
+                console.error('Login error:', errorData)
+                throw new Error(errorData.message || errorData.error || "Failed to login")
             }
+
+            const responseData = await response.json()
+            console.log('Login successful:', responseData)
 
             toast({
                 title: "Success",
@@ -72,6 +80,7 @@ export default function LoginForm() {
                 router.refresh()
             }, 500)
         } catch (error) {
+            console.error('Login exception:', error)
             toast({
                 title: "Error",
                 description: error instanceof Error ? error.message : "Failed to login",

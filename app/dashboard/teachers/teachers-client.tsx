@@ -417,7 +417,7 @@ export function TeachersClient({ teachers: initialTeachers, stats, error }: Teac
                                                 <TableCell className="px-6 py-5">
                                                     {teacher.department && teacher.department !== "No Department" ? (
                                                         <Badge className="rounded-full px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-none font-bold text-[10px] uppercase tracking-wider">
-                                                            {teacher.department}
+                                                            {typeof teacher.department === 'string' ? teacher.department : teacher.department.name}
                                                         </Badge>
                                                     ) : (
                                                         <span className="text-slate-400 text-xs font-medium">Not Assigned</span>

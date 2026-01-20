@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DashboardHeader } from "@/app/components/dashboard-header"
 import Link from "next/link"
 import TeacherDetails from "./teacher-details"
 import TeacherClasses from "./teacher-classes"
@@ -141,17 +142,26 @@ export default function TeacherPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    <p className="text-sm text-slate-500 font-medium">Loading teacher profile...</p>
+                </div>
             </div>
         )
     }
 
     if (error || !session || !teacher) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen">
-                <p className="text-red-500 mb-4">{error || "Not found or not authorized"}</p>
-                <Button onClick={() => router.push("/dashboard/teachers")}>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+                <div className="p-6 rounded-2xl bg-red-50 border border-red-100">
+                    <p className="text-red-600 font-semibold">{error || "Not found or not authorized"}</p>
+                </div>
+                <Button
+                    onClick={() => router.push("/dashboard/teachers")}
+                    className="rounded-xl"
+                >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
                     Back to Teachers
                 </Button>
             </div>
@@ -159,24 +169,21 @@ export default function TeacherPage() {
     }
 
     return (
-        <div className="container mx-auto py-10">
-            <div className="mb-8">
-                <Button
-                    variant="outline"
-                    onClick={() => router.push("/dashboard/teachers")}
-                    className="mb-4"
-                >
-                    Back to Teachers
-                </Button>
-            </div>
+        <div className="space-y-6">
+            <DashboardHeader
+                heading={teacher.name}
+                text={`${teacher.department?.name || "General Faculty"} • ${teacher.email}`}
+                action={
+                    <Link href="/dashboard/teachers">
+                        <Button variant="outline" className="rounded-xl">
+                            <ChevronLeft className="h-4 w-4 mr-2" />
+                            Back to Teachers
+                        </Button>
+                    </Link>
+                }
+            />
 
             <Tabs defaultValue={activeTab} value={activeTab} className="w-full">
-                {/* <TabsList>
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="classes">Classes</TabsTrigger>
-                    <TabsTrigger value="subjects">Subjects</TabsTrigger>
-                </TabsList> */}
-
                 <TabsContent value="details">
                     <TeacherDetails
                         teacher={teacher}

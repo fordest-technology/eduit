@@ -144,7 +144,7 @@ export async function DELETE(
 ) {
   try {
     const { id: teacherId } = await params;
-    
+
     const session = await getSession();
 
     if (!session) {
@@ -283,6 +283,14 @@ export async function GET(
       );
     }
 
+    // Calculate stats
+    const totalClasses = teacher.classes.length;
+    const totalSubjects = teacher.subjects.length;
+    const totalStudents = teacher.classes.reduce(
+      (sum, cls) => sum + cls.students.length,
+      0
+    );
+
     // Format the response data
     const formattedTeacher = {
       id: teacher.id,
@@ -290,7 +298,7 @@ export async function GET(
       name: teacher.user.name,
       email: teacher.user.email,
       phone: teacher.phone || "",
-      department: teacher.department?.name || "No Department",
+      department: teacher.department,
       departmentId: teacher.departmentId,
       qualifications: teacher.qualifications || "",
       specialization: teacher.specialization || "",
@@ -306,6 +314,17 @@ export async function GET(
       updatedAt: teacher.user.updatedAt,
       role: teacher.user.role,
       profileImage: teacher.user.profileImage,
+      user: {
+        id: teacher.user.id,
+        name: teacher.user.name,
+        email: teacher.user.email,
+        profileImage: teacher.user.profileImage,
+      },
+      stats: {
+        totalClasses,
+        totalSubjects,
+        totalStudents,
+      },
       classes: teacher.classes.map((cls) => ({
         id: cls.id,
         name: cls.name,
@@ -314,9 +333,10 @@ export async function GET(
         studentCount: cls.students.length,
       })),
       subjects: teacher.subjects.map((ts) => ({
-        id: ts.id,
-        subjectId: ts.subjectId,
-        subject: ts.subject,
+        id: ts.subject.id,
+        name: ts.subject.name,
+        code: ts.subject.code,
+        department: ts.subject.department,
       })),
     };
 

@@ -8,8 +8,9 @@ import { type ParentFormData } from "../../types";
 export default async function EditParentPage({
     params,
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
+    const { id } = await params;
     const session = await getSession();
 
     if (!session) {
@@ -21,14 +22,14 @@ export default async function EditParentPage({
     }
 
     // Only SUPER_ADMIN and SCHOOL_ADMIN can access this page
-    if (![UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN].includes(session.role as UserRole)) {
+    if (session.role !== UserRole.SUPER_ADMIN && session.role !== UserRole.SCHOOL_ADMIN) {
         redirect("/dashboard");
     }
 
     // Fetch the parent data
     const parent = await prisma.user.findUnique({
         where: {
-            id: params.id,
+            id,
             role: UserRole.PARENT,
             schoolId: session.role === UserRole.SCHOOL_ADMIN ? session.schoolId : undefined,
         },

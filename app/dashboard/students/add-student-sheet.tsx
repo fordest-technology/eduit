@@ -206,42 +206,109 @@ export function AddStudentSheet({
         },
     })
 
-    // Set form values when editing a student
+    // Set form values when editing a student and fetch full details
     useEffect(() => {
-        if (studentToEdit && open) {
-            form.reset({
-                // User fields
-                name: studentToEdit.name || "",
-                email: studentToEdit.email || "",
-                password: "", // Don't set password for editing
+        const fetchStudentDetails = async () => {
+            if (!studentToEdit?.id || !open) return;
 
-                // Student fields
-                admissionDate: studentToEdit.admissionDate ? new Date(studentToEdit.admissionDate) : new Date(),
-                phone: studentToEdit.phone || "",
-                address: studentToEdit.address || "",
-                city: studentToEdit.city || "",
-                state: studentToEdit.state || "",
-                country: studentToEdit.country || "",
-                dateOfBirth: studentToEdit.dateOfBirth ? new Date(studentToEdit.dateOfBirth) : new Date(),
-                gender: studentToEdit.gender || "male",
-                religion: studentToEdit.religion || "",
-                bloodGroup: studentToEdit.bloodGroup || "A+",
+            try {
+                // First reset with what we have for immediate feedback
+                form.reset({
+                    name: studentToEdit.name || "",
+                    email: studentToEdit.email || "",
+                    password: "",
+                    admissionDate: new Date(),
+                    phone: "",
+                    address: "",
+                    city: "",
+                    state: "",
+                    country: "",
+                    dateOfBirth: new Date(),
+                    gender: "male",
+                    religion: "",
+                    bloodGroup: "A+",
+                    departmentId: "none",
+                    levelId: studentToEdit.currentClass?.level?.id || "none",
+                    classId: studentToEdit.classId || "none",
+                    sessionId: "none",
+                    rollNumber: studentToEdit.rollNumber || "",
+                    sendCredentials: false,
+                    sendWelcomeEmail: false,
+                });
 
-                // Relationships
-                departmentId: studentToEdit.departmentId || "none",
-                levelId: studentToEdit.levelId || studentToEdit.class?.levelId || "none",
-                classId: studentToEdit.classId || "none",
-                sessionId: studentToEdit.sessionId || "none",
-                rollNumber: studentToEdit.rollNumber || "",
+                if (studentToEdit.profileImage) {
+                    setProfileImageUrl(studentToEdit.profileImage);
+                }
 
-                // Email settings
-                sendCredentials: false, // Don't send credentials when editing
-                sendWelcomeEmail: false,
-            });
+                setIsLoadingData(true);
+                const response = await fetch(`/api/students/${studentToEdit.id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const student = data.student;
 
-            // If there's a profile image, set it
-            if (studentToEdit.profileImage) {
-                setProfileImageUrl(studentToEdit.profileImage);
+                    form.reset({
+                        name: student.name || "",
+                        email: student.email || "",
+                        password: "", // Never reset password to plain text
+                        admissionDate: student.admissionDate ? new Date(student.admissionDate) : new Date(),
+                        phone: student.phone || "",
+                        address: student.address || "",
+                        city: student.city || "",
+                        state: student.state || "",
+                        country: student.country || "",
+                        dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth) : new Date(),
+                        gender: (student.gender?.toLowerCase() as any) || "male",
+                        religion: student.religion || "",
+                        bloodGroup: (student.bloodGroup as any) || "A+",
+                        departmentId: student.departmentId || "none",
+                        levelId: student.currentClass?.level?.id || "none",
+                        classId: student.classId || "none",
+                        sessionId: student.sessionId || "none",
+                        rollNumber: student.rollNumber || "",
+                        sendCredentials: false,
+                        sendWelcomeEmail: false,
+                    });
+
+                    if (student.profileImage) {
+                        setProfileImageUrl(student.profileImage);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching student details:", error);
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+
+        if (open) {
+            if (studentToEdit) {
+                fetchStudentDetails();
+            } else {
+                // Reset form for new student
+                form.reset({
+                    name: "",
+                    email: "",
+                    password: generatePassword(),
+                    admissionDate: new Date(),
+                    phone: "",
+                    address: "",
+                    city: "",
+                    state: "",
+                    country: "",
+                    dateOfBirth: new Date(),
+                    gender: "male",
+                    religion: "",
+                    bloodGroup: "A+",
+                    departmentId: "none",
+                    levelId: "none",
+                    classId: "none",
+                    sessionId: "none",
+                    rollNumber: "",
+                    sendCredentials: true,
+                    sendWelcomeEmail: true,
+                });
+                setProfileImageUrl(null);
+                setProfileImage(null);
             }
         }
     }, [studentToEdit, open, form]);
@@ -425,8 +492,11 @@ export function AddStudentSheet({
             }
 
             // Make API request with toast.promise for premium feedback
-            const promise = fetch("/api/students", {
-                method: "POST",
+            const url = studentToEdit ? `/api/students/${studentToEdit.id}` : "/api/students";
+            const method = studentToEdit ? "PATCH" : "POST";
+
+            const promise = fetch(url, {
+                method: method,
                 body: formData,
             }).then(async (response) => {
                 const data = await response.json();
@@ -439,7 +509,7 @@ export function AddStudentSheet({
                     }
                     throw new Error(data.message || "Failed to process request");
                 }
-                
+
                 // Send credentials email if requested (non-blocking for the main success toast)
                 if (values.sendCredentials) {
                     sendCredentialsEmail({
@@ -448,7 +518,7 @@ export function AddStudentSheet({
                         password: values.password,
                     });
                 }
-                
+
                 return data;
             });
 
@@ -458,8 +528,8 @@ export function AddStudentSheet({
                     onSuccess?.();
                     onOpenChange(false);
                     router.refresh();
-                    return studentToEdit 
-                        ? `✅ ${values.name}'s record updated successfully!` 
+                    return studentToEdit
+                        ? `✅ ${values.name}'s record updated successfully!`
                         : `🎉 ${values.name} has been admitted successfully!`;
                 },
                 error: (err) => err instanceof Error ? err.message : '❌ An unexpected error occurred. Please try again.',

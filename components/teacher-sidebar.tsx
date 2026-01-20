@@ -7,7 +7,6 @@ import {
     LayoutDashboard,
     BookOpen,
     Calendar,
-    FileText,
     Users,
     BookMarked,
     GraduationCap,
@@ -22,33 +21,28 @@ const teacherLinks = [
     },
     {
         title: "My Classes",
-        href: "/dashboard/classes",
+        href: "/dashboard/my-classes",
         icon: BookMarked,
     },
     {
-        title: "Students",
-        href: "/dashboard/students",
+        title: "My Students",
+        href: "/dashboard/teachers/students",
         icon: Users,
+    },
+    {
+        title: "Attendance",
+        href: "/dashboard/attendance",
+        icon: Calendar,
+    },
+    {
+        title: "Results",
+        href: "/dashboard/results",
+        icon: GraduationCap,
     },
     {
         title: "Subjects",
         href: "/dashboard/subjects",
         icon: BookOpen,
-    },
-    {
-        title: "Schedule",
-        href: "/dashboard/schedule",
-        icon: Calendar,
-    },
-    {
-        title: "Assignments",
-        href: "/dashboard/assignments",
-        icon: FileText,
-    },
-    {
-        title: "Grades",
-        href: "/dashboard/grades",
-        icon: GraduationCap,
     },
     {
         title: "Settings",
