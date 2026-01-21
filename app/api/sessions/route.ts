@@ -93,30 +93,7 @@ export async function GET(request: NextRequest) {
         },
       });
     });
-        resultConfigurations: {
-          include: {
-            periods: {
-              select: {
-                id: true,
-                name: true,
-                weight: true,
-              }
-            }
-          }
-        },
-        _count: {
-          select: {
-            studentClasses: true,
-            attendance: true,
-            results: true,
-            classes: true,
-          },
-        },
-      },
-      orderBy: {
-        startDate: "desc",
-      },
-    });
+
 
     return NextResponse.json(serializeBigInts(academicSessions));
   } catch (error) {
