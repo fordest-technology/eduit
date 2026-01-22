@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Valid schoolId check
-    const reqSchoolId = searchParams.get("schoolId");
+    const reqSchoolId = request.nextUrl.searchParams.get("schoolId");
     
     // Determine effective schoolId:
     // 1. If Super Admin, use query param (or session schoolId as fallback)
@@ -54,6 +54,9 @@ export async function GET(request: NextRequest) {
        // Return empty array instead of 500 if no context
        return NextResponse.json([]);
     }
+
+    const isCurrentParam = request.nextUrl.searchParams.get("isCurrent");
+    const isCurrent = isCurrentParam === "true" ? true : isCurrentParam === "false" ? false : undefined;
 
     const academicSessions = await withErrorHandling(async () => {
       return await prisma.academicSession.findMany({

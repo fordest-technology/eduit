@@ -166,6 +166,7 @@ function DraggableElement({
 }) {
     const setSelectedId = useEditorStore((state) => state.setSelectedId);
     const updateElement = useEditorStore((state) => state.updateElement);
+    const toggleSelectId = useEditorStore((state) => state.toggleSelectId);
     const selectedId = useEditorStore((state) => state.selectedId);
     const schoolData = useEditorStore((state) => state.schoolData);
     const isSelected = selectedId === element.id;
@@ -184,7 +185,7 @@ function DraggableElement({
         e.stopPropagation();
         
         if (e.shiftKey) {
-            useEditorStore.getState().toggleSelectId(element.id);
+            toggleSelectId(element.id);
         } else {
             setSelectedId(element.id);
         }

@@ -225,6 +225,8 @@ export function PropertiesPanel() {
         );
     }
 
+    if (!element) return null;
+
     const updateStyle = (key: string, value: any) => {
         updateElement(element.id, {
             style: { ...element.style, [key]: value }

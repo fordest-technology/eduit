@@ -152,51 +152,7 @@ export function DepartmentsTable({ departments: initialDepartments, userRole }: 
 
     return (
         <div className="space-y-6">
-            {/* Summary cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-2 bg-blue-100 rounded-full">
-                                <Users className="h-6 w-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground">Total Students</p>
-                                <h3 className="text-2xl font-bold text-blue-600">{totalStudents}</h3>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-2 bg-green-100 rounded-full">
-                                <GraduationCap className="h-6 w-6 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground">Total Teachers</p>
-                                <h3 className="text-2xl font-bold text-green-600">{totalTeachers}</h3>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-2 bg-amber-100 rounded-full">
-                                <BookOpen className="h-6 w-6 text-amber-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground">Total Subjects</p>
-                                <h3 className="text-2xl font-bold text-amber-600">{totalSubjects}</h3>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
+            <div className="flex justify-end items-center mb-4">
                 {canManageDepartments && (
                     <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
                         <Plus className="h-4 w-4 mr-2" />

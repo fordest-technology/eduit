@@ -28,11 +28,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 
 const formSchema = z.object({
     studentId: z.string().min(1, "Please select a student"),
+    relation: z.string().min(1, "Relation is required"),
+    isPrimary: z.boolean().default(false),
 })
 
 interface LinkStudentDialogProps {
@@ -55,6 +58,8 @@ export function LinkStudentDialog({
         resolver: zodResolver(formSchema),
         defaultValues: {
             studentId: "",
+            relation: "Parent",
+            isPrimary: false,
         },
     })
 
@@ -86,13 +91,13 @@ export function LinkStudentDialog({
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    studentId: values.studentId,
-                }),
+                body: JSON.stringify(values),
             })
 
             if (!response.ok) {
-                throw new Error("Failed to link student")
+                const errorData = await response.json().catch(() => null);
+                const errorMessage = errorData?.error || await response.text();
+                throw new Error(errorMessage || "Failed to link student")
             }
 
             toast.success("Student linked successfully")
@@ -100,7 +105,7 @@ export function LinkStudentDialog({
             onOpenChange(false)
         } catch (error) {
             console.error("Error linking student:", error)
-            toast.error("Failed to link student")
+            toast.error(error instanceof Error ? error.message : "Failed to link student")
         } finally {
             setLoading(false)
         }
@@ -108,7 +113,7 @@ export function LinkStudentDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Link Student</DialogTitle>
                     <DialogDescription>
@@ -146,6 +151,34 @@ export function LinkStudentDialog({
                             )}
                         />
 
+                        <FormField
+                            control={form.control}
+                            name="relation"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Relationship</FormLabel>
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select relationship" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Father">Father</SelectItem>
+                                            <SelectItem value="Mother">Mother</SelectItem>
+                                            <SelectItem value="Guardian">Guardian</SelectItem>
+                                            <SelectItem value="Parent">Parent</SelectItem>
+                                            <SelectItem value="Other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                         <DialogFooter>
                             <Button
                                 type="button"
@@ -165,4 +198,4 @@ export function LinkStudentDialog({
             </DialogContent>
         </Dialog>
     )
-} 
+}

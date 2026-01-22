@@ -63,7 +63,38 @@ export async function createSession(
  * Deletes the session cookie
  */
 export async function deleteSession() {
-  const { cookies } = await import("next/headers");
+  const { cookies, headers } = await import("next/headers");
   const cookieStore = await cookies();
-  cookieStore.delete("session");
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+
+  // Auto-detect cookie domain for subdomains (matching logic in lib/auth.ts)
+  let cookieDomain: string | undefined = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+
+  if (!cookieDomain && host) {
+    const hostname = host.split(":")[0]; // Remove port
+    const parts = hostname.split(".");
+
+    // For localhost/127.0.0.1, DO NOT set domain - let browser handle it
+    const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1");
+
+    if (!isLocalhost && parts.length > 2) {
+      // For production subdomains like zed.eduit.com, set domain to .eduit.com
+      cookieDomain = `.${parts.slice(-2).join(".")}`;
+    }
+  }
+
+  // Delete the session cookie with the correct options
+  if (cookieDomain) {
+    cookieStore.delete({
+      name: "session",
+      path: "/",
+      domain: cookieDomain,
+    });
+  } else {
+    cookieStore.delete({
+      name: "session",
+      path: "/",
+    });
+  }
 }

@@ -5,14 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
+import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import {
     Form,
     FormControl,
@@ -31,8 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
-import { Loader2, Camera, Upload, X, CalendarIcon, Mail, Send } from "lucide-react"
-import { UserRole } from "@prisma/client"
+import { Loader2, Camera, Upload, X, CalendarIcon, Mail, Send, ArrowRight, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { generatePassword } from "@/lib/utils"
 import Image from "next/image"
@@ -43,24 +35,17 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import { Stepper } from "@/components/ui/stepper"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { useColors } from "@/contexts/color-context"
 
-// Gender options array
 const genderOptions = [
     { value: "male", label: "Male" },
     { value: "female", label: "Female" },
     { value: "other", label: "Other" },
 ];
 
-// Blood group options
 const bloodGroupOptions = [
     { value: "A+", label: "A+" },
     { value: "A-", label: "A-" },
@@ -72,85 +57,57 @@ const bloodGroupOptions = [
     { value: "O-", label: "O-" },
 ];
 
-// Define the comprehensive form schema based on the Prisma schema
 const formSchema = z.object({
-    // User model fields
-    name: z.string()
-        .min(2, { message: "Name must be at least 2 characters." })
-        .max(100, { message: "Name must not exceed 100 characters." })
-        .transform(val => val.trim()),
-    email: z.string()
-        .email({ message: "Please enter a valid email address." })
-        .transform(val => val.toLowerCase().trim()),
-    password: z.string()
-        .min(6, { message: "Password must be at least 6 characters." }),
+    name: z.string().min(2, "Name must be at least 2 characters").max(100),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
     profileImage: z.any().optional(),
-
-    // Student model fields
     admissionDate: z.date({
         required_error: "Admission date is required.",
-        invalid_type_error: "Please select a valid date.",
     }),
     departmentId: z.string().optional(),
-    address: z.string().min(1, "Address is required.").max(200, { message: "Address must not exceed 200 characters." }),
-    city: z.string().min(1, "City is required.").max(50, { message: "City must not exceed 50 characters." }),
-    state: z.string().min(1, "State is required.").max(50, { message: "State must not exceed 50 characters." }),
-    country: z.string().min(1, "Country is required.").max(50, { message: "Country must not exceed 50 characters." }),
-    phone: z.string().min(1, "Phone number is required.").regex(/^\+?[1-9]\d{1,14}$/, { message: "Please enter a valid phone number." }),
+    address: z.string().min(1, "Address is required").max(200),
+    city: z.string().min(1, "City is required").max(50),
+    state: z.string().min(1, "State is required").max(50),
+    country: z.string().min(1, "Country is required").max(50),
+    phone: z.string().min(1, "Phone is required"),
     dateOfBirth: z.date({
-        required_error: "Date of birth is required.",
-        invalid_type_error: "Please select a valid date.",
+        required_error: "Date of birth is required",
     }),
     gender: z.enum(["male", "female", "other"], {
-        required_error: "Please select a gender.",
+        required_error: "Please select a gender",
     }),
-    religion: z.string().min(1, "Religion is required.").max(50, { message: "Religion must not exceed 50 characters." }),
+    religion: z.string().min(1, "Religion is required").max(50),
     bloodGroup: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], {
-        required_error: "Please select a blood group.",
+        required_error: "Please select a blood group",
     }),
-
-    // Class assignment fields
     levelId: z.string().optional(),
     classId: z.string().optional(),
     sessionId: z.string().optional(),
     rollNumber: z.string().optional(),
-
-    // Email settings
     sendCredentials: z.boolean().default(true),
     sendWelcomeEmail: z.boolean().default(true),
 });
 
 type FormValues = z.infer<typeof formSchema>
 
-interface Department {
-    id: string;
-    name: string;
-}
-
-interface SchoolLevel {
-    id: string;
-    name: string;
-}
-
-interface Class {
-    id: string;
-    name: string;
-    section?: string;
-    levelId?: string;
-}
-
-interface AcademicSession {
-    id: string;
-    name: string;
-    isCurrent: boolean;
-}
+interface Department { id: string; name: string }
+interface SchoolLevel { id: string; name: string }
+interface Class { id: string; name: string; section?: string; levelId?: string }
+interface AcademicSession { id: string; name: string; isCurrent: boolean }
 
 interface AddStudentSheetProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     onSuccess?: () => void
-    studentToEdit?: any // For editing existing student
+    studentToEdit?: any
 }
+
+const STEPS = [
+    { id: "personal", label: "Personal Info" },
+    { id: "contact", label: "Contact Details" },
+    { id: "academic", label: "Academic Info" },
+];
 
 export function AddStudentSheet({
     open,
@@ -159,7 +116,6 @@ export function AddStudentSheet({
     studentToEdit
 }: AddStudentSheetProps) {
     const [isLoading, setIsLoading] = useState(false)
-    const [isSendingCredentials, setIsSendingCredentials] = useState(false)
     const [profileImage, setProfileImage] = useState<File | null>(null)
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
     const [departments, setDepartments] = useState<Department[]>([])
@@ -167,21 +123,16 @@ export function AddStudentSheet({
     const [classes, setClasses] = useState<Class[]>([])
     const [sessions, setSessions] = useState<AcademicSession[]>([])
     const [filteredClasses, setFilteredClasses] = useState<Class[]>([])
-    const [activeTab, setActiveTab] = useState("personal")
+    const [currentStep, setCurrentStep] = useState(0)
     const [isLoadingData, setIsLoadingData] = useState(false)
-    const [dataError, setDataError] = useState<string | null>(null)
     const router = useRouter()
-    const { colors } = useColors()
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            // User fields
             name: "",
             email: "",
             password: generatePassword(),
-
-            // Student fields
             admissionDate: new Date(),
             phone: "",
             address: "",
@@ -192,64 +143,56 @@ export function AddStudentSheet({
             gender: "male",
             religion: "",
             bloodGroup: "A+",
-
-            // Relationships
             departmentId: "none",
             levelId: "none",
             classId: "none",
             sessionId: "none",
             rollNumber: "",
-
-            // Email settings
             sendCredentials: true,
             sendWelcomeEmail: true,
         },
     })
 
-    // Set form values when editing a student and fetch full details
     useEffect(() => {
         const fetchStudentDetails = async () => {
             if (!studentToEdit?.id || !open) return;
-
             try {
-                // First reset with what we have for immediate feedback
+                // Initialize with available data
                 form.reset({
                     name: studentToEdit.name || "",
                     email: studentToEdit.email || "",
-                    password: "",
+                    password: "", 
                     admissionDate: new Date(),
-                    phone: "",
-                    address: "",
-                    city: "",
-                    state: "",
-                    country: "",
-                    dateOfBirth: new Date(),
-                    gender: "male",
-                    religion: "",
-                    bloodGroup: "A+",
+                    phone: studentToEdit.phone || "",
+                    address: studentToEdit.address || "",
+                    city: studentToEdit.city || "",
+                    state: studentToEdit.state || "",
+                    country: studentToEdit.country || "",
+                    gender: (studentToEdit.gender?.toLowerCase() as any) || "male",
+                    religion: studentToEdit.religion || "",
+                    bloodGroup: (studentToEdit.bloodGroup as any) || "A+",
                     departmentId: "none",
-                    levelId: studentToEdit.currentClass?.level?.id || "none",
+                    levelId: "none",
                     classId: studentToEdit.classId || "none",
                     sessionId: "none",
                     rollNumber: studentToEdit.rollNumber || "",
+                    dateOfBirth: studentToEdit.dateOfBirth ? new Date(studentToEdit.dateOfBirth) : new Date(),
                     sendCredentials: false,
                     sendWelcomeEmail: false,
                 });
-
-                if (studentToEdit.profileImage) {
-                    setProfileImageUrl(studentToEdit.profileImage);
-                }
+                
+                if (studentToEdit.profileImage) setProfileImageUrl(studentToEdit.profileImage);
 
                 setIsLoadingData(true);
                 const response = await fetch(`/api/students/${studentToEdit.id}`);
                 if (response.ok) {
                     const data = await response.json();
                     const student = data.student;
-
+                    
                     form.reset({
                         name: student.name || "",
                         email: student.email || "",
-                        password: "", // Never reset password to plain text
+                        password: "",
                         admissionDate: student.admissionDate ? new Date(student.admissionDate) : new Date(),
                         phone: student.phone || "",
                         address: student.address || "",
@@ -268,10 +211,7 @@ export function AddStudentSheet({
                         sendCredentials: false,
                         sendWelcomeEmail: false,
                     });
-
-                    if (student.profileImage) {
-                        setProfileImageUrl(student.profileImage);
-                    }
+                     if (student.profileImage) setProfileImageUrl(student.profileImage);
                 }
             } catch (error) {
                 console.error("Error fetching student details:", error);
@@ -284,7 +224,6 @@ export function AddStudentSheet({
             if (studentToEdit) {
                 fetchStudentDetails();
             } else {
-                // Reset form for new student
                 form.reset({
                     name: "",
                     email: "",
@@ -309,917 +248,384 @@ export function AddStudentSheet({
                 });
                 setProfileImageUrl(null);
                 setProfileImage(null);
+                setCurrentStep(0);
             }
         }
     }, [studentToEdit, open, form]);
 
-    // Fetch departments, levels, classes, and sessions
     useEffect(() => {
         const fetchData = async () => {
-            try {
-                setIsLoadingData(true);
-                setDataError(null);
+             if (!open) return;
+             try {
+                 const [deptRes, levelRes, classRes, sessionRes] = await Promise.all([
+                     fetch("/api/departments"),
+                     fetch("/api/school-levels"),
+                     fetch("/api/classes"),
+                     fetch("/api/academic-sessions")
+                 ]);
 
-                const [deptResponse, levelResponse, classResponse, sessionResponse] = await Promise.all([
-                    fetch("/api/departments"),
-                    fetch("/api/school-levels"),
-                    fetch("/api/classes"),
-                    fetch("/api/academic-sessions")
-                ]);
-
-                if (deptResponse.ok) {
-                    const deptData = await deptResponse.json();
-                    // Transform the complex department data to simple format
-                    const simplifiedDepts = deptData.map((dept: any) => ({
-                        id: dept.id,
-                        name: dept.name,
-                    }));
-                    setDepartments(simplifiedDepts);
-                } else {
-                    console.error("Failed to fetch departments:", deptResponse.status);
-                }
-
-                if (levelResponse.ok) {
-                    const levelData = await levelResponse.json();
-                    // Transform the complex level data to simple format
-                    const simplifiedLevels = levelData.map((level: any) => ({
-                        id: level.id,
-                        name: level.name,
-                    }));
-                    setLevels(simplifiedLevels);
-                } else {
-                    console.error("Failed to fetch levels:", levelResponse.status);
-                }
-
-                if (classResponse.ok) {
-                    const classData = await classResponse.json();
-                    // Transform the complex class data to simple format expected by the form
-                    const simplifiedClasses = classData.map((cls: any) => ({
-                        id: cls.id,
-                        name: cls.name,
-                        section: cls.section,
-                        levelId: cls.level?.id || null,
-                    }));
-                    setClasses(simplifiedClasses);
-                } else {
-                    console.error("Failed to fetch classes:", classResponse.status);
-                }
-
-                if (sessionResponse.ok) {
-                    const sessionData = await sessionResponse.json();
-                    // Transform the complex session data to simple format
-                    const simplifiedSessions = sessionData.map((session: any) => ({
-                        id: session.id,
-                        name: session.name,
-                        isCurrent: session.isCurrent,
-                    }));
-                    setSessions(simplifiedSessions);
-                } else {
-                    console.error("Failed to fetch sessions:", sessionResponse.status);
-                }
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                setDataError("Failed to load form data. Please try again.");
-                toast.error("⚠️ Failed to Load Form Data", {
-                    description: "Unable to load departments, classes, and other form data. Please refresh the page.",
-                    duration: 5000
-                });
-            } finally {
-                setIsLoadingData(false);
-            }
+                 if (deptRes.ok) setDepartments((await deptRes.json()).map((d: any) => ({ id: d.id, name: d.name })));
+                 if (levelRes.ok) setLevels((await levelRes.json()).map((l: any) => ({ id: l.id, name: l.name })));
+                 if (classRes.ok) {
+                     const classData = await classRes.json();
+                     setClasses(classData.map((c: any) => ({ id: c.id, name: c.name, section: c.section, levelId: c.level?.id })));
+                 }
+                 if (sessionRes.ok) {
+                    const sessionData = await sessionRes.json();
+                    setSessions(sessionData.map((s: any) => ({ id: s.id, name: s.name, isCurrent: s.isCurrent })));
+                    if (!studentToEdit) {
+                        const current = sessionData.find((s: any) => s.isCurrent);
+                        if (current) form.setValue('sessionId', current.id);
+                    }
+                 }
+             } catch (error) {
+                 console.error("Error loading form data", error);
+                 toast.error("Failed to load school data");
+             }
         };
+        fetchData();
+    }, [open, studentToEdit, form]);
 
-        if (open) {
-            fetchData();
-        }
-    }, [open]);
-
-    // Filter classes based on selected level
     useEffect(() => {
         const levelId = form.watch("levelId");
         if (levelId && levelId !== "none") {
-            const filtered = classes.filter(cls => cls.levelId === levelId);
-            setFilteredClasses(filtered);
+            setFilteredClasses(classes.filter(cls => cls.levelId === levelId));
         } else {
             setFilteredClasses(classes);
         }
     }, [form.watch("levelId"), classes]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
+        if (e.target.files?.[0]) {
             const file = e.target.files[0];
             setProfileImage(file);
             setProfileImageUrl(URL.createObjectURL(file));
         }
     };
 
-    const clearImage = () => {
-        setProfileImage(null);
-        setProfileImageUrl(null);
+    const nextStep = async () => {
+        let fields: any[] = [];
+        if (currentStep === 0) fields = ["name", "email", "password", "dateOfBirth", "gender", "religion", "bloodGroup"];
+        if (currentStep === 1) fields = ["phone", "address", "city", "state", "country"];
+        
+        const isValid = await form.trigger(fields as any);
+        if (isValid) setCurrentStep(prev => prev + 1);
     };
 
-    const generateNewPassword = () => {
-        const newPassword = generatePassword();
-        form.setValue("password", newPassword);
-    };
-
-    const sendCredentialsEmail = async (studentData: any) => {
-        try {
-            setIsSendingCredentials(true);
-
-            const response = await fetch("/api/send-credentials", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: studentData.name,
-                    email: studentData.email,
-                    role: "student",
-                    schoolName: "Your School", // This should come from context
-                    password: studentData.password,
-                    schoolId: "school-id", // This should come from context
-                    schoolUrl: window.location.origin,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to send credentials");
-            }
-
-            toast.success("📧 Credentials Sent Successfully!", {
-                description: `Login credentials have been sent to ${studentData.email}`,
-                duration: 4000
-            });
-        } catch (error) {
-            console.error("Error sending credentials:", error);
-            toast.error("❌ Failed to Send Credentials", {
-                description: "Unable to send login credentials to student email. Please try again.",
-                duration: 5000
-            });
-        } finally {
-            setIsSendingCredentials(false);
-        }
-    };
+    const prevStep = () => setCurrentStep(prev => prev - 1);
 
     const onSubmit = async (values: FormValues) => {
+        setIsLoading(true);
         try {
-            setIsLoading(true);
-            console.log("Submitting form with values:", values);
-
-            // Create FormData object
             const formData = new FormData();
-
-            // Append all form values
             Object.entries(values).forEach(([key, value]) => {
-                if (value instanceof Date) {
-                    formData.append(key, value.toISOString());
-                } else if (value !== undefined && value !== null) {
-                    // Convert "none" values to empty strings for API
+                if (value instanceof Date) formData.append(key, value.toISOString());
+                else if (value !== undefined && value !== null) {
                     const finalValue = value === "none" ? "" : value.toString();
                     formData.append(key, finalValue);
                 }
             });
+            if (profileImage) formData.append("profileImage", profileImage);
 
-            // Append profile image if exists
-            if (profileImage) {
-                formData.append("profileImage", profileImage);
-            }
-
-            console.log("FormData entries:");
-            for (let [key, value] of formData.entries()) {
-                console.log(`${key}:`, value);
-            }
-
-            // Make API request with toast.promise for premium feedback
             const url = studentToEdit ? `/api/students/${studentToEdit.id}` : "/api/students";
             const method = studentToEdit ? "PATCH" : "POST";
 
-            const promise = fetch(url, {
-                method: method,
-                body: formData,
-            }).then(async (response) => {
-                const data = await response.json();
-                if (!response.ok) {
-                    if (response.status === 400 && data.errors) {
-                        const errorMessages = Object.entries(data.errors)
-                            .map(([field, message]) => `${field}: ${message}`)
-                            .join(', ');
-                        throw new Error(`Validation failed: ${errorMessages}`);
-                    }
-                    throw new Error(data.message || "Failed to process request");
-                }
+            const response = await fetch(url, { method, body: formData });
+            const data = await response.json();
 
-                // Send credentials email if requested (non-blocking for the main success toast)
-                if (values.sendCredentials) {
-                    sendCredentialsEmail({
-                        name: values.name,
-                        email: values.email,
-                        password: values.password,
-                    });
-                }
+            if (!response.ok) {
+                 throw new Error(data.message || "Operation failed");
+            }
 
-                return data;
-            });
-
-            toast.promise(promise, {
-                loading: studentToEdit ? 'Updating student record...' : 'Creating new student record...',
-                success: (data) => {
-                    onSuccess?.();
-                    onOpenChange(false);
-                    router.refresh();
-                    return studentToEdit
-                        ? `✅ ${values.name}'s record updated successfully!`
-                        : `🎉 ${values.name} has been admitted successfully!`;
-                },
-                error: (err) => err instanceof Error ? err.message : '❌ An unexpected error occurred. Please try again.',
-            });
-
-            await promise;
+            toast.success(studentToEdit ? "Student updated" : "Student enrolled successfully");
+            onSuccess?.();
+            onOpenChange(false);
+            router.refresh();
         } catch (error) {
-            console.error("Error submitting student form:", error);
-            // Error is handled by toast.promise
+            console.error(error);
+            toast.error(error instanceof Error ? error.message : "Failed to save student");
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-[600px] sm:max-w-[600px] md:max-w-[500px] lg:max-w-[600px] overflow-y-auto">
-                <SheetHeader className="space-y-4">
-                    <SheetTitle className="text-2xl font-bold">
-                        {studentToEdit ? "Edit Student" : "Add New Student"}
-                    </SheetTitle>
-                    <SheetDescription className="text-base">
-                        {studentToEdit
-                            ? "Update student details and academic information."
-                            : "Enter comprehensive student details to add them to the system."
-                        }
-                    </SheetDescription>
-                </SheetHeader>
+        <ResponsiveModal 
+            open={open} 
+            onOpenChange={onOpenChange}
+            title={studentToEdit ? "Edit Student Profile" : "Admit New Student"}
+            description={studentToEdit 
+                ? "Update student academic and personal records." 
+                : "Complete the enrollment process to admit a student."}
+        >
+            <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between mb-6">
+                     <div className="flex-1"></div>
+                     <Badge variant="outline" className="px-3 py-1 bg-indigo-50 text-indigo-700 border-indigo-100 hidden sm:flex">
+                        {studentToEdit ? "Update Mode" : "Enrollment Mode"}
+                    </Badge>
+                 </div>
 
-                <div className="mt-6">
-                    {isLoadingData && (
-                        <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                            <span>Loading form data...</span>
-                        </div>
-                    )}
+                {!studentToEdit && (
+                    <div className="mb-8 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                        <Stepper steps={STEPS} currentStep={currentStep} />
+                    </div>
+                )}
 
-                    {dataError && (
-                        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
-                            <p className="text-destructive text-sm">{dataError}</p>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => window.location.reload()}
-                            >
-                                Retry
-                            </Button>
-                        </div>
-                    )}
-
-                    {!isLoadingData && !dataError && (
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
-                                <TabsTrigger
-                                    value="personal"
-                                    className="data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:font-bold text-sm md:text-base"
-                                >
-                                    Personal
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="academic"
-                                    className="data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:font-bold text-sm md:text-base"
-                                >
-                                    Academic
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="contact"
-                                    className="data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:font-bold text-sm md:text-base"
-                                >
-                                    Contact
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="settings"
-                                    className="data-[state=active]:bg-black data-[state=active]:text-white data-[state=active]:font-bold text-sm md:text-base"
-                                >
-                                    Settings
-                                </TabsTrigger>
-                            </TabsList>
-
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
-                                    {/* Personal Information Tab */}
-                                    <TabsContent value="personal" className="space-y-6">
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <Camera className="h-5 w-5" />
-                                                    Profile Information
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    Basic student profile and personal details
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <CardContent className="space-y-6">
-                                                {/* Profile Image */}
-                                                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-                                                    <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100">
-                                                        {profileImageUrl ? (
-                                                            <>
-                                                                <Image
-                                                                    src={profileImageUrl}
-                                                                    alt="Profile"
-                                                                    width={96}
-                                                                    height={96}
-                                                                    className="object-cover"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={clearImage}
-                                                                    className="absolute top-0 right-0 bg-red-500 p-1 rounded-full"
-                                                                >
-                                                                    <X className="h-3 w-3 text-white" />
-                                                                </button>
-                                                            </>
-                                                        ) : (
-                                                            <div className="flex items-center justify-center h-full bg-muted">
-                                                                <Camera className="h-8 w-8 text-muted-foreground" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <Label htmlFor="profileImage" className="text-sm font-medium">
-                                                            Profile Image
-                                                        </Label>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => document.getElementById('profileImage')?.click()}
-                                                            >
-                                                                <Upload className="h-4 w-4 mr-2" />
-                                                                Upload Image
-                                                            </Button>
-                                                            <input
-                                                                id="profileImage"
-                                                                type="file"
-                                                                accept="image/*"
-                                                                onChange={handleImageChange}
-                                                                className="hidden"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Name and Email */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="name"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Full Name</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Enter full name" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="email"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Email Address</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Enter email address" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                {/* Password */}
-                                                <div className="flex flex-col sm:flex-row items-center gap-2">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="password"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex-1">
-                                                                <FormLabel>Password</FormLabel>
-                                                                <FormControl>
-                                                                    <PasswordInput
-                                                                        placeholder="Enter password"
-                                                                        {...field}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={generateNewPassword}
-                                                        className="mt-4 sm:mt-8 w-full sm:w-auto"
-                                                    >
-                                                        Generate
-                                                    </Button>
-                                                </div>
-
-                                                {/* Personal Details */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="dateOfBirth"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Date of Birth</FormLabel>
-                                                                <Popover>
-                                                                    <PopoverTrigger asChild>
-                                                                        <FormControl>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                className={cn(
-                                                                                    "w-full pl-3 text-left font-normal",
-                                                                                    !field.value && "text-muted-foreground"
-                                                                                )}
-                                                                            >
-                                                                                {field.value ? (
-                                                                                    format(field.value, "PPP")
-                                                                                ) : (
-                                                                                    <span>Pick a date</span>
-                                                                                )}
-                                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                            </Button>
-                                                                        </FormControl>
-                                                                    </PopoverTrigger>
-                                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                                        <Calendar
-                                                                            mode="single"
-                                                                            selected={field.value}
-                                                                            onSelect={field.onChange}
-                                                                            disabled={(date) =>
-                                                                                date > new Date() || date < new Date("1900-01-01")
-                                                                            }
-                                                                            initialFocus
-                                                                        />
-                                                                    </PopoverContent>
-                                                                </Popover>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="gender"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Gender</FormLabel>
-                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select gender" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {genderOptions.map((option) => (
-                                                                            <SelectItem key={option.value} value={option.value}>
-                                                                                {option.label}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="religion"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Religion</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Enter religion" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="bloodGroup"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Blood Group</FormLabel>
-                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select blood group" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {bloodGroupOptions.map((option) => (
-                                                                            <SelectItem key={option.value} value={option.value}>
-                                                                                {option.label}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </TabsContent>
-
-                                    {/* Academic Information Tab */}
-                                    <TabsContent value="academic" className="space-y-6">
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <CalendarIcon className="h-5 w-5" />
-                                                    Academic Information
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    Academic details and class assignment
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <CardContent className="space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="admissionDate"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Admission Date</FormLabel>
-                                                                <Popover>
-                                                                    <PopoverTrigger asChild>
-                                                                        <FormControl>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                className={cn(
-                                                                                    "w-full pl-3 text-left font-normal",
-                                                                                    !field.value && "text-muted-foreground"
-                                                                                )}
-                                                                            >
-                                                                                {field.value ? (
-                                                                                    format(field.value, "PPP")
-                                                                                ) : (
-                                                                                    <span>Pick a date</span>
-                                                                                )}
-                                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                            </Button>
-                                                                        </FormControl>
-                                                                    </PopoverTrigger>
-                                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                                        <Calendar
-                                                                            mode="single"
-                                                                            selected={field.value}
-                                                                            onSelect={field.onChange}
-                                                                            disabled={(date) =>
-                                                                                date > new Date() || date < new Date("1900-01-01")
-                                                                            }
-                                                                            initialFocus
-                                                                        />
-                                                                    </PopoverContent>
-                                                                </Popover>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="departmentId"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Department</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select department" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="none">No Department</SelectItem>
-                                                                        {departments.map((dept) => (
-                                                                            <SelectItem key={dept.id} value={dept.id}>
-                                                                                {dept.name}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="levelId"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>School Level</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select level" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="none">No Level</SelectItem>
-                                                                        {levels.map((level) => (
-                                                                            <SelectItem key={level.id} value={level.id}>
-                                                                                {level.name}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="classId"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Class</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select class" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="none">No Class</SelectItem>
-                                                                        {filteredClasses.map((cls) => (
-                                                                            <SelectItem key={cls.id} value={cls.id}>
-                                                                                {cls.name} {cls.section && `(${cls.section})`}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="sessionId"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Academic Session</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select session" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {sessions.map((session) => (
-                                                                            <SelectItem key={session.id} value={session.id}>
-                                                                                {session.name}
-                                                                                {session.isCurrent && (
-                                                                                    <Badge variant="secondary" className="ml-2">
-                                                                                        Current
-                                                                                    </Badge>
-                                                                                )}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="rollNumber"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Roll Number</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Enter roll number" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </TabsContent>
-
-                                    {/* Contact Information Tab */}
-                                    <TabsContent value="contact" className="space-y-6">
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <Mail className="h-5 w-5" />
-                                                    Contact Information
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    Address and contact details
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <CardContent className="space-y-6">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="phone"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Phone Number</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="Enter phone number" {...field} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-
-                                                <FormField
-                                                    control={form.control}
-                                                    name="address"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Address</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea
-                                                                    placeholder="Enter full address"
-                                                                    className="resize-none"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="city"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>City</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Enter city" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="state"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>State</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Enter state" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="country"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Country</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Enter country" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </TabsContent>
-
-                                    {/* Settings Tab */}
-                                    <TabsContent value="settings" className="space-y-6">
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <Send className="h-5 w-5" />
-                                                    Email Settings
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    Configure email notifications for the student
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <CardContent className="space-y-6">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="space-y-0.5">
-                                                        <Label>Send Login Credentials</Label>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Send login credentials to the student's email address
-                                                        </p>
-                                                    </div>
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="sendCredentials"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormControl>
-                                                                    <Switch
-                                                                        checked={field.value}
-                                                                        onCheckedChange={field.onChange}
-                                                                        className="data-[state=checked]:bg-primary-custom data-[state=unchecked]:bg-gray-400"
-                                                                    />
-                                                                </FormControl>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <Separator />
-
-                                                <div className="flex items-center justify-between">
-                                                    <div className="space-y-0.5">
-                                                        <Label>Send Welcome Email</Label>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Send a welcome email with school information
-                                                        </p>
-                                                    </div>
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="sendWelcomeEmail"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormControl>
-                                                                    <Switch
-                                                                        checked={field.value}
-                                                                        onCheckedChange={field.onChange}
-                                                                        className="data-[state=checked]:bg-primary-custom data-[state=unchecked]:bg-gray-400"
-                                                                    />
-                                                                </FormControl>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </TabsContent>
-
-                                    <SheetFooter className="flex flex-col sm:flex-row gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => onOpenChange(false)}
-                                            className="w-full sm:w-auto"
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            type="submit"
-                                            disabled={isLoading || isSendingCredentials}
-                                            className="w-full sm:w-auto"
-                                        >
-                                            {isLoading ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    {studentToEdit ? "Updating..." : "Adding..."}
-                                                </>
-                                            ) : isSendingCredentials ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Sending Credentials...
-                                                </>
+                <div className="flex-1 overflow-y-auto pr-2">
+                     <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            {/* Step 1: Personal Info */}
+                            {(currentStep === 0 || studentToEdit) && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white border-2 border-slate-200">
+                                            {profileImageUrl ? (
+                                                <Image src={profileImageUrl} alt="Profile" fill className="object-cover" />
                                             ) : (
-                                                studentToEdit ? "Update Student" : "Add Student"
+                                                <div className="flex items-center justify-center h-full text-slate-300"><Camera className="w-8 h-8"/></div>
                                             )}
-                                        </Button>
-                                    </SheetFooter>
-                                </form>
-                            </Form>
-                        </Tabs>
+                                        </div>
+                                        <div>
+                                            <Label className="font-semibold">Profile Photo</Label>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("profileImage")?.click()}>
+                                                    <Upload className="w-3 h-3 mr-2"/> Upload
+                                                </Button>
+                                                {profileImageUrl && <Button type="button" variant="ghost" size="sm" onClick={() => {setProfileImage(null); setProfileImageUrl(null)}} className="text-red-500 hover:text-red-600"><X className="w-4 h-4"/></Button>}
+                                                <input id="profileImage" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="name" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="email" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl><Input placeholder="student@school.com" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
+
+                                    {!studentToEdit && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="password" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
+                                                    <FormControl><PasswordInput {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <div className="flex items-end">
+                                                <Button type="button" variant="secondary" onClick={() => form.setValue("password", generatePassword())} className="w-full">
+                                                    Generate Strong Password
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <FormField control={form.control} name="gender" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Gender <span className="text-red-500">*</span></FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                                                    <SelectContent>{genderOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="bloodGroup" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Blood Group <span className="text-red-500">*</span></FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                                                    <SelectContent>{bloodGroupOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="dateOfBirth" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Date of Birth <span className="text-red-500">*</span></FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : "Pick a date"} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
+                                                </Popover>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
+                                    
+                                    <FormField control={form.control} name="religion" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Religion <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl><Input placeholder="e.g. Christianity" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                    )} />
+                                </div>
+                            )}
+
+                            {/* Step 2: Contact Info */}
+                            {(currentStep === 1 || studentToEdit) && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <h3 className={`font-semibold text-lg flex items-center gap-2 ${studentToEdit ? 'pt-6 border-t mt-6' : ''}`}>
+                                        <Mail className="h-4 w-4" /> Contact Information
+                                    </h3>
+                                    <FormField control={form.control} name="address" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Residential Address <span className="text-red-500">*</span></FormLabel>
+                                            <FormControl><Input placeholder="Full street address" {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="phone" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl><Input placeholder="+123456789" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="city" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>City <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl><Input placeholder="City" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="state" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>State <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl><Input placeholder="State/Province" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="country" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Country <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl><Input placeholder="Country" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Step 3: Academic Info */}
+                            {(currentStep === 2 || studentToEdit) && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <h3 className={`font-semibold text-lg flex items-center gap-2 ${studentToEdit ? 'pt-6 border-t mt-6' : ''}`}>
+                                        <CalendarIcon className="h-4 w-4" /> Academic Details
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="departmentId" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Department</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None</SelectItem>
+                                                        {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        
+                                        <FormField control={form.control} name="levelId" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Level</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None</SelectItem>
+                                                        {levels.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+
+                                        <FormField control={form.control} name="classId" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Class</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None</SelectItem>
+                                                        {filteredClasses.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.section ? `(${c.section})` : ""}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+
+                                        <FormField control={form.control} name="sessionId" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Session</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None</SelectItem>
+                                                        {sessions.map(s => <SelectItem key={s.id} value={s.id}>{s.name} {s.isCurrent ? "(Current)" : ""}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+
+                                        <FormField control={form.control} name="admissionDate" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Admission Date</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : "Pick a date"} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
+                                                </Popover>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+
+                                        <FormField control={form.control} name="rollNumber" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Roll Number</FormLabel>
+                                                <FormControl><Input placeholder="Optional" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
+                                </div>
+                            )}
+                        </form>
+                     </Form>
+                </div>
+                
+                <div className="pt-4 border-t mt-4 flex justify-between items-center">
+                    {currentStep > 0 && !studentToEdit ? (
+                        <Button variant="outline" onClick={prevStep} className="rounded-xl px-6">
+                            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                        </Button>
+                    ) : (
+                         <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl px-6">
+                            Cancel
+                        </Button>
+                    )}
+
+                    {!studentToEdit && currentStep < STEPS.length - 1 ? (
+                        <Button onClick={nextStep} className="rounded-xl px-6">
+                            Next Step <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    ) : (
+                        <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading} className="rounded-xl px-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
+                             {isLoading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
+                             {studentToEdit ? "Update Student" : "Complete Admission"}
+                        </Button>
                     )}
                 </div>
-            </SheetContent>
-        </Sheet>
+            </div>
+        </ResponsiveModal>
     )
-} 
+}
