@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth-client';
+import { getSession } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getSession(null);
+        const session = await getSession();
 
         if (!session || (session.role !== 'SCHOOL_ADMIN' && session.role !== 'SUPER_ADMIN')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -184,7 +184,7 @@ async function sendResultNotifications(publicationId: string) {
 // Unpublish results (admin only)
 export async function DELETE(req: NextRequest) {
     try {
-        const session = await getSession(null);
+        const session = await getSession();
 
         if (!session || (session.role !== 'SCHOOL_ADMIN' && session.role !== 'SUPER_ADMIN')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

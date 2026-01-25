@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, TrendingUp, Award, BookOpen } from "lucide-react";
+import { Download, TrendingUp, Award, BookOpen, Loader2 } from "lucide-react";
 import { DashboardHeader } from "@/app/components/dashboard-header";
 import { toast } from "sonner";
 
@@ -258,67 +258,86 @@ export default function MyResultsPage() {
                 </CardContent>
             </Card>
 
+            {/* Download PDF Hero Section */}
+            {results.length > 0 && (
+                <Card className="bg-orange-600 text-white overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-700" />
+                    <CardContent className="p-8 md:p-12 relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                        <div className="space-y-4 text-center md:text-left">
+                            <h2 className="text-3xl font-black tracking-tight">Your Report Card is Ready!</h2>
+                            <p className="text-orange-100 text-lg max-w-md font-medium">
+                                Your results for {periods.find(p => p.id === selectedPeriod)?.name} have been processed. Download the official PDF report card below.
+                            </p>
+                        </div>
+                        <Button 
+                            size="lg"
+                            variant="secondary"
+                            onClick={handleDownloadReportCard}
+                            disabled={downloading}
+                            className="bg-white text-orange-600 hover:bg-orange-50 h-16 px-10 rounded-2xl font-black text-lg shadow-2xl flex items-center gap-3 w-full md:w-auto"
+                        >
+                            {downloading ? (
+                                <Loader2 className="h-6 w-6 animate-spin" />
+                            ) : (
+                                <Download className="h-6 w-6" />
+                            )}
+                            DOWNLOAD AS PDF
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Summary Cards */}
             {metrics && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card className="border-none shadow-lg rounded-2xl bg-white">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-bold text-slate-500">Average Score</CardTitle>
+                            <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600">
+                                <TrendingUp className="h-4 w-4" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{metrics.average}%</div>
-                            <p className="text-xs text-muted-foreground">
-                                Across {metrics.totalSubjects} subjects
+                            <div className="text-3xl font-black text-slate-800">{metrics.average}%</div>
+                            <p className="text-xs text-slate-400 mt-1 font-medium">
+                                From {metrics.totalSubjects} subjects
                             </p>
                         </CardContent>
                     </Card>
 
                     {metrics.position && (
-                        <Card>
+                        <Card className="border-none shadow-lg rounded-2xl bg-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Position in Class</CardTitle>
-                                <Award className="h-4 w-4 text-muted-foreground" />
+                                <CardTitle className="text-sm font-bold text-slate-500">Class Position</CardTitle>
+                                <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                                    <Award className="h-4 w-4" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {metrics.position}/{metrics.totalStudents}
+                                <div className="text-3xl font-black text-slate-800">
+                                    {metrics.position} / {metrics.totalStudents}
                                 </div>
-                                <p className="text-xs text-muted-foreground">Class ranking</p>
+                                <p className="text-xs text-slate-400 mt-1 font-medium">Overall ranking</p>
                             </CardContent>
                         </Card>
                     )}
 
                     {metrics.classAverage && (
-                        <Card>
+                        <Card className="border-none shadow-lg rounded-2xl bg-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Class Average</CardTitle>
-                                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                                <CardTitle className="text-sm font-bold text-slate-500">Class Average</CardTitle>
+                                <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                    <BookOpen className="h-4 w-4" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{metrics.classAverage}%</div>
-                                <p className="text-xs text-muted-foreground">
-                                    {metrics.average > metrics.classAverage ? "Above" : "Below"} average
+                                <div className="text-3xl font-black text-slate-800">{metrics.classAverage}%</div>
+                                <p className="text-xs text-slate-400 mt-1 font-medium">
+                                    Benchmark score
                                 </p>
                             </CardContent>
                         </Card>
                     )}
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Report Card</CardTitle>
-                            <Download className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <Button
-                                onClick={handleDownloadReportCard}
-                                disabled={downloading || results.length === 0}
-                                className="w-full"
-                            >
-                                {downloading ? "Downloading..." : "Download PDF"}
-                            </Button>
-                        </CardContent>
-                    </Card>
                 </div>
             )}
 

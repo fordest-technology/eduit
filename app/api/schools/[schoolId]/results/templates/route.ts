@@ -11,9 +11,10 @@ const forbidden = () =>
 
 const templateSchema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   content: z.any(), // Json
   isDefault: z.boolean().default(false),
+  periodId: z.string().nullable().optional(),
 });
 
 export async function GET(
@@ -30,6 +31,9 @@ export async function GET(
 
     const templates = await prisma.resultTemplate.findMany({
       where: { schoolId },
+      include: {
+        period: true,
+      },
       orderBy: { updatedAt: 'desc' }
     });
 

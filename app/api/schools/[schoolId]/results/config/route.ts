@@ -305,6 +305,15 @@ export async function GET(
       })
     );
 
+    // 3. Return filtered or full results
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get("sessionId");
+
+    if (sessionId) {
+      const config = results.find((r) => r.sessionId === sessionId);
+      return NextResponse.json(config || { periods: [], assessmentComponents: [], gradingScale: [] });
+    }
+
     return NextResponse.json(results);
   } catch (error) {
     console.error("[GET] /schools/[schoolId]/results/config:", error);

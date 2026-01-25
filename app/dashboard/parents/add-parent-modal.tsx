@@ -171,66 +171,7 @@ export function AddParentModal({
         setCurrentStep((prev) => Math.max(prev - 1, 0));
     };
 
-    async function sendLoginCredentials(parentName: string, parentEmail: string, userPassword: string) {
-        setEmailStatus('sending');
-        setEmailError(null);
 
-        try {
-            // Get school information
-            let schoolName = "School";
-            let schoolId = session?.schoolId;
-            let schoolUrl = window.location.origin;
-
-            try {
-                if (schoolId) {
-                    const schoolResponse = await fetch(`/api/schools/${schoolId}`);
-                    if (schoolResponse.ok) {
-                        const schoolData = await schoolResponse.json();
-                        schoolName = schoolData.name || schoolName;
-                        if (schoolData.subdomain) {
-                            schoolUrl = `https://${schoolData.subdomain}.eduit.app`;
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching school info:", err);
-            }
-
-            const response = await fetch("/api/send-credentials", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: parentName,
-                    email: parentEmail,
-                    password: userPassword,
-                    role: "parent",
-                    schoolName: schoolName,
-                    schoolId: schoolId,
-                    schoolUrl: schoolUrl,
-                    revalidate: true,
-                }),
-            });
-
-            if (!response.ok) {
-                const error = await response.text();
-                throw new Error(error || "Failed to send login credentials");
-            }
-
-            setEmailStatus('success');
-            return true;
-        } catch (error) {
-            console.error("Failed to send email:", error);
-            setEmailStatus('error');
-            if (error instanceof Error) {
-                setEmailError(error.message);
-            } else {
-                setEmailError("Failed to send login credentials");
-            }
-            return false;
-        }
-    }
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true);
@@ -280,8 +221,14 @@ export function AddParentModal({
                     throw new Error(result.error || "Failed to save parent");
                 }
 
+                // Check if email was sent by the API for new parents
                 if (!isEditMode) {
-                    await sendLoginCredentials(values.name, values.email, values.password || "");
+                    if (result.emailSent) {
+                        setEmailStatus('success');
+                    } else {
+                        setEmailStatus('error');
+                        setEmailError("Email delivery failed");
+                    }
                 }
 
                 router.refresh();

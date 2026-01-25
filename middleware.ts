@@ -14,6 +14,9 @@ const publicPaths = [
   "/api/webhooks",
   "/api/payments/webhook",
   "/api/schools/register",
+  "/api/auth/reset-password",
+  "/api/auth/verify-code",
+  "/api/auth/confirm-reset",
 ];
 
 const allowedOrigins = [
@@ -55,7 +58,7 @@ export async function middleware(request: NextRequest) {
   const user = sessionToken ? await verifyJwt(sessionToken) : null;
 
   const isPublic = publicPaths.some((p) => path.startsWith(p)) || 
-                  path === "/" || path === "/login" || path === "/register" ||
+                  path === "/" || path === "/login" || path === "/register" || path === "/forgot-password" ||
                   path.startsWith("/_next") || path.startsWith("/static") || path === "/favicon.ico";
 
   // API routes

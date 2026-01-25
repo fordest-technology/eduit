@@ -12,10 +12,11 @@ interface Event {
 }
 
 interface ParentEventsPageProps {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function ParentEventsPage({ searchParams }: ParentEventsPageProps) {
+    const params = await searchParams;
     // TODO: Fetch events data from your API
     const upcomingEvents: Event[] = []
 

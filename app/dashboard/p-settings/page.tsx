@@ -10,10 +10,11 @@ import { UserRole } from "@prisma/client"
 import { Separator } from "@/components/ui/separator"
 
 interface ParentSettingsPageProps {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function ParentSettingsPage({ searchParams }: ParentSettingsPageProps) {
+    const params = await searchParams;
     const session = await getSession()
 
     if (!session) {

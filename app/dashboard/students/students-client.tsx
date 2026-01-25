@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { columns } from "./columns"
 import { Button } from "@/components/ui/button"
 import { Plus, Users, GraduationCap, School, Search, X, MoreHorizontal } from "lucide-react"
@@ -105,7 +105,16 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
     const [selectedClass, setSelectedClass] = useState<string>('')
     const [selectedDepartment, setSelectedDepartment] = useState<string>('')
 
+    const isFirstMount = useRef(true)
+
     useEffect(() => {
+        // Skip the initial fetch if we already have initialStudents from the server
+        // and no filters are applied yet
+        if (isFirstMount.current && !selectedClass && !selectedDepartment && initialStudents.length > 0) {
+            isFirstMount.current = false
+            return
+        }
+
         async function getStudents() {
             try {
                 setIsLoading(true)
@@ -132,7 +141,8 @@ export function StudentsClient({ students: initialStudents, stats, error: initia
             }
         }
         getStudents()
-    }, [selectedClass, selectedDepartment])
+        isFirstMount.current = false
+    }, [selectedClass, selectedDepartment, initialStudents])
 
     useEffect(() => {
         // Fetch levels for filtering

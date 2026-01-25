@@ -19,6 +19,10 @@ export interface Period {
   id: string;
   name: string;
   weight: number;
+  status?: "ACTIVE" | "INACTIVE" | "GRADING" | "PUBLISHED" | "CLOSED";
+  startDate?: string;
+  endDate?: string;
+  isCurrent?: boolean;
 }
 
 export interface Session {

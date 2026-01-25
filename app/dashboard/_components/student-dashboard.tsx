@@ -16,6 +16,8 @@ import {
     Clock,
     UserCircle,
     ArrowUpRight,
+    Download,
+    Sparkles,
 } from "lucide-react";
 import { DashboardHeader } from "@/app/components/dashboard-header";
 import Link from "next/link";
@@ -252,6 +254,28 @@ export default function StudentDashboard() {
                                     Awaiting assessment data...
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-2xl shadow-indigo-200/50 rounded-[2.5rem] bg-orange-600 overflow-hidden text-white relative group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-700" />
+                        <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center gap-8">
+                            <div className="flex-1 text-center md:text-left">
+                                <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
+                                    <Sparkles className="h-4 w-4 text-orange-200" />
+                                    <span className="text-[10px] font-black text-orange-200 uppercase tracking-[0.2em]">Official Announcement</span>
+                                </div>
+                                <h4 className="text-2xl font-black font-sora tracking-tight mb-2">Your Report Card is Ready</h4>
+                                <p className="text-orange-100 font-medium text-base max-w-md">The academic results for the current term have been published and are ready for download.</p>
+                            </div>
+                            <div className="flex flex-col gap-3 w-full md:w-auto">
+                                <Link href="/dashboard/my-results">
+                                    <Button className="w-full md:w-48 h-14 rounded-[1rem] bg-white text-orange-600 hover:bg-orange-50 border-none font-black text-sm transition-all duration-300 shadow-xl shadow-orange-900/20">
+                                        <Download className="h-5 w-5 mr-2" />
+                                        DOWNLOAD PDF
+                                    </Button>
+                                </Link>
+                            </div>
                         </CardContent>
                     </Card>
 

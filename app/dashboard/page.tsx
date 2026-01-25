@@ -19,9 +19,10 @@ const StudentDashboard = dynamic(() => import("./_components/student-dashboard")
 const UpcomingEvents = dynamic(() => import("./upcoming-events").then(mod => mod.UpcomingEvents))
 const SuperAdminDashboard = dynamic(() => import("./_components/super-admin-dashboard").then(mod => mod.SuperAdminDashboard))
 
-export default async function DashboardPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const session = await getSession()
-  const show = searchParams.show as string | undefined;
+  const params = await searchParams;
+  const show = params.show as string | undefined;
 
   if (!session) {
     redirect("/login")

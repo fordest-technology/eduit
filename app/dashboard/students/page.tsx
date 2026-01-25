@@ -47,14 +47,15 @@ export default async function StudentsPage() {
             throw new Error("No current academic session found")
         }
 
-        // Fetch students with optimized query
+        // Fetch students with optimized query using select instead of include
         const students = await prisma.student.findMany({
             where: {
                 user: {
                     schoolId: session.schoolId,
                 },
             },
-            include: {
+            select: {
+                id: true,
                 user: {
                     select: {
                         id: true,
@@ -68,7 +69,11 @@ export default async function StudentsPage() {
                         sessionId: currentSession.id,
                         status: "ACTIVE",
                     },
-                    include: {
+                    select: {
+                        id: true,
+                        rollNumber: true,
+                        section: true,
+                        status: true,
                         class: {
                             select: {
                                 id: true,
@@ -91,7 +96,6 @@ export default async function StudentsPage() {
                                 user: {
                                     select: {
                                         name: true,
-                                        email: true,
                                     },
                                 },
                             },

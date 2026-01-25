@@ -28,18 +28,43 @@ export async function GET(
 
     logger.info("Fetching school classes", { schoolId: schoolId });
 
-    // Get query parameters for filtering
-    const url = new URL(request.url);
-    const teacherIdParam = url.searchParams.get("teacherId");
+    let schoolClasses = [];
 
-    let classes;
+    // Check if user is a teacher and filter classes
+    if (session.role === "TEACHER") {
+      // Find the teacher profile for this user
+      const teacherProfile = await prisma.teacher.findFirst({
+        where: {
+          userId: session.id,
+        },
+      });
 
-    // If teacherId is provided and user is a teacher, only return classes for that teacher
-    if (teacherIdParam && session.role === "TEACHER") {
-      classes = await prisma.class.findMany({
+      if (!teacherProfile) {
+        logger.warn("Teacher profile not found for user", { userId: session.id });
+        return NextResponse.json([]);
+      }
+
+      schoolClasses = await prisma.class.findMany({
         where: {
           schoolId: schoolId,
-          teacherId: teacherIdParam,
+          OR: [
+            // 1. Is Form Teacher
+            { teacherId: teacherProfile.id },
+            // 2. Is Subject Teacher for this class
+            {
+              subjects: {
+                some: {
+                  subject: {
+                    teachers: {
+                      some: {
+                        teacherId: teacherProfile.id,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
         },
         orderBy: { name: "asc" },
         include: {
@@ -49,11 +74,14 @@ export async function GET(
               name: true,
             },
           },
+          _count: {
+            select: { students: true }
+          }
         },
       });
     } else {
       // For admins or other roles, return all classes
-      classes = await prisma.class.findMany({
+      schoolClasses = await prisma.class.findMany({
         where: {
           schoolId: schoolId,
         },
@@ -65,18 +93,27 @@ export async function GET(
               name: true,
             },
           },
+          _count: {
+            select: { students: true }
+          }
         },
       });
     }
 
+    // Transform to include studentCount from _count
+    const transformedClasses = schoolClasses.map(c => ({
+      ...c,
+      studentCount: c._count.students
+    }));
+
     const duration = Date.now() - startTime;
     logger.api("GET /api/schools/[schoolId]/classes", duration, {
       schoolId: schoolId,
-      count: classes.length,
-      teacherId: teacherIdParam || null,
+      count: schoolClasses.length,
+      role: session.role,
     });
 
-    return NextResponse.json(classes);
+    return NextResponse.json(transformedClasses);
   } catch (error) {
     const duration = Date.now() - startTime;
     logger.error("Error fetching school classes", error, {

@@ -352,6 +352,7 @@ export function ResultsManagementContainer({
                 components={components}
                 selectedClassId={selectedClassId}
                 canEditAllSubjects={canEditAllSubjects}
+                teacherInfo={teacherInfo}
               />
             </TabsContent>
 

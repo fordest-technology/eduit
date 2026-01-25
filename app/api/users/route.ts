@@ -5,7 +5,7 @@ import { Database } from "@/lib/db/index";
 import { getSession } from "@/lib/auth";
 import { uploadImage } from "@/lib/cloudinary";
 import { UserRole } from "@prisma/client";
-import { sendTeacherCredentialsEmail } from "@/lib/email";
+import { sendTeacherCredentialsEmail, sendStudentCredentialsEmail, sendWelcomeEmail } from "@/lib/email";
 import { sanitizeInput } from "@/lib/security";
 
 export async function GET(request: NextRequest) {
@@ -277,13 +277,40 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    // Generate actual school URL
+    const schoolUrl = school?.subdomain 
+      ? `https://${school.subdomain}.eduit.app` 
+      : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    // Send credentials based on role
     if (role === UserRole.TEACHER) {
       await sendTeacherCredentialsEmail({
         email,
         password,
         name,
         schoolName: school.name,
-        schoolUrl: `https://${school.subdomain}.yourdomain.com`,
+        schoolUrl,
+        schoolId: finalSchoolId,
+      });
+    } else if (role === UserRole.STUDENT) {
+      await sendStudentCredentialsEmail({
+        studentName: name,
+        studentEmail: email,
+        password,
+        schoolName: school.name,
+        schoolUrl,
+        schoolId: finalSchoolId,
+      });
+    } else {
+      // For Parents and Admins
+      await sendWelcomeEmail({
+        name,
+        email,
+        password,
+        role,
+        schoolName: school.name,
+        schoolUrl,
+        schoolId: finalSchoolId,
       });
     }
 

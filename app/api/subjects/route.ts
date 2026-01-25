@@ -217,10 +217,51 @@ export async function POST(req: Request) {
            });
         }
         
-        return newSubject;
+        // Return the full subject with includes
+        return await tx.subject.findUnique({
+            where: { id: newSubject.id },
+            include: {
+                department: true,
+                level: true,
+                teachers: {
+                    include: {
+                        teacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        profileImage: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                _count: {
+                    select: {
+                        classes: true,
+                        teachers: true,
+                    }
+                }
+            }
+        });
     });
 
-    return NextResponse.json(subject);
+    // Transform the data to match the frontend structure
+    const transformedSubject = {
+      ...subject,
+      teachers: subject?.teachers.map((t) => ({
+        teacher: {
+          id: t.teacher.id,
+          name: t.teacher.user.name,
+          profileImage: t.teacher.user.profileImage,
+          userId: t.teacher.user.id,
+        },
+      })) || [],
+    };
+
+    return NextResponse.json(transformedSubject);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new NextResponse(JSON.stringify(error.issues), { status: 422 });

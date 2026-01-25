@@ -42,7 +42,7 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { schoolId } = params;
+        const { schoolId } = await Promise.resolve(params);
 
         // Verify user has access to this school's data
         if (session.role === "PARENT") {

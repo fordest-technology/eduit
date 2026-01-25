@@ -467,12 +467,12 @@ export async function POST(request: NextRequest) {
       const school = await withErrorHandling(async () => {
         return await db.school.findUnique({
           where: { id: schoolId },
-          select: { name: true, domain: true }
+          select: { name: true, subdomain: true }
         });
       });
 
-      const schoolUrl = school?.domain
-        ? `https://${school.domain}`
+      const schoolUrl = school?.subdomain
+        ? `https://${school.subdomain}.eduit.app`
         : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
       await sendTeacherCredentialsEmail({

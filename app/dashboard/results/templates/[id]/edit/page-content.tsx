@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Save, ArrowLeft, LayoutTemplate, Type, Image as ImageIcon, Box, Grid, ZoomIn, ZoomOut, Undo, Redo } from "lucide-react";
+import { Save, ArrowLeft, LayoutTemplate, Type, Image as ImageIcon, Box, Grid, ZoomIn, ZoomOut, Undo, Redo, Eye } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Slider } from "@/components/ui/slider";
@@ -72,6 +72,9 @@ export default function EditTemplatePage() {
             } else if (e.key === 's' || e.key === 'S') {
                 e.preventDefault();
                 handleSave();
+            } else if (e.key === 'p' || e.key === 'P') {
+                e.preventDefault();
+                handlePreview();
             }
             return;
         }
@@ -109,29 +112,49 @@ export default function EditTemplatePage() {
         const session = await getSession();
         if (!session?.schoolId) return;
 
-        // Fetch both template and school data
-        const [templateRes, schoolRes] = await Promise.all([
+        // Fetch template, school data and configuration
+        const [templateRes, schoolRes, configRes] = await Promise.all([
           fetch(`/api/schools/${session.schoolId}/results/templates/${params.id}`),
-          fetch(`/api/schools/${session.schoolId}`)
+          fetch(`/api/schools/current`),
+          fetch(`/api/schools/${session.schoolId}/results/config-client`)
         ]);
 
         if (!templateRes.ok) throw new Error("Failed to load template");
         
         const templateData = await templateRes.json();
         setTemplateName(templateData.name);
+
+        let assessmentComponents = [];
+        if (configRes.ok) {
+            const configData = await configRes.json();
+            console.log("[EDITOR_LOAD] Configuration loaded:", {
+                sessionId: configData.sessionId,
+                componentsCount: configData.assessmentComponents?.length || 0,
+                isNew: configData.isNew
+            });
+            assessmentComponents = configData.assessmentComponents || [];
+        } else {
+            console.warn("[EDITOR_LOAD] Could not load school configuration:", configRes.status);
+        }
         
         if (schoolRes.ok) {
-          const schoolData = await schoolRes.json();
-          setSchoolData({
-            name: schoolData.name,
-            logo: schoolData.logo,
-            primaryColor: schoolData.primaryColor || "#1e40af",
-            secondaryColor: schoolData.secondaryColor || "#fbbf24",
-            address: schoolData.address,
-            phone: schoolData.phone,
-            email: schoolData.email,
-            motto: schoolData.motto,
-          });
+          const res = await schoolRes.json();
+          const schoolData = res.school; // The endpoint returns { school: { ... } }
+          
+          if (schoolData) {
+            console.log("[EDITOR_LOAD] School data matched:", schoolData.name);
+            setSchoolData({
+              name: schoolData.name,
+              logo: schoolData.logo,
+              primaryColor: schoolData.primaryColor || "#1e40af",
+              secondaryColor: schoolData.secondaryColor || "#fbbf24",
+              address: schoolData.address,
+              phone: schoolData.phone,
+              email: schoolData.email,
+              motto: schoolData.motto,
+              assessmentComponents: assessmentComponents.length > 0 ? assessmentComponents : undefined,
+            });
+          }
         }
         
         // Initialize editor store with saved content or defaults
@@ -169,6 +192,35 @@ export default function EditTemplatePage() {
       toast.error("Error saving template");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const [previewing, setPreviewing] = useState(false);
+
+  const handlePreview = async () => {
+    setPreviewing(true);
+    try {
+      const state = getEditorState();
+      
+      const res = await fetch("/api/results/templates/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template: state,
+          schoolData: state.schoolData,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Preview failed");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Error generating preview");
+    } finally {
+      setPreviewing(false);
     }
   };
 
@@ -229,6 +281,11 @@ export default function EditTemplatePage() {
                         <ZoomIn className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-600" onClick={() => setZoom(Math.min(2, zoom + 0.1))} />
                      </div>
                  </div>
+
+                 <Button variant="outline" onClick={handlePreview} disabled={previewing} className="border-slate-200">
+                    <Eye className="h-4 w-4 mr-2" />
+                    {previewing ? "Generating..." : "Preview PDF"}
+                 </Button>
 
                  <Button onClick={handleSave} disabled={saving} className="bg-orange-600 hover:bg-orange-700">
                     <Save className="h-4 w-4 mr-2" />

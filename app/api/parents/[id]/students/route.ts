@@ -254,6 +254,40 @@ export async function POST(
       },
     });
 
+    // Send notification email to parent about the new student linkage
+    try {
+      const parentUserWithEmail = await db.user.findUnique({
+        where: { id: parentUser.id },
+        select: { email: true }
+      });
+
+      if (parentUserWithEmail?.email) {
+        const school = await db.school.findUnique({
+          where: { id: parentUser.schoolId! },
+          select: { name: true, subdomain: true }
+        });
+
+        const schoolUrl = school?.subdomain
+          ? `https://${school.subdomain}.eduit.app`
+          : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+        const { sendParentStudentLinkageEmail } = await import("@/lib/email");
+        
+        await sendParentStudentLinkageEmail({
+          parentName: parentUser.name,
+          parentEmail: parentUserWithEmail.email,
+          studentName: studentRecord.user.name,
+          schoolName: school?.name || "School",
+          schoolUrl,
+          relation: relation,
+        });
+      }
+    } catch (emailError) {
+      // Log error but don't fail the linkage operation
+      console.error("[API_PARENTS_STUDENTS] Failed to send parent notification email:", emailError);
+    }
+
+
     return NextResponse.json({
       id: result.student.user.id,
       name: result.student.user.name,

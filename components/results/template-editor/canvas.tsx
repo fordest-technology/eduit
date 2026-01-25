@@ -414,6 +414,17 @@ function DraggableElement({
                     </div>
                 );
             
+            case 'line':
+                return (
+                    <div 
+                        style={{
+                            ...commonStyle,
+                            backgroundColor: element.style.backgroundColor || '#000000',
+                            height: `${element.height}px`,
+                        }}
+                    />
+                );
+
             case 'table':
                 const rows = element.metadata?.rows || 3;
                 const cols = element.metadata?.cols || 3;
@@ -484,7 +495,10 @@ function DraggableElement({
                                             className="border-r last:border-r-0 px-1 py-0.5 flex items-center justify-center overflow-hidden"
                                             style={{ borderColor: borderColor }}
                                         >
-                                            <span className="text-slate-300 text-[8px] select-none">
+                                            <span 
+                                                className="text-slate-300 select-none"
+                                                style={{ fontSize: element.style.fontSize || 9 }}
+                                            >
                                                 {tableType === 'subjects' && colIdx === 0 ? 'Subject' : ''}
                                             </span>
                                         </div>
@@ -531,8 +545,9 @@ function DraggableElement({
             <ContextMenuTrigger asChild>
                 <div
                     className={cn(
-                        "absolute select-none group touch-none transition-all duration-100",
-                        isLocked ? "cursor-not-allowed" : "cursor-move",
+                        "absolute select-none group touch-none",
+                        !isDragging && !isResizing && "transition-all duration-100",
+                        isLocked ? "cursor-not-allowed" : (isDragging ? "cursor-grabbing" : "cursor-pointer"),
                         element.groupId && "ring-1 ring-purple-300/50"
                     )}
                     style={{
