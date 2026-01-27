@@ -32,7 +32,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/64</span>
+                <span class='fraction'>0/69</span>
             </div>
         
             
@@ -600,7 +600,29 @@
 <a name='L535'></a><a href='#L535'>535</a>
 <a name='L536'></a><a href='#L536'>536</a>
 <a name='L537'></a><a href='#L537'>537</a>
-<a name='L538'></a><a href='#L538'>538</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L538'></a><a href='#L538'>538</a>
+<a name='L539'></a><a href='#L539'>539</a>
+<a name='L540'></a><a href='#L540'>540</a>
+<a name='L541'></a><a href='#L541'>541</a>
+<a name='L542'></a><a href='#L542'>542</a>
+<a name='L543'></a><a href='#L543'>543</a>
+<a name='L544'></a><a href='#L544'>544</a>
+<a name='L545'></a><a href='#L545'>545</a>
+<a name='L546'></a><a href='#L546'>546</a>
+<a name='L547'></a><a href='#L547'>547</a>
+<a name='L548'></a><a href='#L548'>548</a>
+<a name='L549'></a><a href='#L549'>549</a>
+<a name='L550'></a><a href='#L550'>550</a>
+<a name='L551'></a><a href='#L551'>551</a>
+<a name='L552'></a><a href='#L552'>552</a>
+<a name='L553'></a><a href='#L553'>553</a>
+<a name='L554'></a><a href='#L554'>554</a>
+<a name='L555'></a><a href='#L555'>555</a>
+<a name='L556'></a><a href='#L556'>556</a>
+<a name='L557'></a><a href='#L557'>557</a>
+<a name='L558'></a><a href='#L558'>558</a>
+<a name='L559'></a><a href='#L559'>559</a>
+<a name='L560'></a><a href='#L560'>560</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -889,6 +911,28 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1431,7 +1475,29 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
 &nbsp;
     return (
         &lt;div className="space-y-8"&gt;
-            {<span class="branch-0 cbranch-no" title="branch not covered" >selectedClassId &amp;&amp; (</span>
+            {/* Check if periods exist */}
+            {<span class="branch-0 cbranch-no" title="branch not covered" >periods.length === 0 &amp;&amp; (</span>
+                &lt;Alert className="bg-amber-50 border-amber-200"&gt;
+                    &lt;InfoIcon className="h-4 w-4 text-amber-600" /&gt;
+                    &lt;AlertTitle className="text-amber-800"&gt;No Academic Periods&lt;/AlertTitle&gt;
+                    &lt;AlertDescription className="text-amber-700"&gt;
+                        No academic periods (terms) have been configured. Please go to the Configuration tab to set up periods.
+                    &lt;/AlertDescription&gt;
+                &lt;/Alert&gt;
+            )}
+&nbsp;
+            {/* Check if students exist */}
+            {students.length === 0 &amp;&amp; selectedClassId &amp;&amp; (
+                &lt;Alert className="bg-blue-50 border-blue-200"&gt;
+                    &lt;InfoIcon className="h-4 w-4 text-blue-600" /&gt;
+                    &lt;AlertTitle className="text-blue-800"&gt;No Students Found&lt;/AlertTitle&gt;
+                    &lt;AlertDescription className="text-blue-700"&gt;
+                        No active students were found in the selected class. Please ensure students are enrolled in this class.
+                    &lt;/AlertDescription&gt;
+                &lt;/Alert&gt;
+            )}
+&nbsp;
+            {selectedClassId &amp;&amp; students.length &gt; 0 &amp;&amp; periods.length &gt; 0 &amp;&amp; (
                 &lt;Alert&gt;
                     &lt;InfoIcon className="h-4 w-4" /&gt;
                     &lt;AlertTitle&gt;Filtered by Class&lt;/AlertTitle&gt;
@@ -1681,7 +1747,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

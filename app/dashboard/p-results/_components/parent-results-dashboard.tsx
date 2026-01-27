@@ -26,6 +26,7 @@ interface ParentResultsDashboardProps {
             } | null;
         }[];
         schoolId: string;
+        schoolName: string;
     };
 }
 
@@ -73,8 +74,11 @@ export function ParentResultsDashboard({ data }: ParentResultsDashboardProps) {
             const configData = await periodsRes.json();
             if (configData.periods) {
                 setPeriods(configData.periods);
-                // Pre-select the last period (usually the most recent)
-                if (configData.periods.length > 0) {
+                // Pre-select the current period or the one with ACTIVE status, fallback to last
+                const currentPeriod = configData.periods.find((p: any) => p.isCurrent || p.status === 'ACTIVE');
+                if (currentPeriod) {
+                    setSelectedPeriod(currentPeriod.id);
+                } else if (configData.periods.length > 0) {
                     setSelectedPeriod(configData.periods[configData.periods.length - 1].id);
                 }
             }
@@ -118,7 +122,9 @@ export function ParentResultsDashboard({ data }: ParentResultsDashboardProps) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `Report_Card_${childName.replace(/\s+/g, '_')}.pdf`;
+            const schoolName = data.schoolName.replace(/\s+/g, '_');
+            const studentName = childName.replace(/\s+/g, '_');
+            a.download = `${schoolName}_${studentName}_Report.pdf`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -185,9 +191,11 @@ export function ParentResultsDashboard({ data }: ParentResultsDashboardProps) {
                                             <SelectTrigger className="rounded-2xl h-14 border-slate-100 font-bold focus:ring-indigo-500/20">
                                                 <SelectValue placeholder="Select period" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                             <SelectContent className="rounded-2xl border-none shadow-2xl">
                                                 {periods.map((p) => (
-                                                    <SelectItem key={p.id} value={p.id} className="rounded-xl font-bold py-3">{p.name}</SelectItem>
+                                                    <SelectItem key={p.id} value={p.id} className="rounded-xl font-bold py-3">
+                                                        {p.name} {p.isCurrent && "(Current)"} {p.status && p.status !== 'ACTIVE' && p.status !== 'INACTIVE' && `[${p.status}]`}
+                                                    </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -195,19 +203,31 @@ export function ParentResultsDashboard({ data }: ParentResultsDashboardProps) {
                                 </div>
                             </Card>
 
-                            <Card className="lg:col-span-4 border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-indigo-600 p-8 flex flex-col justify-center text-white relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
-                                <div className="relative z-10 space-y-4">
-                                    <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em]">Official Records</p>
-                                    <Button
-                                        onClick={() => handleDownload(child.id, child.user.name)}
-                                        disabled={downloading || results.length === 0}
-                                        className="w-full bg-white text-indigo-600 hover:bg-white/90 rounded-2xl h-14 font-black shadow-lg shadow-indigo-900/20 gap-2 text-sm uppercase tracking-wider"
-                                    >
-                                        {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                        Get Report Card
-                                    </Button>
-                                </div>
+                            <Card className="lg:col-span-12 border-none shadow-2xl shadow-indigo-200/50 rounded-[2.5rem] bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-700 p-10 flex flex-col md:flex-row items-center justify-between text-white relative overflow-hidden group">
+                                 <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -mr-40 -mt-40 group-hover:scale-150 transition-transform duration-700" />
+                                 <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-400/20 rounded-full blur-2xl -ml-20 -mb-20" />
+                                 
+                                 <div className="relative z-10 space-y-4 text-center md:text-left">
+                                     <div className="flex items-center gap-3 justify-center md:justify-start">
+                                         <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                                             <Sparkles className="h-5 w-5 text-indigo-100" />
+                                         </div>
+                                         <p className="text-[10px] font-black text-indigo-100 uppercase tracking-[0.2em]">Official Digital Records</p>
+                                     </div>
+                                     <h2 className="text-3xl font-black font-sora tracking-tight">Report Card is Ready!</h2>
+                                     <p className="text-indigo-100 max-w-md font-medium">Download the official academic transcript for {child.user.name} for the selected term.</p>
+                                 </div>
+
+                                 <div className="relative z-10 mt-8 md:mt-0 w-full md:w-auto">
+                                     <Button
+                                         onClick={() => handleDownload(child.id, child.user.name)}
+                                         disabled={downloading || results.length === 0}
+                                         className="w-full md:w-auto bg-white text-indigo-600 hover:bg-slate-50 rounded-2xl h-16 px-12 font-black shadow-xl shadow-indigo-900/20 gap-3 text-lg transition-all active:scale-95"
+                                     >
+                                         {downloading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Download className="h-6 w-6" />}
+                                         DOWNLOAD AS PDF
+                                     </Button>
+                                 </div>
                             </Card>
                         </div>
 

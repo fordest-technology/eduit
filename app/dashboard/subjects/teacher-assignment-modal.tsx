@@ -73,11 +73,10 @@ export function TeacherAssignmentModal({
     )
 
     const handleToggleTeacher = (teacherId: string) => {
-        setSelectedTeachers(prev =>
-            prev.includes(teacherId)
-                ? prev.filter(id => id !== teacherId)
-                : [...prev, teacherId]
-        )
+        // Since we want radio button behavior (only one teacher),
+        // filtering out everything else and just setting the new one.
+        // If clicking the same one, we keep it selected (or could toggle off, but radio usually stays)
+        setSelectedTeachers([teacherId])
     }
 
     const handleSubmit = async () => {
@@ -98,9 +97,9 @@ export function TeacherAssignmentModal({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right">
                 <SheetHeader className="mb-6">
-                    <SheetTitle>Assign Teachers</SheetTitle>
+                    <SheetTitle>Assign Teacher</SheetTitle>
                     <SheetDescription>
-                        {subject ? `Assign teachers to ${subject.name}` : 'Select teachers to assign'}
+                        {subject ? `Assign a teacher to ${subject.name}` : 'Select a teacher to assign'}
                     </SheetDescription>
                 </SheetHeader>
 
@@ -140,10 +139,11 @@ export function TeacherAssignmentModal({
                                             <span>{teacher.name}</span>
                                         </div>
                                         <input
-                                            type="checkbox"
+                                            type="radio"
+                                            name="teacher-selection"
                                             checked={selectedTeachers.includes(teacher.id)}
                                             onChange={() => { }} // Handled by div click
-                                            className="h-4 w-4"
+                                            className="h-4 w-4 rounded-full"
                                         />
                                     </div>
                                 ))}
@@ -152,7 +152,7 @@ export function TeacherAssignmentModal({
                     </div>
 
                     <div className="text-sm text-muted-foreground">
-                        {selectedTeachers.length} teachers selected
+                        {selectedTeachers.length > 0 ? "1 teacher selected" : "No teacher selected"}
                     </div>
                 </div>
 
@@ -175,7 +175,7 @@ export function TeacherAssignmentModal({
                                 Assigning...
                             </>
                         ) : (
-                            "Assign Teachers"
+                            "Assign Teacher"
                         )}
                     </Button>
                 </SheetFooter>

@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -488,6 +489,7 @@ model SchoolLevel {
   classes     Class[]
   school      School    @relation(fields: [schoolId], references: [id])
   subjects    Subject[]
+  resultTemplates ResultTemplate[]
 
   @@unique([schoolId, name])
 }
@@ -557,6 +559,7 @@ model ResultConfiguration {
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   sessionId             String
+  currentPeriodId       String?
   assessmentComponents  AssessmentComponent[]
   gradingScale          GradingScale[]
   school                School                @relation(fields: [schoolId], references: [id])
@@ -570,12 +573,17 @@ model ResultPeriod {
   id                 String              @id @default(cuid())
   name               String
   weight             Float               @default(1)
+  status             PeriodStatus        @default(INACTIVE)
+  startDate          DateTime?
+  endDate            DateTime?
+  isCurrent          Boolean             @default(false)
   configurationId    String
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   results            Result[]
   configuration      ResultConfiguration @relation(fields: [configurationId], references: [id])
   resultPublications ResultPublication[]
+  resultTemplates    ResultTemplate[]
 }
 
 model AssessmentComponent {
@@ -663,11 +671,17 @@ model ResultTemplate {
   content     Json
   isDefault   Boolean  @default(false)
   schoolId    String
+  levelId     String?
+  periodId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   school      School   @relation(fields: [schoolId], references: [id])
+  level       SchoolLevel? @relation(fields: [levelId], references: [id])
+  period      ResultPeriod? @relation(fields: [periodId], references: [id])
 
   @@index([schoolId])
+  @@index([levelId])
+  @@index([periodId])
 }
 
 enum UserRole {
@@ -731,4 +745,12 @@ enum SquadPaymentStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+enum PeriodStatus {
+  ACTIVE
+  INACTIVE
+  GRADING
+  PUBLISHED
+  CLOSED
 }

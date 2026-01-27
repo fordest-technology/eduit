@@ -3,7 +3,7 @@
 import { createContext, useContext, useRef, ReactNode } from "react";
 import { createStore, useStore } from "zustand";
 
-export type ElementType = "text" | "image" | "shape" | "dynamic" | "table" | "watermark";
+export type ElementType = "text" | "image" | "shape" | "dynamic" | "table" | "watermark" | "line";
 
 export interface CanvasElement {
   id: string;
@@ -28,6 +28,13 @@ export interface SchoolData {
   phone?: string;
   email?: string;
   motto?: string;
+  assessmentComponents?: {
+    id: string;
+    name: string;
+    key: string;
+    maxScore: number;
+    weight: number;
+  }[];
 }
 
 interface EditorState {
@@ -163,8 +170,8 @@ const createEditorStore = (initialData: any = {}) => {
           type,
           x,
           y,
-          width: type === "text" ? 200 : type === "table" ? 500 : 100,
-          height: type === "text" ? 40 : type === "table" ? 200 : 100,
+          width: type === "text" ? 200 : type === "table" ? 500 : type === "line" ? 200 : 100,
+          height: type === "text" ? 40 : type === "table" ? 200 : type === "line" ? 2 : 100,
           content: type === "text" ? "Double click to edit" : undefined,
           style: {
             fontSize: 14,
@@ -419,9 +426,19 @@ const createEditorStore = (initialData: any = {}) => {
         if (el.id !== id || el.type !== "table") return el;
         const currentCols = el.metadata?.cols || 3;
         if (currentCols >= 12) return el;
+        
+        const headers = [...(el.metadata?.headers || [])];
+        while (headers.length < currentCols + 1) headers.push("");
+        
+        const columnWidths = [...(el.metadata?.columnWidths || [])];
+        if (columnWidths.length === 0) {
+            for(let i=0; i<currentCols; i++) columnWidths.push(1);
+        }
+        columnWidths.push(1);
+        
         return {
           ...el,
-          metadata: { ...el.metadata, cols: currentCols + 1 }
+          metadata: { ...el.metadata, cols: currentCols + 1, headers, columnWidths }
         };
       }),
     })),
@@ -432,9 +449,13 @@ const createEditorStore = (initialData: any = {}) => {
         if (el.id !== id || el.type !== "table") return el;
         const currentCols = el.metadata?.cols || 3;
         if (currentCols <= 1) return el;
+        
+        const headers = (el.metadata?.headers || []).slice(0, currentCols - 1);
+        const columnWidths = (el.metadata?.columnWidths || []).slice(0, currentCols - 1);
+        
         return {
           ...el,
-          metadata: { ...el.metadata, cols: currentCols - 1 }
+          metadata: { ...el.metadata, cols: currentCols - 1, headers, columnWidths }
         };
       }),
     })),
@@ -535,6 +556,7 @@ const createEditorStore = (initialData: any = {}) => {
     getState: () => ({
       elements: get().elements,
       canvasSize: get().canvasSize,
+      schoolData: get().schoolData,
     }),
   };});
 };

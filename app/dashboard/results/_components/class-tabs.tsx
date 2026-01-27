@@ -30,6 +30,9 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
   const searchParams = useSearchParams();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Grouping state
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string | null>(
     searchParams.get("classId") || defaultClass
   );
@@ -44,6 +47,18 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
         }
         const data = await response.json();
         setClasses(data);
+
+        // If a class is already selected, set the level
+        const currentClassId = searchParams.get("classId") || defaultClass;
+        if (currentClassId) {
+          const cls = data.find((c: Class) => c.id === currentClassId);
+          if (cls) {
+            setSelectedLevel(cls.name);
+          }
+        } else if (data.length > 0) {
+           // Optional: Auto-select first grouping? simpler to show nothing or "Select Level"
+        }
+
       } catch (error) {
         console.error("Error fetching classes:", error);
       } finally {
@@ -54,7 +69,7 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
     if (schoolId) {
       fetchClasses();
     }
-  }, [schoolId]);
+  }, [schoolId, searchParams, defaultClass]);
 
   const handleClassChange = (classId: string) => {
     setSelectedClass(classId);
@@ -65,6 +80,26 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
     
     router.push(`${pathname}?${params.toString()}`);
   };
+
+  const handleLevelSelect = (levelName: string) => {
+    if (selectedLevel === levelName) return; // No change
+    
+    setSelectedLevel(levelName);
+    
+    // Auto-select the first class in this level
+    const firstClassInLevel = classes.find(c => c.name === levelName);
+    if (firstClassInLevel) {
+      handleClassChange(firstClassInLevel.id);
+    }
+  };
+
+  // Group classes by name
+  const levels = Array.from(new Set(classes.map(c => c.name)));
+  
+  // Get sections for filtering
+  const sectionsForLevel = selectedLevel 
+    ? classes.filter(c => c.name === selectedLevel) 
+    : [];
 
   const renderClassTabs = () => {
     if (loading) {
@@ -85,66 +120,74 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
     }
 
     return (
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex space-x-2 pb-2 px-1">
-          {/* All Classes Button */}
-          <button
-            onClick={() => {
-              setSelectedClass(null);
-              const params = new URLSearchParams(searchParams.toString());
-              params.delete("classId");
-              router.push(`${pathname}?${params.toString()}`);
-            }}
-            className={`
-              flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-              ${!selectedClass 
-                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200' 
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600'
-              }
-            `}
-          >
-            <Users className="h-4 w-4" />
-            <span>All Classes</span>
-          </button>
-          
-          {classes.map((cls) => (
-            <button
-              key={cls.id}
-              onClick={() => handleClassChange(cls.id)}
-              className={`
-                flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap
-                ${selectedClass === cls.id 
-                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200' 
-                  : 'bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600'
-                }
-              `}
-            >
-              <GraduationCap className="h-4 w-4" />
-              <span>{cls.name}</span>
-              {cls.section && (
-                <span className={`text-xs ${selectedClass === cls.id ? 'text-orange-100' : 'text-slate-400'}`}>
-                  ({cls.section})
-                </span>
-              )}
-              {cls.studentCount !== undefined && cls.studentCount > 0 && (
-                <Badge 
-                  variant="secondary" 
-                  className={`ml-1 text-xs ${selectedClass === cls.id ? 'bg-white/20 text-white' : 'bg-slate-100'}`}
+      <div className="space-y-4">
+        {/* Level Selection (Top Row) */}
+        <div>
+           <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider ml-1">Levels / Years</div>
+           <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex space-x-2 pb-2 px-1">
+              {levels.map((level) => (
+                <button
+                  key={level}
+                  onClick={() => handleLevelSelect(level)}
+                  className={`
+                    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap border
+                    ${selectedLevel === level 
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-md' 
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600 hover:bg-orange-50'
+                    }
+                  `}
                 >
-                  {cls.studentCount}
-                </Badge>
-              )}
-            </button>
-          ))}
+                  <GraduationCap className="h-4 w-4" />
+                  <span>{level}</span>
+                </button>
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" className="h-2" />
+          </ScrollArea>
         </div>
-        <ScrollBar orientation="horizontal" className="h-2" />
-      </ScrollArea>
+        
+        {/* Section/Arm Selection (Bottom Row) - Only if level selected */}
+        {selectedLevel && sectionsForLevel.length > 0 && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+             <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider ml-1">Classes / Arms</div>
+             <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex space-x-2 pb-2 px-1">
+                {sectionsForLevel.map((cls) => (
+                  <button
+                    key={cls.id}
+                    onClick={() => handleClassChange(cls.id)}
+                    className={`
+                      flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap border
+                      ${selectedClass === cls.id 
+                        ? 'bg-orange-600 text-white border-orange-600 shadow-orange-200 shadow-md' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600'
+                      }
+                    `}
+                  >
+                     <span>{cls.section || "Main"}</span>
+                     {cls.studentCount !== undefined && cls.studentCount > 0 && (
+                      <Badge 
+                        variant="secondary" 
+                        className={`ml-1 text-[10px] h-5 px-1.5 ${selectedClass === cls.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}
+                      >
+                        {cls.studentCount}
+                      </Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="h-2" />
+            </ScrollArea>
+          </div>
+        )}
+      </div>
     );
   };
 
   const selectedClassName = selectedClass 
-    ? classes.find(c => c.id === selectedClass)?.name 
-    : 'All Classes';
+    ? classes.find(c => c.id === selectedClass)?.name + " " + (classes.find(c => c.id === selectedClass)?.section || "")
+    : 'Select Class';
 
   return (
     <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
@@ -156,7 +199,7 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
               Select Class
             </CardTitle>
             <CardDescription className="text-slate-500 mt-1">
-              Choose a class to view and manage student results
+              Select a Level and then a Class Arm
             </CardDescription>
           </div>
           {selectedClass && (
@@ -168,8 +211,7 @@ export function ClassTabs({ schoolId, children, defaultClass = null }: ClassTabs
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {/* Class Selection Pills */}
-        <div className="bg-slate-50/80 p-3 rounded-xl mb-6">
+        <div className="bg-slate-50/80 p-4 rounded-xl mb-6">
           {renderClassTabs()}
         </div>
         

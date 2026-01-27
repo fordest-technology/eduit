@@ -35,6 +35,16 @@ import { TeacherAssignmentModal } from "./teacher-assignment-modal"
 import { ClassAssignmentModal } from "./class-assignment-modal"
 import { UserRole } from "@/lib/auth"
 import { useColors } from "@/contexts/color-context"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Department {
     id: string
@@ -140,10 +150,13 @@ export function SubjectsTable({
     })
     const [departments, setDepartments] = useState<Department[]>(initialDepartments)
     const [levels, setLevels] = useState<SchoolLevel[]>(initialLevels)
+    const [teachersList, setTeachersList] = useState<Teacher[]>(teachers || [])
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
     const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false)
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
     const [isClassModalOpen, setIsClassModalOpen] = useState(false)
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+    const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null)
 
     const colors = useColors()
 
@@ -241,8 +254,30 @@ export function SubjectsTable({
             }
         }
 
+        const fetchTeachers = async () => {
+            try {
+                const response = await fetch("/api/teachers")
+                if (!response.ok) {
+                    throw new Error("Failed to fetch teachers")
+                }
+                const data = await response.json()
+                if (data.teachers && Array.isArray(data.teachers)) {
+                    const formattedTeachers = data.teachers.map((t: any) => ({
+                        id: t.id,
+                        name: t.name,
+                        profileImage: t.profileImage,
+                        userId: t.user?.id
+                    }))
+                    setTeachersList(formattedTeachers)
+                }
+            } catch (error) {
+                console.error("Error fetching teachers:", error)
+            }
+        }
+
         fetchDepartments()
         fetchLevels()
+        fetchTeachers()
     }, [])
 
     const openAddDialog = () => {
@@ -313,6 +348,23 @@ export function SubjectsTable({
         if (!confirm("Are you sure you want to decommission this subject?")) {
             return
         }
+
+        // Find the subject and show confirmation modal
+        const subject = subjects.find(s => s.id === id);
+        if (!subject) {
+            return;
+        }
+        
+        setSubjectToDelete(subject);
+        setDeleteConfirmOpen(true);
+    }
+
+    const confirmDelete = async () => {
+        if (!subjectToDelete) return;
+        
+        const id = subjectToDelete.id;
+        setDeleteConfirmOpen(false);
+        setSubjectToDelete(null);
 
         setIsDeleting(id)
 
@@ -702,7 +754,7 @@ export function SubjectsTable({
                                             <TableHead>Code</TableHead>
                                             <TableHead>Department</TableHead>
                                             <TableHead>Level</TableHead>
-                                            <TableHead>Teachers</TableHead>
+                                            <TableHead>Teacher</TableHead>
                                             <TableHead>Classes</TableHead>
                                             {canManageSubjects && <TableHead className="text-right">Actions</TableHead>}
                                         </TableRow>
@@ -744,13 +796,24 @@ export function SubjectsTable({
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-600">
-                                                            {Array.isArray(subject.teachers) ? subject.teachers.length : subject._count?.teachers || 0}
-                                                        </span>
+                                                        {subject.teachers && subject.teachers.length > 0 ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <Avatar className="h-6 w-6">
+                                                                    {subject.teachers[0].teacher.profileImage ? (
+                                                                        <AvatarImage src={subject.teachers[0].teacher.profileImage} alt={subject.teachers[0].teacher.name} />
+                                                                    ) : (
+                                                                        <AvatarFallback className="text-[10px]">{subject.teachers[0].teacher.name.charAt(0)}</AvatarFallback>
+                                                                    )}
+                                                                </Avatar>
+                                                                <span className="text-sm font-medium">{subject.teachers[0].teacher.name}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs italic">Unassigned</span>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell>
                                                         <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-600">
-                                                            {subject._count.classes}
+                                                            {subject._count?.classes || 0}
                                                         </span>
                                                     </TableCell>
                                                     {canManageSubjects && (
@@ -957,7 +1020,7 @@ export function SubjectsTable({
                 open={isTeacherModalOpen}
                 onOpenChange={setIsTeacherModalOpen}
                 subject={selectedSubject}
-                teachers={teachers}
+                teachers={teachersList}
                 onAssignTeachers={handleAssignTeachers}
             />
 
@@ -975,6 +1038,53 @@ export function SubjectsTable({
                 departments={departments}
                 levels={levels}
             />
+
+            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Subject?</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            <p>
+                                Are you sure you want to delete <strong className="text-foreground">{subjectToDelete?.name}</strong>?
+                            </p>
+                            <div className="rounded-lg bg-muted p-4 space-y-2">
+                                <p className="font-semibold text-sm text-foreground">This will permanently remove:</p>
+                                <ul className="space-y-1.5 text-sm">
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-destructive mt-0.5">•</span>
+                                        <span>All teacher assignments for this subject</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-destructive mt-0.5">•</span>
+                                        <span>All class assignments and enrollments</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-destructive mt-0.5">•</span>
+                                        <span>All student enrollments in this subject</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <p className="text-destructive font-medium text-sm">
+                                ⚠️ This action cannot be undone.
+                            </p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => {
+                            setDeleteConfirmOpen(false);
+                            setSubjectToDelete(null);
+                        }}>
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete Subject
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     )
 } 

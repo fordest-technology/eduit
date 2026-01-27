@@ -5,12 +5,13 @@ import * as z from "zod";
 
 const createSubjectSchema = z.object({
   name: z.string().min(2),
-  code: z.string().min(2).nullable().optional(),
+  code: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   departmentId: z.string().nullable().optional(),
   levelId: z.string().nullable().optional(),
-  classIds: z.array(z.string()).optional(), // Added classIds support
-  schoolId: z.string().optional(),
+  classIds: z.array(z.string()).optional(),
+  autoAssignClasses: z.boolean().optional().default(true),
+  autoAssignStudents: z.boolean().optional().default(true),
 });
 
 export async function GET(req: Request) {
@@ -21,17 +22,25 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    if (!session.schoolId) {
+    // Determine effective schoolId:
+    // 1. If Super Admin, use query param (or session schoolId as fallback)
+    // 2. If School Admin/Teacher, MUST use session schoolId
+    const url = new URL(req.url);
+    const reqSchoolId = url.searchParams.get("schoolId");
+    
+    const schoolId = session.role === "SUPER_ADMIN" 
+      ? (reqSchoolId || session.schoolId)
+      : session.schoolId;
+
+    if (!schoolId) {
       return new NextResponse("School not found", { status: 404 });
     }
 
-    // Get query parameters
-    const url = new URL(req.url);
     const classId = url.searchParams.get("classId");
 
     // Build where clause
     const whereClause: any = {
-      schoolId: session.schoolId,
+      schoolId: schoolId,
     };
 
     // If classId is provided, filter subjects by class
@@ -67,6 +76,7 @@ export async function GET(req: Request) {
           select: {
             classes: true,
             teachers: true,
+            students: true,
           },
         },
       },
@@ -109,71 +119,146 @@ export async function POST(req: Request) {
 
     const json = await req.json();
     const body = createSubjectSchema.parse(json);
+    const schoolId = session.schoolId!;
 
-    // Auto-assign to all classes in the level if provided
-    let finalClassIds = body.classIds || [];
-    if (body.levelId) {
-      const levelClasses = await prisma.class.findMany({
-        where: { levelId: body.levelId, schoolId: session.schoolId! },
-        select: { id: true }
-      });
-      const levelClassIds = levelClasses.map(c => c.id);
-      finalClassIds = Array.from(new Set([...finalClassIds, ...levelClassIds]));
+    // 1. Identify classes to assign
+    let classesToAssign: { id: string }[] = [];
+    
+    // Manual selection
+    if (body.classIds && body.classIds.length > 0) {
+        classesToAssign = body.classIds.map(id => ({ id }));
     }
 
-    const subject = await prisma.subject.create({
-      data: {
-        name: body.name,
-        code: body.code || null,
-        description: body.description || null,
-        departmentId: body.departmentId || null,
-        levelId: body.levelId || null,
-        schoolId: session.schoolId!,
-        // Create class assignments
-        classes: finalClassIds.length > 0 ? {
-          create: finalClassIds.map((id) => ({
-            classId: id
-          }))
-        } : undefined
-      },
-      include: {
-        department: true,
-        level: true,
-        teachers: {
-          include: {
-            teacher: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    profileImage: true,
-                  },
-                },
-              },
+    // Auto-assign based on Level (and Department logic? Typically subjects are class-wide or level-wide)
+    // If auto-assign is on and we have a level...
+    if (body.autoAssignClasses && body.levelId) {
+        const levelClasses = await prisma.class.findMany({
+            where: {
+                schoolId,
+                levelId: body.levelId
             },
-          },
-        },
-        _count: {
-          select: {
-            classes: true,
-            teachers: true,
-          },
-        },
-      },
+            select: { id: true }
+        });
+        
+        // Merge manual and auto-found classes, removing duplicates
+        const existingIds = new Set(classesToAssign.map(c => c.id));
+        levelClasses.forEach(c => {
+            if (!existingIds.has(c.id)) {
+                classesToAssign.push(c);
+                existingIds.add(c.id);
+            }
+        });
+    }
+
+    // 2. Identify students to enroll
+    let studentsToEnroll: { id: string }[] = [];
+
+    if (body.autoAssignStudents && body.levelId) {
+        // Find students in this school, at this level
+        // Optionally filter by department if subject has a department
+        const studentWhereInput: any = {
+            // Find students who have an active class enrollment in a class belonging to this level
+             classes: {
+                some: {
+                    status: 'ACTIVE',
+                    class: {
+                        levelId: body.levelId
+                    }
+                }
+            }
+        };
+
+        // If subject is department-specific, restrict to students in that department
+        if (body.departmentId) {
+            studentWhereInput.departmentId = body.departmentId;
+        }
+
+        const eligibleStudents = await prisma.student.findMany({
+            where: studentWhereInput,
+            select: { id: true }
+        });
+
+        studentsToEnroll = eligibleStudents.map(s => ({ id: s.id }));
+    }
+
+    // CREATE TRANSACTION
+    const subject = await prisma.$transaction(async (tx) => {
+        // Create the subject
+        const newSubject = await tx.subject.create({
+            data: {
+                name: body.name,
+                code: body.code || null,
+                description: body.description || null,
+                departmentId: body.departmentId || null,
+                levelId: body.levelId || null,
+                schoolId: schoolId,
+            }
+        });
+
+        // Create ClassSubject links
+        if (classesToAssign.length > 0) {
+            await tx.classSubject.createMany({
+                data: classesToAssign.map(c => ({
+                    classId: c.id,
+                    subjectId: newSubject.id,
+                })),
+                skipDuplicates: true
+            });
+        }
+
+        // Create StudentSubject links
+        if (studentsToEnroll.length > 0) {
+           await tx.studentSubject.createMany({
+               data: studentsToEnroll.map(s => ({
+                   studentId: s.id,
+                   subjectId: newSubject.id,
+               })),
+               skipDuplicates: true
+           });
+        }
+        
+        // Return the full subject with includes
+        return await tx.subject.findUnique({
+            where: { id: newSubject.id },
+            include: {
+                department: true,
+                level: true,
+                teachers: {
+                    include: {
+                        teacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        profileImage: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                _count: {
+                    select: {
+                        classes: true,
+                        teachers: true,
+                    }
+                }
+            }
+        });
     });
 
     // Transform the data to match the frontend structure
     const transformedSubject = {
       ...subject,
-      teachers: subject.teachers.map((t) => ({
+      teachers: subject?.teachers.map((t) => ({
         teacher: {
           id: t.teacher.id,
           name: t.teacher.user.name,
           profileImage: t.teacher.user.profileImage,
           userId: t.teacher.user.id,
         },
-      })),
+      })) || [],
     };
 
     return NextResponse.json(transformedSubject);

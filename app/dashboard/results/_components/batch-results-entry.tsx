@@ -41,6 +41,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 interface BatchResultsEntryProps {
   schoolId: string;
@@ -51,6 +52,7 @@ interface BatchResultsEntryProps {
   components: AssessmentComponent[];
   selectedClassId: string | null;
   canEditAllSubjects?: boolean;
+  teacherInfo?: any;
 }
 
 type CompositeMap = {
@@ -63,8 +65,14 @@ type CompositeMap = {
 type ResultMatrix = {
   [studentId: string]: {
     [subjectId: string]: {
-      [componentKey: string]: number;
+      [componentId: string]: number;
     }
+  }
+};
+
+type RemarksMatrix = {
+  [studentId: string]: {
+    [subjectId: string]: string;
   }
 };
 
@@ -77,45 +85,119 @@ export function BatchResultsEntry({
   components,
   selectedClassId,
   canEditAllSubjects = true,
+  teacherInfo,
 }: BatchResultsEntryProps) {
   const { toast } = useToast();
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("");
-  const [selectedSession, setSelectedSession] = useState<string>("");
-  const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(searchParams.get("periodId") || "");
+  const [selectedSession, setSelectedSession] = useState<string>(searchParams.get("sessionId") || "");
+  const [selectedSubject, setSelectedSubject] = useState<string>(searchParams.get("subjectId") || "all");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dataMatrix, setDataMatrix] = useState<ResultMatrix>({});
   const [initialMatrix, setInitialMatrix] = useState<ResultMatrix>({});
+  const [remarks, setRemarks] = useState<RemarksMatrix>({});
+  const [initialRemarks, setInitialRemarks] = useState<RemarksMatrix>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Helper to check permission
+  const isSubjectEditable = (subjectId: string) => {
+    if (canEditAllSubjects) return true;
+    if (!teacherInfo) return false;
+
+    // Check if subject is assigned to teacher
+    if (teacherInfo.subjects?.some((s: any) => s.subjectId === subjectId)) {
+      return true;
+    }
+
+    // Check if teacher is form teacher for this class
+    if (teacherInfo.classes?.some((c: any) => c.id === selectedClassId)) {
+      return true;
+    }
+
+    return false;
+  };
 
   // Find composite components (like midterm)
   const compositeMap = useMemo<CompositeMap>(() => {
     const map: CompositeMap = {};
-
-    // Identify components that might be composite
     components.forEach(comp => {
       if (comp.name.toLowerCase().includes('midterm') || comp.name.toLowerCase().includes('mid term')) {
-        // For this example, assume midterm is the sum of test1 and test2
         map[comp.key] = {
           component: comp,
           sources: ['test1', 'test2']
         };
       }
     });
-
     return map;
   }, [components]);
 
-  // Regular (non-composite) components
   const regularComponents = useMemo(() => {
     return components.filter(comp =>
       !Object.keys(compositeMap).includes(comp.key)
     );
   }, [components, compositeMap]);
 
-  // Set default session if available
+  // Filter subjects based on permissions
+  const filteredSubjects = useMemo(() => {
+    if (canEditAllSubjects) return subjects;
+    if (!teacherInfo) return [];
+
+    // Check if form teacher for this class
+    const isFormTeacher = teacherInfo.classes?.some((c: any) => c.id === selectedClassId);
+    if (isFormTeacher) {
+        return subjects;
+    }
+
+    // Filter by assigned subjects
+    const assignedSubjectIds = new Set(teacherInfo.subjects?.map((s: any) => s.subjectId));
+    return subjects.filter(sub => assignedSubjectIds.has(sub.id));
+  }, [subjects, canEditAllSubjects, teacherInfo, selectedClassId]);
+
+  // Update selected subject when filtered subjects change
   useEffect(() => {
-    if (sessions.length > 0) {
+    if (filteredSubjects.length > 0) {
+       // If current selection is not in filtered list (and is not "all" or "all" is not valid anymore?), reset
+       // Actually, safely default to first available if strictly restricted
+       if (selectedSubject !== "all" && !filteredSubjects.find(s => s.id === selectedSubject)) {
+          setSelectedSubject(filteredSubjects[0].id);
+       } else if (selectedSubject === "all" && filteredSubjects.length === 1) {
+          // If only 1 subject, auto select it?
+          setSelectedSubject(filteredSubjects[0].id);
+       }
+    }
+  }, [filteredSubjects, selectedSubject]);
+
+  // Sync state to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    let hasChanges = false;
+    
+    if (selectedPeriod && params.get("periodId") !== selectedPeriod) {
+      params.set("periodId", selectedPeriod);
+      hasChanges = true;
+    }
+    if (selectedSession && params.get("sessionId") !== selectedSession) {
+      params.set("sessionId", selectedSession);
+      hasChanges = true;
+    }
+    // Only update subject if it's set and different (handle "all" explicitly if needed)
+    if (selectedSubject && params.get("subjectId") !== selectedSubject) {
+      params.set("subjectId", selectedSubject);
+      hasChanges = true;
+    }
+    
+    if (hasChanges) {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [selectedPeriod, selectedSession, selectedSubject, pathname, router, searchParams]);
+
+  // Set default filters if not set
+  useEffect(() => {
+    if (sessions.length > 0 && !selectedSession) {
       const currentSession = sessions.find(s => s.name.includes("current"));
       if (currentSession) {
         setSelectedSession(currentSession.id);
@@ -124,14 +206,14 @@ export function BatchResultsEntry({
       }
     }
 
-    if (periods.length > 0) {
+    if (periods.length > 0 && !selectedPeriod) {
       setSelectedPeriod(periods[0].id);
     }
 
-    if (subjects.length > 0) {
+    if (subjects.length > 0 && !selectedSubject && selectedSubject !== "all") {
       setSelectedSubject(subjects[0].id);
     }
-  }, [sessions, periods, subjects]);
+  }, [sessions, periods, subjects, selectedSession, selectedPeriod, selectedSubject]);
 
   // Calculate composite scores for a student and subject
   const calculateCompositeScore = (studentId: string, subjectId: string, compositeKey: string) => {
@@ -152,106 +234,98 @@ export function BatchResultsEntry({
 
       setLoading(true);
       try {
-        // Construct URL with query parameters
         let url = `/api/schools/${schoolId}/results/batch?periodId=${selectedPeriod}&sessionId=${selectedSession}`;
-
-        if (selectedClassId) {
-          url += `&classId=${selectedClassId}`;
-        }
-
-        // Only filter by subject if a specific subject is selected
-        if (selectedSubject && selectedSubject !== "all") {
-          url += `&subjectId=${selectedSubject}`;
-        }
+        if (selectedClassId) url += `&classId=${selectedClassId}`;
+        if (selectedSubject && selectedSubject !== "all") url += `&subjectId=${selectedSubject}`;
 
         const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch results");
-        }
+        if (!response.ok) throw new Error("Failed to fetch results");
 
         const data: Result[] = await response.json();
 
-        // Transform the results into a matrix format for easier editing
         const newMatrix: ResultMatrix = {};
+        const newRemarks: RemarksMatrix = {};
 
-        // Initialize the matrix with empty values for all students and subjects
+        // Initialize with default values
         students.forEach(student => {
           newMatrix[student.id] = {};
+          newRemarks[student.id] = {};
+          
+          const activeLevelSubjects = subjects; // All subjects passed in
 
-          const displaySubjects = selectedSubject === "all"
-            ? subjects
-            : [subjects.find(s => s.id === selectedSubject)].filter(Boolean);
-
-          displaySubjects.forEach(subject => {
+          activeLevelSubjects.forEach(subject => {
             if (!subject) return;
             newMatrix[student.id][subject.id] = {};
+            newRemarks[student.id][subject.id] = "";
             components.forEach(component => {
-              newMatrix[student.id][subject.id][component.key] = 0;
+              newMatrix[student.id][subject.id][component.id] = 0; // Use component.id
             });
           });
         });
 
-        // Populate with actual values from the results
+        // Populate with fetched data
         data.forEach(result => {
-          const studentId = result.studentId;
-          const subjectId = result.subjectId;
+          const sId = result.studentId;
+          const subId = result.subjectId;
+          
+          if (!newMatrix[sId]) newMatrix[sId] = {};
+          if (!newRemarks[sId]) newRemarks[sId] = {};
+          if (!newMatrix[sId][subId]) newMatrix[sId][subId] = {};
 
-          if (!newMatrix[studentId]) {
-            newMatrix[studentId] = {};
-          }
+          newRemarks[sId][subId] = result.teacherComment || "";
 
-          if (!newMatrix[studentId][subjectId]) {
-            newMatrix[studentId][subjectId] = {};
-          }
-
-          // Set component scores
           if (result.componentScores) {
             result.componentScores.forEach((cs: any) => {
-              newMatrix[studentId][subjectId][cs.component.key] = cs.score;
+              // Map by component ID for absolute reliability
+              if (cs.component) {
+                newMatrix[sId][subId][cs.component.id] = cs.score;
+              }
             });
           }
         });
 
         setDataMatrix(newMatrix);
-        setInitialMatrix(JSON.parse(JSON.stringify(newMatrix))); // Deep copy for change detection
+        setInitialMatrix(JSON.parse(JSON.stringify(newMatrix)));
+        setRemarks(newRemarks);
+        setInitialRemarks(JSON.parse(JSON.stringify(newRemarks)));
       } catch (error) {
         console.error("Error fetching results:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch results",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Failed to fetch results", variant: "destructive" });
       } finally {
         setLoading(false);
       }
     }
-
     fetchResults();
   }, [selectedPeriod, selectedSession, selectedSubject, selectedClassId, schoolId, students, subjects, components, toast]);
 
   // Check if a value has changed from initial load
-  const hasChanged = (studentId: string, subjectId: string, componentKey: string) => {
-    const initial = initialMatrix[studentId]?.[subjectId]?.[componentKey];
-    const current = dataMatrix[studentId]?.[subjectId]?.[componentKey];
+  const hasChanged = (studentId: string, subjectId: string, componentId: string) => {
+    const initial = initialMatrix[studentId]?.[subjectId]?.[componentId];
+    const current = dataMatrix[studentId]?.[subjectId]?.[componentId];
+    return initial !== current;
+  };
+
+  const hasRemarkChanged = (studentId: string, subjectId: string) => {
+    const initial = initialRemarks[studentId]?.[subjectId];
+    const current = remarks[studentId]?.[subjectId];
     return initial !== current;
   };
 
   // Handle score input change
-  const handleScoreChange = (studentId: string, subjectId: string, componentKey: string, value: string) => {
+  const handleScoreChange = (studentId: string, subjectId: string, componentId: string, value: string) => {
     const numValue = value === "" ? 0 : Number(value);
-    const component = components.find(c => c.key === componentKey);
+    const component = components.find(c => c.id === componentId);
 
     // Validate the input
     if (component && numValue > component.maxScore) {
       setErrors({
         ...errors,
-        [`${studentId}-${subjectId}-${componentKey}`]: `Max score is ${component.maxScore}`
+        [`${studentId}-${subjectId}-${componentId}`]: `Max score is ${component.maxScore}`
       });
     } else {
       // Clear error if it exists
       const newErrors = { ...errors };
-      delete newErrors[`${studentId}-${subjectId}-${componentKey}`];
+      delete newErrors[`${studentId}-${subjectId}-${componentId}`];
       setErrors(newErrors);
     }
 
@@ -261,7 +335,16 @@ export function BatchResultsEntry({
       if (!updated[studentId]) updated[studentId] = {};
       if (!updated[studentId][subjectId]) updated[studentId][subjectId] = {};
 
-      updated[studentId][subjectId][componentKey] = numValue;
+      updated[studentId][subjectId][componentId] = numValue;
+      return updated;
+    });
+  };
+
+  const handleRemarkChange = (studentId: string, subjectId: string, value: string) => {
+    setRemarks(prev => {
+      const updated = { ...prev };
+      if (!updated[studentId]) updated[studentId] = {};
+      updated[studentId][subjectId] = value;
       return updated;
     });
   };
@@ -277,11 +360,18 @@ export function BatchResultsEntry({
 
       displaySubjects.forEach(subject => {
         if (!subject) return;
+
+        // Check component changes
         regularComponents.forEach(component => {
-          if (hasChanged(student.id, subject.id, component.key)) {
+          if (hasChanged(student.id, subject.id, component.id)) {
             count++;
           }
         });
+
+        // Check remark changes
+        if (hasRemarkChanged(student.id, subject.id)) {
+          count++;
+        }
       });
     });
 
@@ -314,15 +404,20 @@ export function BatchResultsEntry({
 
           // Check if any component has changed for this student and subject
           const hasComponentChanges = regularComponents.some(component =>
-            hasChanged(student.id, subject.id, component.key)
+            hasChanged(student.id, subject.id, component.id)
           );
+          
+          const remarkChanged = hasRemarkChanged(student.id, subject.id);
 
-          if (hasComponentChanges) {
+          if (hasComponentChanges || remarkChanged) {
             // Build component scores
             const componentScores = regularComponents.map(component => ({
               componentId: component.id,
-              score: dataMatrix[student.id][subject.id][component.key] || 0,
+              score: dataMatrix[student.id][subject.id][component.id] || 0,
             }));
+            
+            // Get remark
+            const teacherComment = remarks[student.id]?.[subject.id] || "";
 
             // Add to changes
             changes.push({
@@ -332,6 +427,7 @@ export function BatchResultsEntry({
               sessionId: selectedSession,
               componentScores,
               classId: selectedClassId,
+              teacherComment, // Send remark
             });
           }
         });
@@ -361,6 +457,7 @@ export function BatchResultsEntry({
 
       // Update the initialMatrix to match current values
       setInitialMatrix(JSON.parse(JSON.stringify(dataMatrix)));
+      setInitialRemarks(JSON.parse(JSON.stringify(remarks)));
 
       toast({
         title: "Success",
@@ -382,6 +479,7 @@ export function BatchResultsEntry({
   const handleRefresh = () => {
     // Reset to initial data
     setDataMatrix(JSON.parse(JSON.stringify(initialMatrix)));
+    setRemarks(JSON.parse(JSON.stringify(initialRemarks)));
     setErrors({});
   };
 
@@ -472,10 +570,12 @@ export function BatchResultsEntry({
     );
   }
 
+
+
   // Determine which subjects to display based on selected subject for the UI
   const displaySubjects = selectedSubject === "all"
-    ? subjects
-    : [subjects.find(s => s.id === selectedSubject)].filter(Boolean);
+    ? filteredSubjects
+    : [filteredSubjects.find(s => s.id === selectedSubject)].filter(Boolean);
 
   return (
     <Card>
@@ -536,8 +636,8 @@ export function BatchResultsEntry({
                   <SelectValue placeholder="Select Subject" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Subjects</SelectItem>
-                  {subjects.map((subject) => (
+                  {filteredSubjects.length > 1 && <SelectItem value="all">All Subjects</SelectItem>}
+                  {filteredSubjects.map((subject) => (
                     <SelectItem key={subject.id} value={subject.id}>
                       {subject.name}
                     </SelectItem>
@@ -559,7 +659,7 @@ export function BatchResultsEntry({
                           subject && (
                             <TableHead
                               key={subject.id}
-                              colSpan={regularComponents.length + Object.keys(compositeMap).length}
+                              colSpan={regularComponents.length + Object.keys(compositeMap).length + 1}
                               className="text-center font-medium px-0 border-l"
                             >
                               {subject.name}
@@ -628,6 +728,9 @@ export function BatchResultsEntry({
                                   </TooltipProvider>
                                 </TableHead>
                               ))}
+                              <TableHead className="p-0 text-center border-l min-w-[150px]">
+                                <span className="text-xs font-semibold">Remark</span>
+                              </TableHead>
                             </Fragment>
                           )
                         )}
@@ -643,16 +746,19 @@ export function BatchResultsEntry({
                             subject && (
                               <Fragment key={`${student.id}-${subject.id}`}>
                                 {regularComponents.map((component) => {
-                                  const isEditable = canEditAllSubjects || true; // TODO: check subject permissions
-                                  const hasError = errors[`${student.id}-${subject.id}-${component.key}`];
-                                  const isChanged = hasChanged(student.id, subject.id, component.key);
+                                  // PERMISSION CHECK
+                                  const isEditable = isSubjectEditable(subject.id);
+                                  
+                                  const hasError = errors[`${student.id}-${subject.id}-${component.id}`];
+                                  const isChanged = hasChanged(student.id, subject.id, component.id);
 
                                   return (
-                                    <TableCell key={`${student.id}-${subject.id}-${component.key}`} className="p-0 border-l">
+                                    <TableCell key={`${student.id}-${subject.id}-${component.id}`} className="p-0 border-l">
                                       <div
                                         className={cn(
-                                          "py-2 px-1 h-full",
-                                          isChanged && "bg-primary/5"
+                                          "py-2 px-1 h-full relative",
+                                          isChanged && "bg-primary/5",
+                                          !isEditable && "bg-muted/10"
                                         )}
                                       >
                                         {isEditable ? (
@@ -660,21 +766,21 @@ export function BatchResultsEntry({
                                             type="number"
                                             min={0}
                                             max={component.maxScore}
-                                            value={dataMatrix[student.id]?.[subject.id]?.[component.key] || ""}
-                                            onChange={(e) => handleScoreChange(student.id, subject.id, component.key, e.target.value)}
+                                            value={dataMatrix[student.id]?.[subject.id]?.[component.id] ?? ""}
+                                            onChange={(e) => handleScoreChange(student.id, subject.id, component.id, e.target.value)}
                                             className={cn(
                                               "h-8 text-center",
                                               hasError ? "border-destructive" : isChanged ? "border-primary" : ""
                                             )}
                                           />
                                         ) : (
-                                          <div className="flex items-center justify-center gap-1 h-8">
-                                            <span>{dataMatrix[student.id]?.[subject.id]?.[component.key] || 0}</span>
+                                          <div className="flex items-center justify-center gap-1 h-8 opacity-70">
+                                            <span>{dataMatrix[student.id]?.[subject.id]?.[component.id] ?? 0}</span>
                                             <Lock className="h-3 w-3 text-muted-foreground" />
                                           </div>
                                         )}
                                         {hasError && (
-                                          <p className="text-destructive text-xs mt-1">{hasError}</p>
+                                          <p className="text-destructive text-xs mt-1 absolute bottom-1 left-1">{hasError}</p>
                                         )}
                                       </div>
                                     </TableCell>
@@ -696,6 +802,32 @@ export function BatchResultsEntry({
                                     </TableCell>
                                   );
                                 })}
+                                {/* Remark Input */}
+                                <TableCell className="p-0 border-l">
+                                    <div className={cn(
+                                        "py-2 px-1 h-full relative",
+                                        hasRemarkChanged(student.id, subject.id) && "bg-primary/5"
+                                    )}>
+                                        {isSubjectEditable(subject.id) ? (
+                                        <Input
+                                            type="text"
+                                            placeholder="Remark..."
+                                            value={remarks[student.id]?.[subject.id] || ""}
+                                            onChange={(e) => handleRemarkChange(student.id, subject.id, e.target.value)}
+                                            className={cn(
+                                                "h-8 text-sm",
+                                                hasRemarkChanged(student.id, subject.id) ? "border-primary" : ""
+                                            )}
+                                        />
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full px-2">
+                                                <span className="text-xs text-muted-foreground italic truncate max-w-[100px]">
+                                                    {remarks[student.id]?.[subject.id] || "No remark"}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </TableCell>
                               </Fragment>
                             )
                           )}

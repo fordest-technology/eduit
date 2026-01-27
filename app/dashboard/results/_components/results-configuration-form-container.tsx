@@ -111,7 +111,7 @@ export async function ResultsConfigurationFormContainer({
 }
 
 // Separate component to handle data fetching based on selected class
-async function ResultsConfigFormWithData({ 
+export async function ResultsConfigFormWithData({ 
     schoolId, 
     sessionId, 
     sessionName,

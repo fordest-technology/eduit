@@ -135,28 +135,12 @@
 <a name='L70'></a><a href='#L70'>70</a>
 <a name='L71'></a><a href='#L71'>71</a>
 <a name='L72'></a><a href='#L72'>72</a>
-<a name='L73'></a><a href='#L73'>73</a>
-<a name='L74'></a><a href='#L74'>74</a>
-<a name='L75'></a><a href='#L75'>75</a>
-<a name='L76'></a><a href='#L76'>76</a>
-<a name='L77'></a><a href='#L77'>77</a>
-<a name='L78'></a><a href='#L78'>78</a>
-<a name='L79'></a><a href='#L79'>79</a>
-<a name='L80'></a><a href='#L80'>80</a>
-<a name='L81'></a><a href='#L81'>81</a>
-<a name='L82'></a><a href='#L82'>82</a>
-<a name='L83'></a><a href='#L83'>83</a>
-<a name='L84'></a><a href='#L84'>84</a>
-<a name='L85'></a><a href='#L85'>85</a>
-<a name='L86'></a><a href='#L86'>86</a>
-<a name='L87'></a><a href='#L87'>87</a>
-<a name='L88'></a><a href='#L88'>88</a>
-<a name='L89'></a><a href='#L89'>89</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L73'></a><a href='#L73'>73</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -174,22 +158,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -242,10 +210,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">"use client"
 &nbsp;
 import React, { useState } from <span class="cstat-no" title="statement not covered" >"react"</span>
-import { Card, CardContent, CardHeader, CardTitle } from <span class="cstat-no" title="statement not covered" >"@/components/ui/card"</span>
 import { BookOpen, GraduationCap, Users, Plus } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
 import { Button } from "@/components/ui/button"
 import { useColors } from <span class="cstat-no" title="statement not covered" >"@/contexts/color-context"</span>
+import { DashboardStatsCard, DashboardStatsGrid } from <span class="cstat-no" title="statement not covered" >"@/components/dashboard-stats-card"</span>
 &nbsp;
 interface SubjectsClientProps {
     children: React.ReactNode
@@ -283,46 +251,30 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                 &lt;/Button&gt;
             &lt;/div&gt; */}
 &nbsp;
-            &lt;div className="grid grid-cols-1 md:grid-cols-3 gap-4"&gt;
-                &lt;Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200"&gt;
-                    &lt;CardHeader className="pb-2"&gt;
-                        &lt;CardTitle className="text-lg font-medium flex items-center text-blue-700"&gt;
-                            &lt;BookOpen className="mr-2 h-5 w-5" /&gt;
-                            Subjects
-                        &lt;/CardTitle&gt;
-                    &lt;/CardHeader&gt;
-                    &lt;CardContent&gt;
-                        &lt;p className="text-3xl font-bold text-blue-800"&gt;{stats.totalSubjects}&lt;/p&gt;
-                        &lt;p className="text-sm text-blue-600 mt-1"&gt;Total subjects&lt;/p&gt;
-                    &lt;/CardContent&gt;
-                &lt;/Card&gt;
-&nbsp;
-                &lt;Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200"&gt;
-                    &lt;CardHeader className="pb-2"&gt;
-                        &lt;CardTitle className="text-lg font-medium flex items-center text-purple-700"&gt;
-                            &lt;GraduationCap className="mr-2 h-5 w-5" /&gt;
-                            Classes
-                        &lt;/CardTitle&gt;
-                    &lt;/CardHeader&gt;
-                    &lt;CardContent&gt;
-                        &lt;p className="text-3xl font-bold text-purple-800"&gt;{stats.totalClasses}&lt;/p&gt;
-                        &lt;p className="text-sm text-purple-600 mt-1"&gt;Classes using subjects&lt;/p&gt;
-                    &lt;/CardContent&gt;
-                &lt;/Card&gt;
-&nbsp;
-                &lt;Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200"&gt;
-                    &lt;CardHeader className="pb-2"&gt;
-                        &lt;CardTitle className="text-lg font-medium flex items-center text-green-700"&gt;
-                            &lt;Users className="mr-2 h-5 w-5" /&gt;
-                            Teachers
-                        &lt;/CardTitle&gt;
-                    &lt;/CardHeader&gt;
-                    &lt;CardContent&gt;
-                        &lt;p className="text-3xl font-bold text-green-800"&gt;{stats.totalTeachers}&lt;/p&gt;
-                        &lt;p className="text-sm text-green-600 mt-1"&gt;Assigned teachers&lt;/p&gt;
-                    &lt;/CardContent&gt;
-                &lt;/Card&gt;
-            &lt;/div&gt;
+            {/* Stats Cards Section */}
+            &lt;DashboardStatsGrid columns={3}&gt;
+                &lt;DashboardStatsCard
+                    title="Subjects"
+                    value={stats.totalSubjects}
+                    icon={BookOpen}
+                    color="blue"
+                    description="Total curriculum subjects"
+                /&gt;
+                &lt;DashboardStatsCard
+                    title="Classes"
+                    value={stats.totalClasses}
+                    icon={GraduationCap}
+                    color="purple"
+                    description="Active academic blocks"
+                /&gt;
+                &lt;DashboardStatsCard
+                    title="Teachers"
+                    value={stats.totalTeachers}
+                    icon={Users}
+                    color="emerald"
+                    description="Specialized educators"
+                /&gt;
+            &lt;/DashboardStatsGrid&gt;
 &nbsp;
             {children}
         &lt;/div&gt;
@@ -334,7 +286,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

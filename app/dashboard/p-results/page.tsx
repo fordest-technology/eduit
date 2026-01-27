@@ -64,8 +64,15 @@ export default async function ParentResultsPage() {
         )
     }
 
+    // Get school info
+    const school = await prisma.school.findUnique({
+        where: { id: session.schoolId! },
+        select: { name: true }
+    });
+
     const data = {
         schoolId: session.schoolId!,
+        schoolName: school?.name || "School",
         children: parent.children.map((c: any) => ({
             id: c.student.id,
             user: c.student.user,

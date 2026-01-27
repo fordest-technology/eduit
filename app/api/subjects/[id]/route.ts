@@ -86,7 +86,7 @@ export async function PUT(
 
   if (
     !session ||
-    (session.role !== "super_admin" && session.role !== "school_admin")
+    (session.role !== UserRole.SUPER_ADMIN && session.role !== UserRole.SCHOOL_ADMIN)
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -121,7 +121,7 @@ export async function PUT(
     }
 
     if (
-      session.role !== "super_admin" &&
+      session.role !== UserRole.SUPER_ADMIN &&
       existingSubject.schoolId !== session.schoolId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -161,7 +161,7 @@ export async function DELETE(
 
   if (
     !session ||
-    (session.role !== "super_admin" && session.role !== "school_admin")
+    (session.role !== UserRole.SUPER_ADMIN && session.role !== UserRole.SCHOOL_ADMIN)
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -181,7 +181,7 @@ export async function DELETE(
     }
 
     if (
-      session.role !== "super_admin" &&
+      session.role !== UserRole.SUPER_ADMIN &&
       existingSubject.schoolId !== session.schoolId
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

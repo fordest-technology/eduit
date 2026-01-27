@@ -17,7 +17,9 @@ import {
     Bell,
     ChevronRight,
     ClipboardCheck,
-    Calendar
+    Calendar,
+    Download,
+    Sparkles
 } from "lucide-react"
 import { DashboardHeader } from "@/app/components/dashboard-header"
 
@@ -75,6 +77,35 @@ export function ParentDashboard({ data }: ParentDashboardProps) {
                 showBanner={true}
                 icon={<GraduationCap className="h-8 w-8 text-white" />}
             />
+
+            {/* Results Alert Banner */}
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+            >
+                <Card className="border-none shadow-2xl shadow-indigo-100 rounded-[2.5rem] bg-orange-600 overflow-hidden text-white relative group mb-8">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-700" />
+                    <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center gap-8">
+                        <div className="flex-1 text-center md:text-left">
+                            <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
+                                <TrendingUp className="h-4 w-4 text-orange-200" />
+                                <span className="text-[10px] font-black text-orange-200 uppercase tracking-[0.2em]">Academic Update</span>
+                            </div>
+                            <h4 className="text-2xl font-black font-sora tracking-tight mb-2">Term Results are Published</h4>
+                            <p className="text-orange-100 font-medium text-base max-w-md">Official report cards for your children are now available for download as PDF documents.</p>
+                        </div>
+                        <div className="flex flex-col gap-3 w-full md:w-auto">
+                            <Link href="/dashboard/p-results">
+                                <Button className="w-full md:w-48 h-14 rounded-[1rem] bg-white text-orange-600 hover:bg-orange-50 border-none font-black text-sm transition-all duration-300 shadow-xl shadow-orange-900/20">
+                                    <Download className="h-5 w-5 mr-2" />
+                                    GET RESULTS
+                                </Button>
+                            </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+            </motion.div>
 
             {/* Financial Overview Section */}
             <motion.div

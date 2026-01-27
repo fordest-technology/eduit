@@ -13,6 +13,7 @@ import {
   Stamp,
   Upload,
   Lock,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,6 +24,7 @@ const tools = [
   { id: "select", icon: MousePointer2, label: "Select (V)", type: null },
   { id: "text", icon: Type, label: "Text (T)", type: "text" },
   { id: "shape", icon: Square, label: "Shape (S)", type: "shape" },
+  { id: "line", icon: Minus, label: "Line (L)", type: "line" },
   { id: "image", icon: ImageIcon, label: "Image (I)", type: "image" },
   { id: "dynamic", icon: Database, label: "Dynamic Field (D)", type: "dynamic" },
   { id: "table", icon: TableIcon, label: "Table (B)", type: "table" },

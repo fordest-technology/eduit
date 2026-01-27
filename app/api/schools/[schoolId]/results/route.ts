@@ -36,12 +36,19 @@ interface Result {
 
 export async function POST(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { schoolId } = await params;
+    
+    // Authorization check
+    if (session.role !== "SUPER_ADMIN" && session.schoolId !== schoolId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -143,12 +150,19 @@ export async function POST(
 
 export async function GET(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { schoolId } = await params;
+
+    // Authorization check
+    if (session.role !== "SUPER_ADMIN" && session.schoolId !== schoolId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -191,12 +205,19 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { schoolId } = await params;
+
+    // Authorization check
+    if (session.role !== "SUPER_ADMIN" && session.schoolId !== schoolId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();

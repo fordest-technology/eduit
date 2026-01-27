@@ -113,7 +113,8 @@ export async function GET(request: NextRequest) {
     return await withErrorHandling(async () => {
       const students = await db.student.findMany({
         where: whereClause,
-        include: {
+        select: {
+          id: true,
           user: {
             select: {
               id: true,
@@ -127,7 +128,11 @@ export async function GET(request: NextRequest) {
               sessionId: currentSession.id,
               status: "ACTIVE",
             },
-            include: {
+            select: {
+              id: true,
+              rollNumber: true,
+              section: true,
+              status: true,
               class: {
                 select: {
                   id: true,
@@ -141,7 +146,12 @@ export async function GET(request: NextRequest) {
                   },
                 },
               },
-              session: true,
+              session: {
+                select: {
+                  id: true,
+                  name: true,
+                }
+              }
             },
           },
           parents: {
@@ -151,7 +161,6 @@ export async function GET(request: NextRequest) {
                   user: {
                     select: {
                       name: true,
-                      email: true,
                     },
                   },
                 },
@@ -469,11 +478,11 @@ export async function POST(req: Request) {
       // Get school information for email
       const school = await db.school.findUnique({
         where: { id: session.schoolId },
-        select: { name: true, subdomain: true, domain: true },
+        select: { name: true, subdomain: true },
       });
 
-      const schoolUrl = school?.domain
-        ? `https://${school.domain}`
+      const schoolUrl = school?.subdomain
+        ? `https://${school.subdomain}.eduit.app`
         : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
       await sendStudentCredentialsEmail({

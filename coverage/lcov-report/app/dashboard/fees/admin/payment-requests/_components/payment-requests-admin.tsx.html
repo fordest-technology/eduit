@@ -1236,13 +1236,13 @@ import { Input } from <span class="cstat-no" title="statement not covered" >"@/c
 import { Button } from <span class="cstat-no" title="statement not covered" >"@/components/ui/button"</span>
 import { Badge } from <span class="cstat-no" title="statement not covered" >"@/components/ui/badge"</span>
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet"</span>
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from <span class="cstat-no" title="statement not covered" >"@/components/ui/collapsible"</span>
 import { Separator } from <span class="cstat-no" title="statement not covered" >"@/components/ui/separator"</span>
 import { Textarea } from <span class="cstat-no" title="statement not covered" >"@/components/ui/textarea"</span>
@@ -1531,13 +1531,13 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
         &lt;/CardContent&gt;
       &lt;/Card&gt;
 &nbsp;
-      {/* Approve Dialog */}
-      &lt;Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}&gt;
-        &lt;DialogContent className="sm:max-w-md"&gt;
-          &lt;DialogHeader&gt;
-            &lt;DialogTitle&gt;Approve Payment Request&lt;/DialogTitle&gt;
-            &lt;DialogDescription&gt;Are you sure you want to approve this payment request?&lt;/DialogDescription&gt;
-          &lt;/DialogHeader&gt;
+      {/* Approve Sheet */}
+      &lt;Sheet open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}&gt;
+        &lt;SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right"&gt;
+          &lt;SheetHeader className="mb-6"&gt;
+            &lt;SheetTitle&gt;Approve Payment Request&lt;/SheetTitle&gt;
+            &lt;SheetDescription&gt;Are you sure you want to approve this payment request?&lt;/SheetDescription&gt;
+          &lt;/SheetHeader&gt;
           &lt;div className="bg-muted/50 p-3 rounded-md my-2"&gt;
             &lt;div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm"&gt;
               &lt;div className="text-muted-foreground"&gt;Student:&lt;/div&gt;
@@ -1548,7 +1548,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               &lt;div&gt;{selectedRequest &amp;&amp; formatCurrency(selectedRequest.amount)}&lt;/div&gt;
             &lt;/div&gt;
           &lt;/div&gt;
-          &lt;div className="space-y-2"&gt;
+          &lt;div className="space-y-2 py-4"&gt;
             &lt;label htmlFor="approve-notes" className="text-sm font-medium"&gt;
               Notes (Optional)
             &lt;/label&gt;
@@ -1559,7 +1559,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               onChange={<span class="fstat-no" title="function not covered" >(e</span>) =&gt; <span class="cstat-no" title="statement not covered" >setReviewNotes(e.target.value)}</span>
             /&gt;
           &lt;/div&gt;
-          &lt;DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:space-x-0"&gt;
+          &lt;SheetFooter className="mt-8"&gt;
             &lt;Button
               type="button"
               variant="outline"
@@ -1576,17 +1576,17 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             &gt;
               {isProcessing ? "Processing..." : "Approve"}
             &lt;/Button&gt;
-          &lt;/DialogFooter&gt;
-        &lt;/DialogContent&gt;
-      &lt;/Dialog&gt;
+          &lt;/SheetFooter&gt;
+        &lt;/SheetContent&gt;
+      &lt;/Sheet&gt;
 &nbsp;
-      {/* Reject Dialog */}
-      &lt;Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}&gt;
-        &lt;DialogContent className="sm:max-w-md"&gt;
-          &lt;DialogHeader&gt;
-            &lt;DialogTitle&gt;Reject Payment Request&lt;/DialogTitle&gt;
-            &lt;DialogDescription&gt;Please provide a reason for rejecting this payment request.&lt;/DialogDescription&gt;
-          &lt;/DialogHeader&gt;
+      {/* Reject Sheet */}
+      &lt;Sheet open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}&gt;
+        &lt;SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right"&gt;
+          &lt;SheetHeader className="mb-6"&gt;
+            &lt;SheetTitle&gt;Reject Payment Request&lt;/SheetTitle&gt;
+            &lt;SheetDescription&gt;Please provide a reason for rejecting this payment request.&lt;/SheetDescription&gt;
+          &lt;/SheetHeader&gt;
           &lt;div className="bg-muted/50 p-3 rounded-md my-2"&gt;
             &lt;div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm"&gt;
               &lt;div className="text-muted-foreground"&gt;Student:&lt;/div&gt;
@@ -1597,7 +1597,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               &lt;div&gt;{selectedRequest &amp;&amp; formatCurrency(selectedRequest.amount)}&lt;/div&gt;
             &lt;/div&gt;
           &lt;/div&gt;
-          &lt;div className="space-y-2"&gt;
+          &lt;div className="space-y-2 py-4"&gt;
             &lt;label htmlFor="reject-notes" className="text-sm font-medium"&gt;
               Rejection Reason
             &lt;/label&gt;
@@ -1610,7 +1610,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
               required
             /&gt;
           &lt;/div&gt;
-          &lt;DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:space-x-0"&gt;
+          &lt;SheetFooter className="mt-8"&gt;
             &lt;Button
               type="button"
               variant="outline"
@@ -1628,9 +1628,9 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             &gt;
               {isProcessing ? "Processing..." : "Reject"}
             &lt;/Button&gt;
-          &lt;/DialogFooter&gt;
-        &lt;/DialogContent&gt;
-      &lt;/Dialog&gt;
+          &lt;/SheetFooter&gt;
+        &lt;/SheetContent&gt;
+      &lt;/Sheet&gt;
     &lt;/div&gt;
   )
 &nbsp;
@@ -1807,7 +1807,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../../../prettify.js"></script>
         <script>

@@ -10,6 +10,7 @@ interface DashboardHeaderProps {
     icon?: ReactNode
     action?: ReactNode
     children?: React.ReactNode
+    variant?: "default" | "brand"
 }
 
 export function DashboardHeader({
@@ -19,8 +20,13 @@ export function DashboardHeader({
     icon,
     action,
     children,
+    variant = "default",
 }: DashboardHeaderProps) {
     const { colors } = useColors()
+
+    const bannerBackground = variant === "brand"
+        ? "linear-gradient(135deg, #16a34a 0%, #ea580c 100%)"
+        : `linear-gradient(135deg, ${colors.primaryColor || '#4f46e5'} 0%, ${colors.secondaryColor || '#7c3aed'} 100%)`
 
     return (
         <div className="flex flex-col gap-2 mb-8 z-0 relative font-poppins">
@@ -28,7 +34,7 @@ export function DashboardHeader({
                 <div
                     className="w-full rounded-[2rem] p-8 py-10 mb-6 shadow-2xl relative overflow-hidden border border-white/20 group"
                     style={{
-                        background: `linear-gradient(135deg, ${colors.primaryColor || '#4f46e5'} 0%, ${colors.secondaryColor || '#7c3aed'} 100%)`,
+                        background: bannerBackground,
                     }}
                 >
                     {/* Background decorative elements */}

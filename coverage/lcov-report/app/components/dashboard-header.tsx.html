@@ -32,7 +32,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
@@ -134,7 +134,26 @@
 <a name='L69'></a><a href='#L69'>69</a>
 <a name='L70'></a><a href='#L70'>70</a>
 <a name='L71'></a><a href='#L71'>71</a>
-<a name='L72'></a><a href='#L72'>72</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -157,6 +176,25 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -230,42 +268,60 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
     const { colors } = <span class="cstat-no" title="statement not covered" >useColors()</span>
 &nbsp;
     return (
-        &lt;div className="flex flex-col gap-2 mb-8 z-0"&gt;
+        &lt;div className="flex flex-col gap-2 mb-8 z-0 relative font-poppins"&gt;
             {<span class="branch-0 cbranch-no" title="branch not covered" >showBanner &amp;&amp; (</span>
                 &lt;div
-                    className="w-full rounded-lg p-6 py-8 mb-6 shadow-md relative overflow-hidden"
+                    className="w-full rounded-[2rem] p-8 py-10 mb-6 shadow-2xl relative overflow-hidden border border-white/20 group"
                     style={{
-                        background: `linear-gradient(120deg, ${colors.primaryColor}88 0%, ${colors.secondaryColor}88 100%)`,
-                        borderLeft: `4px solid ${colors.primaryColor}`,
+                        background: `linear-gradient(135deg, ${colors.primaryColor || '#4f46e5'} 0%, ${colors.secondaryColor || '#7c3aed'} 100%)`,
                     }}
                 &gt;
-                    &lt;div className="absolute top-0 left-0 w-full h-full opacity-10"
+                    {/* Background decorative elements */}
+                    &lt;div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700" /&gt;
+                    &lt;div className="absolute -bottom-24 -left-24 w-64 h-64 bg-black/10 rounded-full blur-3xl group-hover:bg-black/20 transition-all duration-700" /&gt;
+&nbsp;
+                    &lt;div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none"
                         style={{
-                            backgroundImage: `radial-gradient(circle at 25px 25px, ${colors.secondaryColor} 2%, transparent 0%), radial-gradient(circle at 75px 75px, ${colors.primaryColor} 2%, transparent 0%)`,
-                            backgroundSize: "100px 100px",
+                            backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                            backgroundSize: "32px 32px",
                         }}
                     /&gt;
-                    &lt;div className="flex items-center justify-between"&gt;
-                        &lt;div className="flex items-center"&gt;
-                            {<span class="branch-0 cbranch-no" title="branch not covered" >icon &amp;&amp; &lt;</span>span className="mr-2"&gt;{icon}&lt;/span&gt;}
-                            &lt;h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-sm"&gt;{heading}&lt;/h1&gt;
+&nbsp;
+                    &lt;div className="relative z-10"&gt;
+                        &lt;div className="flex flex-col md:flex-row md:items-center justify-between gap-4"&gt;
+                            &lt;div className="flex items-center gap-4"&gt;
+                                {<span class="branch-0 cbranch-no" title="branch not covered" >icon &amp;&amp; (</span>
+                                    &lt;div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 shadow-inner"&gt;
+                                        {icon}
+                                    &lt;/div&gt;
+                                )}
+                                &lt;div&gt;
+                                    &lt;h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-md font-sora"&gt;
+                                        {heading}
+                                    &lt;/h1&gt;
+                                    {<span class="branch-0 cbranch-no" title="branch not covered" >text &amp;&amp; &lt;</span>p className="text-white/80 max-w-2xl mt-2 text-lg font-medium leading-relaxed"&gt;{text}&lt;/p&gt;}
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                            {<span class="branch-0 cbranch-no" title="branch not covered" >action &amp;&amp; &lt;</span>div className="flex-shrink-0"&gt;{action}&lt;/div&gt;}
                         &lt;/div&gt;
-                        {<span class="branch-0 cbranch-no" title="branch not covered" >action &amp;&amp; &lt;</span>div&gt;{action}&lt;/div&gt;}
                     &lt;/div&gt;
-                    {<span class="branch-0 cbranch-no" title="branch not covered" >text &amp;&amp; &lt;</span>p className="text-white/90 max-w-2xl mt-2"&gt;{text}&lt;/p&gt;}
                 &lt;/div&gt;
             )}
 &nbsp;
             {<span class="branch-0 cbranch-no" title="branch not covered" >!showBanner &amp;&amp; (</span>
-                &lt;div className="flex items-center justify-between"&gt;
-                    &lt;div className="flex items-center"&gt;
-                        {<span class="branch-0 cbranch-no" title="branch not covered" >icon &amp;&amp; &lt;</span>span className="mr-2"&gt;{icon}&lt;/span&gt;}
+                &lt;div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/60 backdrop-blur-sm p-6 rounded-[1.5rem] border border-slate-200/50 shadow-sm"&gt;
+                    &lt;div className="flex items-center gap-4"&gt;
+                        {<span class="branch-0 cbranch-no" title="branch not covered" >icon &amp;&amp; (</span>
+                            &lt;div className="p-2.5 bg-slate-100 rounded-xl text-slate-600"&gt;
+                                {icon}
+                            &lt;/div&gt;
+                        )}
                         &lt;div&gt;
-                            &lt;h1 className="text-3xl font-bold tracking-tight"&gt;{heading}&lt;/h1&gt;
-                            {<span class="branch-0 cbranch-no" title="branch not covered" >text &amp;&amp; &lt;</span>p className="text-muted-foreground"&gt;{text}&lt;/p&gt;}
+                            &lt;h1 className="text-2xl font-bold font-sora tracking-tight text-slate-800"&gt;{heading}&lt;/h1&gt;
+                            {<span class="branch-0 cbranch-no" title="branch not covered" >text &amp;&amp; &lt;</span>p className="text-slate-500 font-medium text-sm mt-0.5"&gt;{text}&lt;/p&gt;}
                         &lt;/div&gt;
                     &lt;/div&gt;
-                    {<span class="branch-0 cbranch-no" title="branch not covered" >action &amp;&amp; &lt;</span>div&gt;{action}&lt;/div&gt;}
+                    {<span class="branch-0 cbranch-no" title="branch not covered" >action &amp;&amp; &lt;</span>div className="flex-shrink-0"&gt;{action}&lt;/div&gt;}
                 &lt;/div&gt;
             )}
 &nbsp;
@@ -276,14 +332,15 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             )}
         &lt;/div&gt;
     )
-} </pre></td></tr></table></pre>
+}
+&nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

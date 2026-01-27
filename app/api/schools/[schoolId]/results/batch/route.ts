@@ -37,35 +37,18 @@ export async function GET(
       periodId,
       sessionId,
       student: {
-        schoolId, // Ensure filtering by school
+        user: {
+          schoolId,
+        },
+        classes: classId ? {
+          some: {
+            classId,
+            sessionId,
+            status: "ACTIVE"
+          }
+        } : undefined
       }
     };
-
-    if (classId) {
-       // Filter results where student belongs to the class
-       // But wait, Result model DOES NOT have classId.
-       // It links to Student.
-       // Student has `currentClass` or `studentClasses`.
-       // We need to filter results where student is currently in classId.
-       // However, reusing historical results might be tricky if student changed class.
-       // Assuming `studentClasses` tracks history, BUT simple `currentClassId` might be enough for now if we assume termly structure.
-       // Let's check schema again. `Student` has `classId` (current class).
-       // Also `StudentClass` history.
-       
-       // For strictness, we should use the `classId` from the student at the time?
-       // The `Result` doesn't store `classId`.
-       // This is a common design issue. Ideally Result should store `classId`.
-       // Schema check: Result { studentId, subjectId, ... } (Step 1369 lines 48-60)
-       // It doesn't have classId.
-       
-       // So we filter students who are *currently* in the class, OR track history.
-       // For this simple implementation, we filter by student's current class ID or use `StudentClass` logic if available.
-       // Let's use `student: { classId: classId }` which assumes current class.
-       where.student = {
-         ...where.student,
-         classId,
-       };
-    }
 
     if (subjectId && subjectId !== 'all') {
       where.subjectId = subjectId;
@@ -76,7 +59,7 @@ export async function GET(
       include: {
         componentScores: {
           include: {
-            assessmentComponent: true
+            component: true
           }
         },
         student: {
@@ -86,8 +69,7 @@ export async function GET(
               select: {
                 name: true
               }
-            },
-            rollNumber: true
+            }
           }
         },
         subject: {
@@ -114,6 +96,7 @@ const batchResultSchema = z.object({
     periodId: z.string(),
     sessionId: z.string(),
     classId: z.string().optional(),
+    teacherComment: z.string().optional(),
     componentScores: z.array(z.object({
       componentId: z.string(),
       score: z.number().min(0)
@@ -137,11 +120,17 @@ export async function POST(
       return new NextResponse("Forbidden", { status: 403 });
     }
     
+    const json = await req.json();
+    const body = batchResultSchema.parse(json);
+    
     // Check for permissions
     if (session.role === "TEACHER") {
         const teacher = await prisma.teacher.findUnique({
-            where: { userId: session.user.id },
-            include: { subjects: true }
+            where: { userId: session.id },
+            include: { 
+              subjects: true,
+              classes: true 
+            }
         });
 
         if (!teacher) {
@@ -149,24 +138,31 @@ export async function POST(
         }
 
         const allowedSubjectIds = new Set(teacher.subjects.map(s => s.subjectId));
+        const formClassIds = new Set(teacher.classes.map(c => c.id));
 
         // Check each result
         for (const entry of body.results) {
-            if (!allowedSubjectIds.has(entry.subjectId)) {
-                 return new NextResponse(`Unauthorized: You are not assigned to subject ID ${entry.subjectId}`, { status: 403 });
+             // 1. Check if allowed subject
+             const isSubjectAllowed = allowedSubjectIds.has(entry.subjectId);
+             
+             // 2. Check if form teacher for the class
+             // If classId is not provided in entry, we can't verify form teacher status easily here,
+             // but UI sends it. If not sent, we assume strict subject check or fail.
+             // Given schema optional classId, if missing, isFormTeacher is false.
+             const isFormTeacher = entry.classId && formClassIds.has(entry.classId);
+
+            if (!isSubjectAllowed && !isFormTeacher) {
+                 return new NextResponse(`Unauthorized: You are not assigned to subject ID ${entry.subjectId} and are not the form teacher.`, { status: 403 });
             }
         }
     }
-
-    const json = await req.json();
-    const body = batchResultSchema.parse(json);
 
     // Fetch grading scale for calculation
     // We assume one grading scale for the school for simplicity, or we fetch matching one
     // Ideally we should find the grading scale based on the total score.
     const gradingScales = await prisma.gradingScale.findMany({
         where: {
-            resultConfiguration: {
+            configuration: {
                 schoolId,
                 // We should match the active configuration. 
                 // Since there is no direct link from Result to Configuration, we must infer or pick default.
@@ -188,7 +184,7 @@ export async function POST(
     const processedResults = [];
 
     for (const entry of resultsToUpdate) {
-        const { studentId, subjectId, sessionId, periodId, componentScores } = entry;
+        const { studentId, subjectId, sessionId, periodId, componentScores, teacherComment } = entry;
         
         // Calculate total
         const totalScore = componentScores.reduce((sum, c) => sum + c.score, 0);
@@ -206,12 +202,6 @@ export async function POST(
         }
 
         // Upsert Result
-        // We use findFirst to get ID if it exists, because composite unique key might not be set in schema
-        // Schema checks: @@unique([studentId, subjectId, sessionId, periodId])?
-        // Let's check schema lines 48-60 (Step 1369).
-        // It didn't show unique constraints.
-        // If no unique constraint, ensure we don't create duplicates.
-        
         const existingResult = await prisma.result.findFirst({
             where: { studentId, subjectId, sessionId, periodId }
         });
@@ -225,7 +215,7 @@ export async function POST(
                     total: totalScore,
                     grade,
                     remark,
-                    // updatedBy: session.user.id // If schema supports
+                    teacherComment: teacherComment, // Update comment
                 }
             });
         } else {
@@ -238,7 +228,7 @@ export async function POST(
                     total: totalScore,
                     grade,
                     remark,
-                    // createdBy: session.user.id
+                    teacherComment: teacherComment, // Save comment
                 }
             });
             resultId = newResult.id;
@@ -255,7 +245,7 @@ export async function POST(
                 await prisma.componentScore.createMany({
                     data: componentScores.map(cs => ({
                         resultId: resultId!, // assert non-null
-                        assessmentComponentId: cs.componentId,
+                        componentId: cs.componentId,
                         score: cs.score
                     }))
                 });

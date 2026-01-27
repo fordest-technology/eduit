@@ -67,16 +67,7 @@ export async function GET(request: NextRequest) {
   const departmentId = searchParams.get("departmentId");
 
   try {
-    // Test database connection
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (error) {
-      console.error("Database connection error:", error);
-      return NextResponse.json(
-        { message: "Database connection error. Please try again later." },
-        { status: 503 }
-      );
-    }
+
 
     const schoolId = session.schoolId;
     // Allow both super_admin and school_admin to access
@@ -476,12 +467,12 @@ export async function POST(request: NextRequest) {
       const school = await withErrorHandling(async () => {
         return await db.school.findUnique({
           where: { id: schoolId },
-          select: { name: true, domain: true }
+          select: { name: true, subdomain: true }
         });
       });
 
-      const schoolUrl = school?.domain
-        ? `https://${school.domain}`
+      const schoolUrl = school?.subdomain
+        ? `https://${school.subdomain}.eduit.app`
         : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
       await sendTeacherCredentialsEmail({

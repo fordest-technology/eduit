@@ -159,7 +159,7 @@ export async function sendWelcomeEmail({
   // Get school colors if schoolId is provided
   let primaryColor = "#22c55e";
   let secondaryColor = "#4f46e5";
-  let logoUrl = "https://eduit.app/logo.png";
+  let logoUrl = "https://res.cloudinary.com/dldgfmzv9/image/upload/v1737639000/eduit-logo.png";
 
   if (schoolId) {
     try {
@@ -175,7 +175,9 @@ export async function sendWelcomeEmail({
       if (school) {
         primaryColor = school.primaryColor || primaryColor;
         secondaryColor = school.secondaryColor || secondaryColor;
-        logoUrl = school.logo || logoUrl;
+        if (school.logo && school.logo.trim().length > 0) {
+          logoUrl = school.logo;
+        }
       }
     } catch (error) {
       console.error("Error fetching school colors for email:", error);
@@ -187,27 +189,107 @@ export async function sendWelcomeEmail({
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
       <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-        .header { background-color: ${primaryColor}; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .header img { max-height: 60px; margin-bottom: 10px; }
-        .content { padding: 30px 20px; }
-        .footer { background-color: #f7f7f7; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px; }
-        h1 { color: #ffffff; font-size: 24px; margin: 0; font-weight: 600; }
-        h2 { color: ${primaryColor}; font-size: 20px; margin-top: 0; }
-        p { color: #333; line-height: 1.5; }
-        .credentials { background-color: #f7f7f7; padding: 20px; border-radius: 5px; margin: 20px 0; }
-        .credentials p { margin: 5px 0; }
-        .credentials span { font-weight: bold; color: ${secondaryColor}; }
-        .button { display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 4px; font-weight: 500; margin-top: 15px; }
-        .warning { margin-top: 20px; padding: 12px; background-color: #fff8e1; border-left: 4px solid #ffc107; color: #5d4037; }
+        body { 
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+          margin: 0; 
+          padding: 0; 
+          background-color: #f5f5f5 !important;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background-color: #ffffff !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header { 
+          background-color: ${primaryColor} !important; 
+          padding: 20px; 
+          text-align: center; 
+          border-radius: 5px 5px 0 0; 
+        }
+        .logo-container {
+          background-color: #ffffff !important;
+          display: inline-block;
+          padding: 12px;
+          border-radius: 8px;
+          margin-bottom: 10px;
+        }
+        .header img { 
+          max-height: 60px; 
+          display: block;
+        }
+        .content { 
+          padding: 30px 20px; 
+          background-color: #ffffff !important;
+        }
+        .footer { 
+          background-color: #f7f7f7 !important; 
+          padding: 15px; 
+          text-align: center; 
+          font-size: 12px; 
+          color: #666 !important; 
+          border-radius: 0 0 5px 5px; 
+        }
+        h1 { 
+          color: #ffffff !important; 
+          font-size: 24px; 
+          margin: 0; 
+          font-weight: 600; 
+        }
+        h2 { 
+          color: ${primaryColor} !important; 
+          font-size: 20px; 
+          margin-top: 0; 
+        }
+        p { 
+          color: #333333 !important; 
+          line-height: 1.5; 
+        }
+        .credentials { 
+          background-color: #f7f7f7 !important; 
+          padding: 20px; 
+          border-radius: 5px; 
+          margin: 20px 0; 
+        }
+        .credentials p { 
+          margin: 5px 0; 
+          color: #333333 !important;
+        }
+        .credentials span { 
+          font-weight: bold; 
+          color: ${secondaryColor} !important; 
+        }
+        .button { 
+          display: inline-block; 
+          background-color: ${primaryColor} !important; 
+          color: #ffffff !important; 
+          text-decoration: none; 
+          padding: 12px 30px; 
+          border-radius: 4px; 
+          font-weight: 500; 
+          margin-top: 15px; 
+        }
+        .warning { 
+          margin-top: 20px; 
+          padding: 12px; 
+          background-color: #fff8e1 !important; 
+          border-left: 4px solid #ffc107; 
+          color: #5d4037 !important; 
+        }
+        a { 
+          color: ${primaryColor} !important; 
+        }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <img src="${logoUrl}" alt="${schoolName} Logo" />
+          <div class="logo-container">
+            <img src="${logoUrl}" alt="${schoolName} Logo" onerror="this.style.display='none'" />
+          </div>
           <h1>Welcome to EduIT</h1>
         </div>
         <div class="content">
@@ -607,7 +689,7 @@ export async function sendStudentCredentialsEmail({
   // Get school colors if schoolId is provided
   let primaryColor = "#22c55e";
   let secondaryColor = "#4f46e5";
-  let logoUrl = "https://eduit.app/logo.png";
+  let logoUrl = "https://res.cloudinary.com/dldgfmzv9/image/upload/v1737639000/eduit-logo.png";
 
   if (schoolId) {
     try {
@@ -623,7 +705,9 @@ export async function sendStudentCredentialsEmail({
       if (school) {
         primaryColor = school.primaryColor || primaryColor;
         secondaryColor = school.secondaryColor || secondaryColor;
-        logoUrl = school.logo || logoUrl;
+        if (school.logo && school.logo.trim().length > 0) {
+          logoUrl = school.logo;
+        }
       }
     } catch (error) {
       console.error("Error fetching school colors for email:", error);
@@ -635,27 +719,107 @@ export async function sendStudentCredentialsEmail({
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
       <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-        .header { background-color: ${primaryColor}; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .header img { max-height: 60px; margin-bottom: 10px; }
-        .content { padding: 30px 20px; }
-        .footer { background-color: #f7f7f7; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px; }
-        h1 { color: #ffffff; font-size: 24px; margin: 0; font-weight: 600; }
-        h2 { color: ${primaryColor}; font-size: 20px; margin-top: 0; }
-        p { color: #333; line-height: 1.5; }
-        .credentials { background-color: #f7f7f7; padding: 20px; border-radius: 5px; margin: 20px 0; }
-        .credentials p { margin: 5px 0; }
-        .credentials span { font-weight: bold; color: ${secondaryColor}; }
-        .button { display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 4px; font-weight: 500; margin-top: 15px; }
-        .warning { margin-top: 20px; padding: 12px; background-color: #fff8e1; border-left: 4px solid #ffc107; color: #5d4037; }
+        body { 
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+          margin: 0; 
+          padding: 0; 
+          background-color: #f5f5f5 !important;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background-color: #ffffff !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header { 
+          background-color: ${primaryColor} !important; 
+          padding: 20px; 
+          text-align: center; 
+          border-radius: 5px 5px 0 0; 
+        }
+        .logo-container {
+          background-color: #ffffff !important;
+          display: inline-block;
+          padding: 12px;
+          border-radius: 8px;
+          margin-bottom: 10px;
+        }
+        .header img { 
+          max-height: 60px; 
+          display: block;
+        }
+        .content { 
+          padding: 30px 20px; 
+          background-color: #ffffff !important;
+        }
+        .footer { 
+          background-color: #f7f7f7 !important; 
+          padding: 15px; 
+          text-align: center; 
+          font-size: 12px; 
+          color: #666 !important; 
+          border-radius: 0 0 5px 5px; 
+        }
+        h1 { 
+          color: #ffffff !important; 
+          font-size: 24px; 
+          margin: 0; 
+          font-weight: 600; 
+        }
+        h2 { 
+          color: ${primaryColor} !important; 
+          font-size: 20px; 
+          margin-top: 0; 
+        }
+        p { 
+          color: #333333 !important; 
+          line-height: 1.5; 
+        }
+        .credentials { 
+          background-color: #f7f7f7 !important; 
+          padding: 20px; 
+          border-radius: 5px; 
+          margin: 20px 0; 
+        }
+        .credentials p { 
+          margin: 5px 0; 
+          color: #333333 !important;
+        }
+        .credentials span { 
+          font-weight: bold; 
+          color: ${secondaryColor} !important; 
+        }
+        .button { 
+          display: inline-block; 
+          background-color: ${primaryColor} !important; 
+          color: #ffffff !important; 
+          text-decoration: none; 
+          padding: 12px 30px; 
+          border-radius: 4px; 
+          font-weight: 500; 
+          margin-top: 15px; 
+        }
+        .warning { 
+          margin-top: 20px; 
+          padding: 12px; 
+          background-color: #fff8e1 !important; 
+          border-left: 4px solid #ffc107; 
+          color: #5d4037 !important; 
+        }
+        a { 
+          color: ${primaryColor} !important; 
+        }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <img src="${logoUrl}" alt="${schoolName} Logo" />
+          <div class="logo-container">
+            <img src="${logoUrl}" alt="${schoolName} Logo" onerror="this.style.display='none'" />
+          </div>
           <h1>Your Student Account</h1>
         </div>
         <div class="content">
@@ -781,7 +945,7 @@ export async function sendTeacherCredentialsEmail({
   // Get school colors if schoolId is provided
   let primaryColor = "#22c55e";
   let secondaryColor = "#4f46e5";
-  let logoUrl = "https://eduit.app/logo.png";
+  let logoUrl = "https://res.cloudinary.com/dldgfmzv9/image/upload/v1737639000/eduit-logo.png";
 
   if (schoolId) {
     try {
@@ -797,7 +961,9 @@ export async function sendTeacherCredentialsEmail({
       if (school) {
         primaryColor = school.primaryColor || primaryColor;
         secondaryColor = school.secondaryColor || secondaryColor;
-        logoUrl = school.logo || logoUrl;
+        if (school.logo && school.logo.trim().length > 0) {
+          logoUrl = school.logo;
+        }
       }
     } catch (error) {
       console.error("Error fetching school colors for email:", error);
@@ -809,27 +975,113 @@ export async function sendTeacherCredentialsEmail({
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
       <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-        .header { background-color: ${primaryColor}; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .header img { max-height: 60px; margin-bottom: 10px; }
-        .content { padding: 30px 20px; }
-        .footer { background-color: #f7f7f7; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px; }
-        h1 { color: #ffffff; font-size: 24px; margin: 0; font-weight: 600; }
-        h2 { color: ${primaryColor}; font-size: 20px; margin-top: 0; }
-        p { color: #333; line-height: 1.5; }
-        .credentials { background-color: #f7f7f7; padding: 20px; border-radius: 5px; margin: 20px 0; }
-        .credentials p { margin: 5px 0; }
-        .credentials span { font-weight: bold; color: ${secondaryColor}; }
-        .button { display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 4px; font-weight: 500; margin-top: 15px; }
-        .warning { margin-top: 20px; padding: 12px; background-color: #fff8e1; border-left: 4px solid #ffc107; color: #5d4037; }
+        body { 
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+          margin: 0; 
+          padding: 0; 
+          background-color: #f5f5f5 !important;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background-color: #ffffff !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header { 
+          background-color: ${primaryColor} !important; 
+          padding: 20px; 
+          text-align: center; 
+          border-radius: 5px 5px 0 0; 
+        }
+        .logo-container {
+          background-color: #ffffff !important;
+          display: inline-block;
+          padding: 12px;
+          border-radius: 8px;
+          margin-bottom: 10px;
+        }
+        .header img { 
+          max-height: 60px; 
+          display: block;
+        }
+        .content { 
+          padding: 30px 20px; 
+          background-color: #ffffff !important;
+        }
+        .footer { 
+          background-color: #f7f7f7 !important; 
+          padding: 15px; 
+          text-align: center; 
+          font-size: 12px; 
+          color: #666 !important; 
+          border-radius: 0 0 5px 5px; 
+        }
+        h1 { 
+          color: #ffffff !important; 
+          font-size: 24px; 
+          margin: 0; 
+          font-weight: 600; 
+        }
+        h2 { 
+          color: ${primaryColor} !important; 
+          font-size: 20px; 
+          margin-top: 0; 
+        }
+        h3 {
+          color: #333333 !important;
+        }
+        p { 
+          color: #333333 !important; 
+          line-height: 1.5; 
+        }
+        .credentials { 
+          background-color: #f7f7f7 !important; 
+          padding: 20px; 
+          border-radius: 5px; 
+          margin: 20px 0; 
+        }
+        .credentials p { 
+          margin: 5px 0; 
+          color: #333333 !important;
+        }
+        .credentials span { 
+          font-weight: bold; 
+          color: ${secondaryColor} !important; 
+        }
+        .button { 
+          display: inline-block; 
+          background-color: ${primaryColor} !important; 
+          color: #ffffff !important; 
+          text-decoration: none; 
+          padding: 12px 30px; 
+          border-radius: 4px; 
+          font-weight: 500; 
+          margin-top: 15px; 
+        }
+        .warning { 
+          margin-top: 20px; 
+          padding: 12px; 
+          background-color: #fff8e1 !important; 
+          border-left: 4px solid #ffc107; 
+          color: #5d4037 !important; 
+        }
+        a { 
+          color: ${primaryColor} !important; 
+        }
+        strong {
+          color: #333333 !important;
+        }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <img src="${logoUrl}" alt="${schoolName} Logo" />
+          <div class="logo-container">
+            <img src="${logoUrl}" alt="${schoolName} Logo" onerror="this.style.display='none'" />
+          </div>
           <h1>Your Teacher Account</h1>
         </div>
         <div class="content">
@@ -1055,8 +1307,8 @@ export async function sendResultPublishedEmail({
         <div class="content">
           <h2>Hello, ${escapeHtml(parentName || studentName)}!</h2>
           <p>The academic results for <strong>${escapeHtml(studentName)}</strong> for <strong>${escapeHtml(periodName)} (${escapeHtml(sessionName)})</strong> have been published.</p>
-          <p>You can now log in to the school portal to view the detailed results and download the report card.</p>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eduit.app'}" class="button">View Results</a>
+          <p>You can now log in to the school portal to view your detailed performance and download your official report card as a PDF.</p>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eduit.app'}/dashboard/my-results" class="button">Download Report Card (PDF)</a>
         </div>
         <div class="footer">
           <p>&copy; ${new Date().getFullYear()} ${escapeHtml(schoolName)}. All rights reserved.</p>
@@ -1226,6 +1478,514 @@ export async function sendPasswordResetEmail({
 
   return await sendEmail({
     to: userEmail,
+    subject,
+    html,
+  });
+}
+
+/**
+ * Send notification email to parent when a student is linked to their account
+ */
+export async function sendParentStudentLinkageEmail({
+  parentName,
+  parentEmail,
+  studentName,
+  schoolName,
+  schoolUrl,
+  relation = "Parent/Guardian",
+}: {
+  parentName: string;
+  parentEmail: string;
+  studentName: string;
+  schoolName: string;
+  schoolUrl: string;
+  relation?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const subject = `New Student Linked to Your Account - ${schoolName}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
+      <title>${subject}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+          background-color: #f8fafc !important;
+          color: #1e293b !important;
+          line-height: 1.6;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        .wrapper {
+          width: 100%;
+          background-color: #f8fafc !important;
+          padding: 40px 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff !important;
+          border-radius: 24px;
+          box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+          overflow: hidden;
+        }
+        .header {
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+          padding: 48px 40px;
+          text-align: center;
+          color: #ffffff !important;
+        }
+        .logo-container {
+          background-color: #ffffff !important;
+          width: 80px;
+          height: 80px;
+          border-radius: 20px;
+          margin: 0 auto 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+        }
+        .logo-container img {
+          max-width: 50px;
+          height: auto;
+        }
+        h1 {
+          font-size: 28px;
+          font-weight: 800;
+          color: #ffffff !important;
+          margin: 0;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .content {
+          padding: 48px 40px;
+          background-color: #ffffff !important;
+        }
+        .greeting {
+          font-size: 18px;
+          font-weight: 600;
+          color: #1e293b !important;
+          margin-bottom: 24px;
+        }
+        .message {
+          font-size: 16px;
+          color: #475569 !important;
+          line-height: 1.8;
+          margin-bottom: 32px;
+        }
+        .info-card {
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+          border-left: 4px solid #0ea5e9 !important;
+          border-radius: 16px;
+          padding: 24px;
+          margin: 32px 0;
+        }
+        .info-card h3 {
+          font-size: 16px;
+          font-weight: 700;
+          color: #0c4a6e !important;
+          margin-bottom: 12px;
+        }
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 12px 0;
+          border-bottom: 1px solid #bae6fd;
+        }
+        .info-row:last-child {
+          border-bottom: none;
+        }
+        .info-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: #0c4a6e !important;
+        }
+        .info-value {
+          font-size: 14px;
+          color: #075985 !important;
+          font-weight: 500;
+        }
+        .features {
+          background-color: #fefce8 !important;
+          border-radius: 16px;
+          padding: 32px;
+          margin: 32px 0;
+        }
+        .features h3 {
+          font-size: 18px;
+          font-weight: 700;
+          color: #713f12 !important;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        .feature-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .feature-item {
+          padding: 12px 0 12px 32px;
+          font-size: 15px;
+          color: #854d0e !important;
+          position: relative;
+          line-height: 1.6;
+        }
+        .feature-item:before {
+          content: "✓";
+          position: absolute;
+          left: 0;
+          font-weight: 900;
+          color: #ca8a04 !important;
+          font-size: 18px;
+        }
+        .cta-button {
+          display: inline-block;
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+          color: #ffffff !important;
+          text-decoration: none;
+          padding: 18px 48px;
+          border-radius: 16px;
+          font-size: 16px;
+          font-weight: 700;
+          text-align: center;
+          margin: 32px auto;
+          display: block;
+          width: fit-content;
+          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+          transition: all 0.3s ease;
+        }
+        .footer {
+          background-color: #f8fafc !important;
+          padding: 32px 40px;
+          text-align: center;
+          border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+          font-size: 13px;
+          color: #94a3b8 !important;
+          line-height: 1.6;
+          margin: 8px 0;
+        }
+        strong {
+          color: #1e293b !important;
+          font-weight: 700;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <div class="logo-container">
+              <img src="https://res.cloudinary.com/dws3u04l7/image/upload/v1736442711/schools/EduIT.png" 
+                   alt="EduIT Logo" 
+                   onerror="this.style.display='none'">
+            </div>
+            <h1>🎓 New Student Linked!</h1>
+          </div>
+          
+          <div class="content">
+            <div class="greeting">Hello ${escapeHtml(parentName)},</div>
+            
+            <p class="message">
+              Great news! Your child <strong>${escapeHtml(studentName)}</strong> has been successfully linked to your ${escapeHtml(schoolName)} parent portal account.
+            </p>
+
+            <div class="info-card">
+              <h3>📋 Student Details</h3>
+              <div class="info-row">
+                <span class="info-label">Student Name:</span>
+                <span class="info-value">${escapeHtml(studentName)}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Relationship:</span>
+                <span class="info-value">${escapeHtml(relation)}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">School:</span>
+                <span class="info-value">${escapeHtml(schoolName)}</span>
+              </div>
+            </div>
+
+            <div class="features">
+              <h3>🌟 What You Can Do Now</h3>
+              <ul class="feature-list">
+                <li class="feature-item"><strong>Pay School Fees</strong> - Securely process payments online</li>
+                <li class="feature-item"><strong>View Academic Results</strong> - Track your child's performance</li>
+                <li class="feature-item"><strong>Monitor Activities</strong> - Stay updated on school events</li>
+                <li class="feature-item"><strong>Access Reports</strong> - Download progress reports anytime</li>
+                <li class="feature-item"><strong>Receive Notifications</strong> - Get instant updates from school</li>
+              </ul>
+            </div>
+
+            <a href="${escapeHtml(schoolUrl)}" class="cta-button">
+              Access Your Portal →
+            </a>
+
+            <p class="message" style="text-align: center; font-size: 14px; color: #64748b !important; margin-top: 24px;">
+              If you have any questions or need assistance, please contact your school's administration.
+            </p>
+          </div>
+
+          <div class="footer">
+            <p>
+              <strong>© ${new Date().getFullYear()} EduIT Global</strong><br>
+              Empowering Education Through Technology
+            </p>
+            <p style="margin-top: 12px; font-size: 11px;">
+              This is an automated notification from ${escapeHtml(schoolName)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: parentEmail,
+    subject,
+    html,
+  });
+}
+
+/**
+ * Send notification email to teacher when a subject is assigned to them
+ */
+export async function sendTeacherSubjectAssignmentEmail({
+  teacherName,
+  teacherEmail,
+  subjectName,
+  subjectCode,
+  schoolName,
+  schoolUrl,
+}: {
+  teacherName: string;
+  teacherEmail: string;
+  subjectName: string;
+  subjectCode?: string | null;
+  schoolName: string;
+  schoolUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const subject = `Subject Assignment Notification - ${schoolName}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
+      <title>${subject}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+          background-color: #f8fafc !important;
+          color: #1e293b !important;
+          line-height: 1.6;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        .wrapper {
+          width: 100%;
+          background-color: #f8fafc !important;
+          padding: 40px 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff !important;
+          border-radius: 24px;
+          box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+          overflow: hidden;
+        }
+        .header {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+          padding: 48px 40px;
+          text-align: center;
+          color: #ffffff !important;
+        }
+        .logo-container {
+          background-color: #ffffff !important;
+          width: 80px;
+          height: 80px;
+          border-radius: 20px;
+          margin: 0 auto 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+        }
+        .logo-container img {
+          max-width: 50px;
+          height: auto;
+        }
+        h1 {
+          font-size: 28px;
+          font-weight: 800;
+          color: #ffffff !important;
+          margin: 0;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .content {
+          padding: 48px 40px;
+          background-color: #ffffff !important;
+        }
+        .greeting {
+          font-size: 18px;
+          font-weight: 600;
+          color: #1e293b !important;
+          margin-bottom: 24px;
+        }
+        .message {
+          font-size: 16px;
+          color: #475569 !important;
+          line-height: 1.8;
+          margin-bottom: 32px;
+        }
+        .info-card {
+          background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+          border-left: 4px solid #10b981 !important;
+          border-radius: 16px;
+          padding: 24px;
+          margin: 32px 0;
+        }
+        .info-card h3 {
+          font-size: 16px;
+          font-weight: 700;
+          color: #064e3b !important;
+          margin-bottom: 12px;
+        }
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 12px 0;
+          border-bottom: 1px solid #a7f3d0;
+        }
+        .info-row:last-child {
+          border-bottom: none;
+        }
+        .info-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: #064e3b !important;
+        }
+        .info-value {
+          font-size: 14px;
+          color: #047857 !important;
+          font-weight: 500;
+        }
+        .cta-button {
+          display: inline-block;
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+          color: #ffffff !important;
+          text-decoration: none;
+          padding: 18px 48px;
+          border-radius: 16px;
+          font-size: 16px;
+          font-weight: 700;
+          text-align: center;
+          margin: 32px auto;
+          display: block;
+          width: fit-content;
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+          transition: all 0.3s ease;
+        }
+        .footer {
+          background-color: #f8fafc !important;
+          padding: 32px 40px;
+          text-align: center;
+          border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+          font-size: 13px;
+          color: #94a3b8 !important;
+          line-height: 1.6;
+          margin: 8px 0;
+        }
+        strong {
+          color: #1e293b !important;
+          font-weight: 700;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <div class="logo-container">
+              <img src="https://res.cloudinary.com/dws3u04l7/image/upload/v1736442711/schools/EduIT.png" 
+                   alt="EduIT Logo" 
+                   onerror="this.style.display='none'">
+            </div>
+            <h1>📚 New Subject Assignment!</h1>
+          </div>
+          
+          <div class="content">
+            <div class="greeting">Hello ${escapeHtml(teacherName)},</div>
+            
+            <p class="message">
+              You have been assigned as the teacher for a new subject at <strong>${escapeHtml(schoolName)}</strong>.
+            </p>
+
+            <div class="info-card">
+              <h3>📝 Assignment Details</h3>
+              <div class="info-row">
+                <span class="info-label">Subject Name:</span>
+                <span class="info-value">${escapeHtml(subjectName)}</span>
+              </div>
+              ${
+                subjectCode
+                  ? `<div class="info-row">
+                  <span class="info-label">Subject Code:</span>
+                  <span class="info-value">${escapeHtml(subjectCode)}</span>
+                </div>`
+                  : ""
+              }
+              <div class="info-row">
+                <span class="info-label">School:</span>
+                <span class="info-value">${escapeHtml(schoolName)}</span>
+              </div>
+            </div>
+
+            <p class="message">
+              You can now access this subject from your dashboard to manage classes, assignments, and student grades.
+            </p>
+
+            <a href="${escapeHtml(schoolUrl)}" class="cta-button">
+              Go to Dashboard →
+            </a>
+
+            <p class="message" style="text-align: center; font-size: 14px; color: #64748b !important; margin-top: 24px;">
+              If you believe this assignment is an error, please contact the school administration.
+            </p>
+          </div>
+
+          <div class="footer">
+            <p>
+              <strong>© ${new Date().getFullYear()} EduIT Global</strong><br>
+              Empowering Education Through Technology
+            </p>
+            <p style="margin-top: 12px; font-size: 11px;">
+              This is an automated notification from ${escapeHtml(schoolName)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: teacherEmail,
     subject,
     html,
   });

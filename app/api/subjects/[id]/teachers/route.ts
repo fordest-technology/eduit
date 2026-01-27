@@ -167,19 +167,25 @@ export async function POST(
       );
     }
 
-    // Check if assignment already exists
-    const existingAssignment = await prisma.subjectTeacher.findFirst({
+    // Check if ANY teacher is already assigned to this subject
+    const anyAssignment = await prisma.subjectTeacher.findFirst({
       where: {
         subjectId: id,
-        teacherId: teacherId,
       },
     });
 
-    if (existingAssignment) {
-      return NextResponse.json(
-        { error: "Teacher is already assigned to this subject" },
-        { status: 400 }
-      );
+    if (anyAssignment) {
+      if (anyAssignment.teacherId === teacherId) {
+        return NextResponse.json(
+          { error: "Teacher is already assigned to this subject" },
+          { status: 400 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: "This subject is already assigned to another teacher. Please unassign them first." },
+          { status: 400 }
+        );
+      }
     }
 
     // Create the assignment
@@ -203,6 +209,33 @@ export async function POST(
         },
       },
     });
+
+    // Send notification email to the teacher
+    try {
+      const school = await prisma.school.findUnique({
+        where: { id: session.schoolId! },
+        select: { name: true, subdomain: true },
+      });
+
+      const schoolUrl = school?.subdomain
+        ? `https://${school.subdomain}.eduit.app`
+        : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+      const { sendTeacherSubjectAssignmentEmail } = await import("@/lib/email");
+
+      if (teacher.user.email) {
+        await sendTeacherSubjectAssignmentEmail({
+          teacherName: teacher.user.name,
+          teacherEmail: teacher.user.email,
+          subjectName: subject.name,
+          subjectCode: subject.code,
+          schoolName: school?.name || "School",
+          schoolUrl,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send teacher assignment email:", emailError);
+    }
 
     const formattedTeacher = {
       id: subjectTeacher.id,
@@ -353,6 +386,14 @@ export async function PUT(
       );
     }
 
+    // Verify max 1 teacher
+    if (teacherIds.length > 1) {
+      return NextResponse.json(
+        { error: "A subject can only be assigned to one teacher" },
+        { status: 400 }
+      );
+    }
+
     // Verify all provided teacher IDs exist and belong to this school
     if (teacherIds.length > 0) {
       const teachers = await prisma.teacher.findMany({
@@ -388,7 +429,7 @@ export async function PUT(
 
     // Update teacher assignments in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // First, remove all existing assignments
+      // First, remove all existing assignments (this fixes the "no way to unassign" issue by clearing duplicates)
       await tx.subjectTeacher.deleteMany({
         where: {
           subjectId: id,
@@ -428,6 +469,38 @@ export async function PUT(
 
       return updatedAssignments;
     });
+
+    // Send email notifications to newly assigned teachers
+    if (result.length > 0) {
+      try {
+        const school = await prisma.school.findUnique({
+          where: { id: session.schoolId! },
+          select: { name: true, subdomain: true },
+        });
+
+        const schoolUrl = school?.subdomain
+          ? `https://${school.subdomain}.eduit.app`
+          : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+        const { sendTeacherSubjectAssignmentEmail } = await import("@/lib/email");
+
+        // Send email to the assigned teacher (we know there's only one since we enforced limit 1)
+        for (const assignment of result) {
+             if (assignment.teacher.user.email) {
+                await sendTeacherSubjectAssignmentEmail({
+                  teacherName: assignment.teacher.user.name,
+                  teacherEmail: assignment.teacher.user.email,
+                  subjectName: subject.name,
+                  subjectCode: subject.code,
+                  schoolName: school?.name || "School",
+                  schoolUrl,
+                });
+             }
+        }
+      } catch (emailError) {
+        console.error("Failed to send teacher assignment emails:", emailError);
+      }
+    }
 
     // Format the response
     const formattedTeachers = result.map((st) => ({

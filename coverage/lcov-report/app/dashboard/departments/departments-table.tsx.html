@@ -410,7 +410,14 @@
 <a name='L345'></a><a href='#L345'>345</a>
 <a name='L346'></a><a href='#L346'>346</a>
 <a name='L347'></a><a href='#L347'>347</a>
-<a name='L348'></a><a href='#L348'>348</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a>
+<a name='L352'></a><a href='#L352'>352</a>
+<a name='L353'></a><a href='#L353'>353</a>
+<a name='L354'></a><a href='#L354'>354</a>
+<a name='L355'></a><a href='#L355'>355</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -426,6 +433,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -773,7 +787,14 @@ import { Button } from <span class="cstat-no" title="statement not covered" >"@/
 import { Input } from <span class="cstat-no" title="statement not covered" >"@/components/ui/input"</span>
 import { Label } from <span class="cstat-no" title="statement not covered" >"@/components/ui/label"</span>
 import { Textarea } from <span class="cstat-no" title="statement not covered" >"@/components/ui/textarea"</span>
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet"</span>
 import { Plus, Pencil, Trash2, Loader2, Users, BookOpen, GraduationCap, ArrowRight } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
 import { toast } from <span class="cstat-no" title="statement not covered" >"sonner"</span>
 import { Skeleton } from "@/components/ui/skeleton"
@@ -1046,16 +1067,16 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                 &lt;/Table&gt;
             &lt;/div&gt;
 &nbsp;
-            &lt;Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}&gt;
-                &lt;DialogContent&gt;
-                    &lt;DialogHeader&gt;
-                        &lt;DialogTitle&gt;{isEditMode ? 'Edit Department' : 'Create Department'}&lt;/DialogTitle&gt;
-                        &lt;DialogDescription&gt;
+            &lt;Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}&gt;
+                &lt;SheetContent side="right"&gt;
+                    &lt;SheetHeader className="pb-6"&gt;
+                        &lt;SheetTitle&gt;{isEditMode ? 'Edit Department' : 'Create Department'}&lt;/SheetTitle&gt;
+                        &lt;SheetDescription&gt;
                             {isEditMode
                                 ? "Update the department's information below."
                                 : "Add a new department by filling out the information below."}
-                        &lt;/DialogDescription&gt;
-                    &lt;/DialogHeader&gt;
+                        &lt;/SheetDescription&gt;
+                    &lt;/SheetHeader&gt;
                     &lt;form onSubmit={handleSubmit} className="space-y-4"&gt;
                         &lt;div className="space-y-4"&gt;
                             &lt;div&gt;
@@ -1079,7 +1100,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                 /&gt;
                             &lt;/div&gt;
                         &lt;/div&gt;
-                        &lt;DialogFooter&gt;
+                        &lt;SheetFooter className="mt-8"&gt;
                             &lt;Button
                                 type="button"
                                 variant="outline"
@@ -1098,10 +1119,10 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                     isEditMode ? 'Update Department' : 'Create Department'
                                 )}
                             &lt;/Button&gt;
-                        &lt;/DialogFooter&gt;
+                        &lt;/SheetFooter&gt;
                     &lt;/form&gt;
-                &lt;/DialogContent&gt;
-            &lt;/Dialog&gt;
+                &lt;/SheetContent&gt;
+            &lt;/Sheet&gt;
         &lt;/div&gt;
     )
 } </pre></td></tr></table></pre>
@@ -1111,7 +1132,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

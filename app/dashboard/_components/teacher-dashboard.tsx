@@ -18,6 +18,7 @@ import { DashboardHeader } from "@/app/components/dashboard-header";
 import Link from "next/link";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useColors } from "@/contexts/color-context";
 
 interface TeacherStats {
     totalStudents: number;
@@ -32,9 +33,14 @@ export default function TeacherDashboard() {
     const [stats, setStats] = useState<TeacherStats | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const { refreshColors } = useColors();
+
     useEffect(() => {
         async function fetchStats() {
             try {
+                // Refresh colors to ensure correct organization branding
+                refreshColors();
+                
                 setLoading(true);
                 const response = await fetch("/api/teachers/dashboard/stats");
 

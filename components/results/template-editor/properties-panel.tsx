@@ -8,7 +8,9 @@ import {
     ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
     Plus, Minus, Database, Table as TableIcon,
     ArrowUpCircle, ArrowRightCircle, Paintbrush, Loader2,
-    Edit, Bold, Italic
+    Edit, Bold, Italic, Palette, MousePointer2, Lock, Unlock, Activity,
+    ChevronDown, ArrowRightCircle as PageCenterIcon,
+    ArrowUp as ForwardIcon, ArrowDown as BackwardIcon
 } from "lucide-react";
 import { ColorPicker } from "@/components/color-picker";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { 
+    Tooltip, 
+    TooltipContent, 
+    TooltipProvider, 
+    TooltipTrigger 
+} from "@/components/ui/tooltip";
+import { toast } from "sonner";
 import { groupedFields, type DynamicFieldDefinition } from "@/lib/result-templates/dynamic-fields";
 
 
@@ -225,6 +234,8 @@ export function PropertiesPanel() {
         );
     }
 
+    if (!element) return null;
+
     const updateStyle = (key: string, value: any) => {
         updateElement(element.id, {
             style: { ...element.style, [key]: value }
@@ -281,27 +292,30 @@ export function PropertiesPanel() {
                 <ScrollArea className="flex-1">
                     <div className="p-4 space-y-6">
                         <TabsContent value="style" className="space-y-4 mt-0">
-                            {element.type === 'text' && (
+                            {(element.type === 'text' || element.type === 'dynamic') && (
                                 <>
                                     <div className="space-y-2">
-                                        <Label>Content</Label>
+                                        <Label>Content {element.type === 'dynamic' && "(Preview)"}</Label>
                                         <Input 
-                                            value={element.content} 
+                                            value={element.type === 'dynamic' ? `{{${element.metadata?.field}}}` : element.content} 
                                             onChange={(e) => updateElement(element.id, { content: e.target.value })} 
-                                            disabled={isLocked}
+                                            disabled={isLocked || element.type === 'dynamic'}
+                                            className={element.type === 'dynamic' ? "bg-slate-50 font-mono text-xs" : ""}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Font Size</Label>
+                                        <Label className="flex items-center justify-between">
+                                            <span>Font Size</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{element.style.fontSize}px</span>
+                                        </Label>
                                         <div className="flex items-center gap-4">
                                             <Slider 
                                                 min={6} max={72} step={1}
-                                                value={[element.style.fontSize]}
+                                                value={[element.style.fontSize || 12]}
                                                 onValueChange={([val]) => updateStyle('fontSize', val)}
                                                 className="flex-1"
                                                 disabled={isLocked}
                                             />
-                                            <span className="text-xs font-mono w-8">{element.style.fontSize}</span>
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
@@ -310,6 +324,8 @@ export function PropertiesPanel() {
                                             size="icon" 
                                             onClick={() => updateStyle('textAlign', 'left')}
                                             disabled={isLocked}
+                                            className="h-8 w-8"
+                                            title="Align Left"
                                         >
                                             <AlignLeft className="h-4 w-4" />
                                         </Button>
@@ -318,6 +334,8 @@ export function PropertiesPanel() {
                                             size="icon" 
                                             onClick={() => updateStyle('textAlign', 'center')}
                                             disabled={isLocked}
+                                            className="h-8 w-8"
+                                            title="Align Center"
                                         >
                                             <AlignCenter className="h-4 w-4" />
                                         </Button>
@@ -326,6 +344,8 @@ export function PropertiesPanel() {
                                             size="icon" 
                                             onClick={() => updateStyle('textAlign', 'right')}
                                             disabled={isLocked}
+                                            className="h-8 w-8"
+                                            title="Align Right"
                                         >
                                             <AlignRight className="h-4 w-4" />
                                         </Button>
@@ -335,11 +355,46 @@ export function PropertiesPanel() {
                                             size="icon" 
                                             onClick={() => updateStyle('fontWeight', element.style.fontWeight === 'bold' ? 'normal' : 'bold')}
                                             disabled={isLocked}
+                                            className="h-8 w-8"
+                                            title="Bold"
                                         >
                                             <Bold className="h-4 w-4" />
                                         </Button>
+                                        <Button 
+                                            variant={element.style.fontStyle === 'italic' ? 'secondary' : 'outline'} 
+                                            size="icon" 
+                                            onClick={() => updateStyle('fontStyle', element.style.fontStyle === 'italic' ? 'normal' : 'italic')}
+                                            disabled={isLocked}
+                                            className="h-8 w-8"
+                                            title="Italic"
+                                        >
+                                            <Italic className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </>
+                            )}
+
+                            {element.type === 'line' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center justify-between">
+                                            <span>Thickness</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{element.height}px</span>
+                                        </Label>
+                                        <Slider 
+                                            min={1} max={20} step={1}
+                                            value={[element.height]}
+                                            onValueChange={([val]) => updateElement(element.id, { height: val })}
+                                            disabled={isLocked}
+                                        />
+                                    </div>
+                                    <ColorPicker 
+                                        label="Line Color"
+                                        color={element.style.backgroundColor || '#000000'}
+                                        onChange={(val) => updateStyle('backgroundColor', val)}
+                                        disabled={isLocked}
+                                    />
+                                </div>
                             )}
 
                             <ColorPicker 
@@ -555,7 +610,54 @@ export function PropertiesPanel() {
 
                         <TabsContent value="table" className="space-y-6 mt-0">
                             <div className="space-y-4">
-                                <Label className="text-xs font-semibold uppercase text-slate-500">Grid Configuration</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-semibold uppercase text-slate-500">Grid Configuration</Label>
+                                    {element.metadata?.tableType === 'subjects' && (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-7 px-2 text-[10px] bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all font-bold gap-1"
+                                                        onClick={() => {
+                                                            if (!schoolData) {
+                                                                toast.error("Still syncing with school server... Please wait.");
+                                                                return;
+                                                            }
+                                                            if (!schoolData.assessmentComponents || schoolData.assessmentComponents.length === 0) {
+                                                                toast.error("No Assessment Components found for this session. Set them up in 'Result Settings' first!");
+                                                                return;
+                                                            }
+                                                            const comps = schoolData.assessmentComponents;
+                                                            const headers = ["SUBJECT", ...comps.map(c => c.name.toUpperCase()), "TOTAL", "GRADE", "REMARK"];
+                                                            
+                                                            // For subject tables we want specific width proportions
+                                                            // Subject (4), Each Term (1.5), Total (1.5), Grade (1.5), Remark (3)
+                                                            const columnWidths = [4, ...comps.map(() => 1.5), 1.5, 1.5, 3];
+                                                            
+                                                            updateElement(element.id, {
+                                                                metadata: { 
+                                                                    ...element.metadata, 
+                                                                    headers, 
+                                                                    cols: headers.length,
+                                                                    columnWidths,
+                                                                    rows: element.metadata?.rows || 10 // Default to more rows for subjects
+                                                                }
+                                                            });
+                                                            
+                                                            toast.success(`Table synced with ${comps.length} components!`);
+                                                        }}
+                                                    >
+                                                        <Activity className="h-3 w-3" />
+                                                        Sync with Config
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Matches columns to your CA/Exam settings</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )}
+                                </div>
                                 <div className="grid grid-cols-1 gap-3">
                                     <div className="flex items-center justify-between p-2 border rounded-md bg-slate-50">
                                         <div className="flex flex-col">
@@ -588,7 +690,7 @@ export function PropertiesPanel() {
                                 </div>
                             </div>
 
-                            <Separator />
+                             <Separator />
 
                             <div className="space-y-4">
                                 <Label className="text-xs font-semibold uppercase text-slate-500">Table Headers</Label>
@@ -622,8 +724,56 @@ export function PropertiesPanel() {
                             <Separator />
 
                             <div className="space-y-4">
+                                <Label className="text-xs font-semibold uppercase text-slate-500">Column Proportions</Label>
+                                <div className="space-y-3">
+                                    {[...Array(element.metadata?.cols || 0)].map((_, i) => (
+                                        <div key={i} className="space-y-1">
+                                            <div className="flex items-center justify-between text-[10px]">
+                                                <span className="text-slate-500 font-mono">Col #{i + 1} ({(element.metadata?.headers || [])[i] || "Empty"})</span>
+                                                <span className="font-bold text-indigo-600">{(element.metadata?.columnWidths || [])[i] || 1}x</span>
+                                            </div>
+                                            <Slider 
+                                                min={0.5} max={10} step={0.1}
+                                                value={[(element.metadata?.columnWidths || [])[i] || 1]}
+                                                onValueChange={([val]) => {
+                                                    const newWidths = [...(element.metadata?.columnWidths || [])];
+                                                    // Initialize if empty
+                                                    if (newWidths.length === 0) {
+                                                        for(let j=0; j<(element.metadata?.cols || 0); j++) newWidths.push(1);
+                                                    }
+                                                    newWidths[i] = val;
+                                                    updateMetadata('columnWidths', newWidths);
+                                                }}
+                                                className="h-4"
+                                                disabled={isLocked}
+                                            />
+                                        </div>
+                                    ))}
+                                    {(element.metadata?.cols || 0) === 0 && (
+                                        <div className="text-center py-4 bg-slate-50 rounded italic text-slate-400 text-xs">
+                                            Sync or add columns to adjust widths
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="space-y-4">
                                 <Label className="text-xs font-semibold uppercase text-slate-500">Styling</Label>
                                 <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center justify-between">
+                                            <span>Content Font Size</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{element.style.fontSize || 9}px</span>
+                                        </Label>
+                                        <Slider 
+                                            min={6} max={24} step={1}
+                                            value={[element.style.fontSize || 9]}
+                                            onValueChange={([val]) => updateStyle('fontSize', val)}
+                                            disabled={isLocked}
+                                        />
+                                    </div>
                                     <ColorPicker 
                                         label="Header Background"
                                         color={element.style.headerBgColor || '#1e293b'}

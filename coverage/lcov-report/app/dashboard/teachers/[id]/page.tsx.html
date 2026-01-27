@@ -25,28 +25,28 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/78</span>
+                <span class='fraction'>0/79</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/25</span>
+                <span class='fraction'>0/27</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/9</span>
+                <span class='fraction'>0/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/77</span>
+                <span class='fraction'>0/78</span>
             </div>
         
             
@@ -263,7 +263,14 @@
 <a name='L198'></a><a href='#L198'>198</a>
 <a name='L199'></a><a href='#L199'>199</a>
 <a name='L200'></a><a href='#L200'>200</a>
-<a name='L201'></a><a href='#L201'>201</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -271,11 +278,12 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -405,6 +413,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -412,10 +422,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -428,7 +442,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -468,10 +482,11 @@
 import { useEffect, useState } from <span class="cstat-no" title="statement not covered" >"react"</span>
 import { useParams, useRouter, useSearchParams } from <span class="cstat-no" title="statement not covered" >"next/navigation"</span>
 import { toast } from <span class="cstat-no" title="statement not covered" >"sonner"</span>
-import { Loader2 } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
+import { Loader2, ChevronLeft } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
 import { Button } from <span class="cstat-no" title="statement not covered" >"@/components/ui/button"</span>
 import { Tabs, TabsContent, TabsList, TabsTrigger } from <span class="cstat-no" title="statement not covered" >"@/components/ui/tabs"</span>
-import Link from "next/link"
+import { DashboardHeader } from <span class="cstat-no" title="statement not covered" >"@/app/components/dashboard-header"</span>
+import Link from <span class="cstat-no" title="statement not covered" >"next/link"</span>
 import TeacherDetails from <span class="cstat-no" title="statement not covered" >"./teacher-details"</span>
 import TeacherClasses from <span class="cstat-no" title="statement not covered" >"./teacher-classes"</span>
 import TeacherSubjects from <span class="cstat-no" title="statement not covered" >"./teacher-subjects"</span>
@@ -606,17 +621,26 @@ export default function <span class="cstat-no" title="statement not covered" ><s
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (loading) {</span>
         return (
-            &lt;div className="flex items-center justify-center min-h-screen"&gt;
-                &lt;Loader2 className="h-8 w-8 animate-spin" /&gt;
+            &lt;div className="flex items-center justify-center min-h-[60vh]"&gt;
+                &lt;div className="flex flex-col items-center gap-4"&gt;
+                    &lt;Loader2 className="h-12 w-12 animate-spin text-primary" /&gt;
+                    &lt;p className="text-sm text-slate-500 font-medium"&gt;Loading teacher profile...&lt;/p&gt;
+                &lt;/div&gt;
             &lt;/div&gt;
         )
     }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (error || !session || !teacher) {</span>
         return (
-            &lt;div className="flex flex-col items-center justify-center min-h-screen"&gt;
-                &lt;p className="text-red-500 mb-4"&gt;{error || "Not found or not authorized"}&lt;/p&gt;
-                &lt;Button onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >r</span>outer.push("/dashboard/teachers")}&gt;</span>
+            &lt;div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6"&gt;
+                &lt;div className="p-6 rounded-2xl bg-red-50 border border-red-100"&gt;
+                    &lt;p className="text-red-600 font-semibold"&gt;{error || "Not found or not authorized"}&lt;/p&gt;
+                &lt;/div&gt;
+                &lt;Button
+                    onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >r</span>outer.push("/dashboard/teachers")}</span>
+                    className="rounded-xl"
+                &gt;
+                    &lt;ChevronLeft className="h-4 w-4 mr-2" /&gt;
                     Back to Teachers
                 &lt;/Button&gt;
             &lt;/div&gt;
@@ -624,24 +648,21 @@ export default function <span class="cstat-no" title="statement not covered" ><s
     }
 &nbsp;
     return (
-        &lt;div className="container mx-auto py-10"&gt;
-            &lt;div className="mb-8"&gt;
-                &lt;Button
-                    variant="outline"
-                    onClick={<span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >r</span>outer.push("/dashboard/teachers")}</span>
-                    className="mb-4"
-                &gt;
-                    Back to Teachers
-                &lt;/Button&gt;
-            &lt;/div&gt;
+        &lt;div className="space-y-6"&gt;
+            &lt;DashboardHeader
+                heading={teacher.name}
+                text={`${teacher.department?.name || "General Faculty"} • ${teacher.email}`}
+                action={
+                    &lt;Link href="/dashboard/teachers"&gt;
+                        &lt;Button variant="outline" className="rounded-xl"&gt;
+                            &lt;ChevronLeft className="h-4 w-4 mr-2" /&gt;
+                            Back to Teachers
+                        &lt;/Button&gt;
+                    &lt;/Link&gt;
+                }
+            /&gt;
 &nbsp;
             &lt;Tabs defaultValue={activeTab} value={activeTab} className="w-full"&gt;
-                {/* &lt;TabsList&gt;
-                    &lt;TabsTrigger value="details"&gt;Details&lt;/TabsTrigger&gt;
-                    &lt;TabsTrigger value="classes"&gt;Classes&lt;/TabsTrigger&gt;
-                    &lt;TabsTrigger value="subjects"&gt;Subjects&lt;/TabsTrigger&gt;
-                &lt;/TabsList&gt; */}
-&nbsp;
                 &lt;TabsContent value="details"&gt;
                     &lt;TeacherDetails
                         teacher={teacher}
@@ -670,7 +691,7 @@ export default function <span class="cstat-no" title="statement not covered" ><s
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

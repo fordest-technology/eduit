@@ -313,7 +313,8 @@
 <a name='L248'></a><a href='#L248'>248</a>
 <a name='L249'></a><a href='#L249'>249</a>
 <a name='L250'></a><a href='#L250'>250</a>
-<a name='L251'></a><a href='#L251'>251</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -346,6 +347,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -598,13 +600,14 @@ import { Calendar } from <span class="cstat-no" title="statement not covered" >"
 import { cn } from <span class="cstat-no" title="statement not covered" >"@/lib/utils";</span>
 import { toast } from "sonner";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog";</span>
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+    SheetFooter,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet";</span>
 import { Badge } from "@/components/ui/badge";
 &nbsp;
 const formSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
@@ -657,15 +660,15 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
     };
 &nbsp;
     return (
-        &lt;Dialog open={isOpen} onOpenChange={setIsOpen}&gt;
-            &lt;DialogTrigger asChild&gt;{trigger}&lt;/DialogTrigger&gt;
-            &lt;DialogContent&gt;
-                &lt;DialogHeader&gt;
-                    &lt;DialogTitle&gt;Assign Bill&lt;/DialogTitle&gt;
-                    &lt;DialogDescription&gt;
+        &lt;Sheet open={isOpen} onOpenChange={setIsOpen}&gt;
+            &lt;SheetTrigger asChild&gt;{trigger}&lt;/SheetTrigger&gt;
+            &lt;SheetContent className="sm:max-w-md w-full overflow-y-auto" side="right"&gt;
+                &lt;SheetHeader&gt;
+                    &lt;SheetTitle&gt;Assign Bill&lt;/SheetTitle&gt;
+                    &lt;SheetDescription&gt;
                         Assign this bill to a class or individual student
-                    &lt;/DialogDescription&gt;
-                &lt;/DialogHeader&gt;
+                    &lt;/SheetDescription&gt;
+                &lt;/SheetHeader&gt;
                 &lt;Form {...form}&gt;
                     &lt;form
                         onSubmit={form.handleSubmit(handleSubmit)}
@@ -783,7 +786,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                                 mode="single"
                                                 selected={field.value}
                                                 onSelect={field.onChange}
-                                                disabled={<span class="fstat-no" title="function not covered" >(d</span>ate) =&gt;
+                                                disabled={<span class="fstat-no" title="function not covered" >(d</span>ate: Date) =&gt;
 <span class="cstat-no" title="statement not covered" >                                                    date &lt; new Date()</span>
                                                 }
                                                 initialFocus
@@ -798,7 +801,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                             )}
                         /&gt;
 &nbsp;
-                        &lt;div className="flex justify-end space-x-2"&gt;
+                        &lt;SheetFooter className="mt-6"&gt;
                             &lt;Button
                                 type="button"
                                 variant="outline"
@@ -807,11 +810,11 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                 Cancel
                             &lt;/Button&gt;
                             &lt;Button type="submit"&gt;Assign Bill&lt;/Button&gt;
-                        &lt;/div&gt;
+                        &lt;/SheetFooter&gt;
                     &lt;/form&gt;
                 &lt;/Form&gt;
-            &lt;/DialogContent&gt;
-        &lt;/Dialog&gt;
+            &lt;/SheetContent&gt;
+        &lt;/Sheet&gt;
     );
 } </pre></td></tr></table></pre>
 
@@ -820,7 +823,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

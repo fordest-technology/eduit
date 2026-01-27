@@ -5,7 +5,9 @@ export async function POST() {
   try {
     await deleteSession();
     
-    return NextResponse.json({ success: true }, { status: 200 });
+    const response = NextResponse.json({ success: true }, { status: 200 });
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    return response;
   } catch (error) {
     console.error("Logout error:", error);
     return NextResponse.json(

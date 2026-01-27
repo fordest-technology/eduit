@@ -17,19 +17,23 @@ export async function RecentActivitiesSection() {
 
   if (!canViewResults) return null;
 
-  const recentActivities = await withErrorHandling(() => prisma.result.findMany({
-    where: {
-      student: {
-        user: { schoolId: session.schoolId }
-      }
-    },
-    include: {
-      student: { include: { user: true } },
-      subject: true
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 5
-  }))
+  const recentActivities = await withErrorHandling(async () => {
+    if (!session.schoolId) return []
+
+    return prisma.result.findMany({
+      where: {
+        student: {
+          user: { schoolId: session.schoolId }
+        }
+      },
+      include: {
+        student: { include: { user: true } },
+        subject: true
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 5
+    })
+  })
 
   return (
     <Card className="lg:col-span-8 border-none shadow-xl shadow-black/5 rounded-[2.5rem] bg-white overflow-hidden">

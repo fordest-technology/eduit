@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/74</span>
+                <span class='fraction'>0/75</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/70</span>
+                <span class='fraction'>0/71</span>
             </div>
         
             
@@ -316,29 +316,7 @@
 <a name='L251'></a><a href='#L251'>251</a>
 <a name='L252'></a><a href='#L252'>252</a>
 <a name='L253'></a><a href='#L253'>253</a>
-<a name='L254'></a><a href='#L254'>254</a>
-<a name='L255'></a><a href='#L255'>255</a>
-<a name='L256'></a><a href='#L256'>256</a>
-<a name='L257'></a><a href='#L257'>257</a>
-<a name='L258'></a><a href='#L258'>258</a>
-<a name='L259'></a><a href='#L259'>259</a>
-<a name='L260'></a><a href='#L260'>260</a>
-<a name='L261'></a><a href='#L261'>261</a>
-<a name='L262'></a><a href='#L262'>262</a>
-<a name='L263'></a><a href='#L263'>263</a>
-<a name='L264'></a><a href='#L264'>264</a>
-<a name='L265'></a><a href='#L265'>265</a>
-<a name='L266'></a><a href='#L266'>266</a>
-<a name='L267'></a><a href='#L267'>267</a>
-<a name='L268'></a><a href='#L268'>268</a>
-<a name='L269'></a><a href='#L269'>269</a>
-<a name='L270'></a><a href='#L270'>270</a>
-<a name='L271'></a><a href='#L271'>271</a>
-<a name='L272'></a><a href='#L272'>272</a>
-<a name='L273'></a><a href='#L273'>273</a>
-<a name='L274'></a><a href='#L274'>274</a>
-<a name='L275'></a><a href='#L275'>275</a>
-<a name='L276'></a><a href='#L276'>276</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L254'></a><a href='#L254'>254</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -349,6 +327,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -529,29 +508,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -624,6 +580,7 @@ import { SessionsTable } from <span class="cstat-no" title="statement not covere
 import { useRouter } from <span class="cstat-no" title="statement not covered" >"next/navigation"</span>
 import { toast } from <span class="cstat-no" title="statement not covered" >"sonner"</span>
 import { DashboardHeader } from <span class="cstat-no" title="statement not covered" >"@/app/components/dashboard-header"</span>
+import { DashboardStatsCard, DashboardStatsGrid } from <span class="cstat-no" title="statement not covered" >"@/components/dashboard-stats-card"</span>
 &nbsp;
 interface Session {
     id: string
@@ -763,13 +720,13 @@ export default function <span class="cstat-no" title="statement not covered" ><s
                     }
                 }
 &nbsp;
-                // Calculate stats
-                const activeCount = <span class="cstat-no" title="statement not covered" >sessionsData.filter(<span class="fstat-no" title="function not covered" >(s</span>: Session) =&gt; <span class="cstat-no" title="statement not covered" >s.isActive)</span>.length</span>
-                const studentCount = <span class="cstat-no" title="statement not covered" >sessionsData.reduce(<span class="fstat-no" title="function not covered" >(s</span>um: number, s: Session) =&gt; <span class="cstat-no" title="statement not covered" >sum + s._count.studentClasses,</span> 0)</span>
-                const currentSessionObj = <span class="cstat-no" title="statement not covered" >sessionsData.find(<span class="fstat-no" title="function not covered" >(s</span>: Session) =&gt; <span class="cstat-no" title="statement not covered" >s.isCurrent)</span></span>
+                // Calculate stats using normalized data
+                const activeCount = <span class="cstat-no" title="statement not covered" >normalizedSessions.filter(<span class="fstat-no" title="function not covered" >(s</span>: any) =&gt; <span class="cstat-no" title="statement not covered" >s.isActive)</span>.length</span>
+                const studentCount = <span class="cstat-no" title="statement not covered" >normalizedSessions.reduce(<span class="fstat-no" title="function not covered" >(s</span>um: number, s: any) =&gt; <span class="cstat-no" title="statement not covered" >sum + s._count.studentClasses,</span> 0)</span>
+                const currentSessionObj = <span class="cstat-no" title="statement not covered" >normalizedSessions.find(<span class="fstat-no" title="function not covered" >(s</span>: any) =&gt; <span class="cstat-no" title="statement not covered" >s.isActive)</span></span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >                setStats({</span>
-                    total: sessionsData.length,
+                    total: normalizedSessions.length,
                     active: activeCount,
                     students: studentCount,
                     currentSession: currentSessionObj ? currentSessionObj.name : "None"
@@ -818,59 +775,36 @@ export default function <span class="cstat-no" title="statement not covered" ><s
                 showBanner={true}
             /&gt;
 &nbsp;
-            &lt;div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6"&gt;
-                &lt;Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200"&gt;
-                    &lt;CardHeader className="pb-2"&gt;
-                        &lt;CardTitle className="text-lg font-medium flex items-center text-blue-700"&gt;
-                            &lt;Calendar className="mr-2 h-5 w-5" /&gt;
-                            Total Sessions
-                        &lt;/CardTitle&gt;
-                    &lt;/CardHeader&gt;
-                    &lt;CardContent&gt;
-                        &lt;p className="text-3xl font-bold text-blue-800"&gt;{stats.total}&lt;/p&gt;
-                        &lt;p className="text-sm text-blue-600 mt-1"&gt;Academic periods&lt;/p&gt;
-                    &lt;/CardContent&gt;
-                &lt;/Card&gt;
-&nbsp;
-                &lt;Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200"&gt;
-                    &lt;CardHeader className="pb-2"&gt;
-                        &lt;CardTitle className="text-lg font-medium flex items-center text-green-700"&gt;
-                            &lt;Clock className="mr-2 h-5 w-5" /&gt;
-                            Active Sessions
-                        &lt;/CardTitle&gt;
-                    &lt;/CardHeader&gt;
-                    &lt;CardContent&gt;
-                        &lt;p className="text-3xl font-bold text-green-800"&gt;{stats.active}&lt;/p&gt;
-                        &lt;p className="text-sm text-green-600 mt-1"&gt;Currently running&lt;/p&gt;
-                    &lt;/CardContent&gt;
-                &lt;/Card&gt;
-&nbsp;
-                &lt;Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200"&gt;
-                    &lt;CardHeader className="pb-2"&gt;
-                        &lt;CardTitle className="text-lg font-medium flex items-center text-purple-700"&gt;
-                            &lt;Users className="mr-2 h-5 w-5" /&gt;
-                            Students
-                        &lt;/CardTitle&gt;
-                    &lt;/CardHeader&gt;
-                    &lt;CardContent&gt;
-                        &lt;p className="text-3xl font-bold text-purple-800"&gt;{stats.students}&lt;/p&gt;
-                        &lt;p className="text-sm text-purple-600 mt-1"&gt;Enrolled across sessions&lt;/p&gt;
-                    &lt;/CardContent&gt;
-                &lt;/Card&gt;
-&nbsp;
-                &lt;Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200"&gt;
-                    &lt;CardHeader className="pb-2"&gt;
-                        &lt;CardTitle className="text-lg font-medium flex items-center text-amber-700"&gt;
-                            &lt;BookOpen className="mr-2 h-5 w-5" /&gt;
-                            Current Session
-                        &lt;/CardTitle&gt;
-                    &lt;/CardHeader&gt;
-                    &lt;CardContent&gt;
-                        &lt;p className="text-xl font-bold text-amber-800 truncate"&gt;{stats.currentSession}&lt;/p&gt;
-                        &lt;p className="text-sm text-amber-600 mt-1"&gt;Default for new entries&lt;/p&gt;
-                    &lt;/CardContent&gt;
-                &lt;/Card&gt;
-            &lt;/div&gt;
+            &lt;DashboardStatsGrid columns={4} className="mb-6"&gt;
+                &lt;DashboardStatsCard
+                    title="Total Sessions"
+                    value={stats.total}
+                    icon={Calendar}
+                    color="blue"
+                    description="Academic periods"
+                /&gt;
+                &lt;DashboardStatsCard
+                    title="Active Sessions"
+                    value={stats.active}
+                    icon={Clock}
+                    color="emerald"
+                    description="Currently running"
+                /&gt;
+                &lt;DashboardStatsCard
+                    title="Students"
+                    value={stats.students}
+                    icon={Users}
+                    color="purple"
+                    description="Enrolled across sessions"
+                /&gt;
+                &lt;DashboardStatsCard
+                    title="Current Session"
+                    value={stats.currentSession}
+                    icon={BookOpen}
+                    color="amber"
+                    description="Default for new entries"
+                /&gt;
+            &lt;/DashboardStatsGrid&gt;
 &nbsp;
             &lt;Card className="border-primary/10 shadow-md"&gt;
                 &lt;CardHeader className="bg-primary/5 border-b border-primary/10"&gt;
@@ -895,7 +829,7 @@ export default function <span class="cstat-no" title="statement not covered" ><s
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

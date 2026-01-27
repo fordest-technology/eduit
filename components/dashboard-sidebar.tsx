@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { UserRole } from "@/lib/auth"
 import { toast } from "@/components/ui/use-toast"
+import { useColors } from "@/contexts/color-context"
 import { ColorPicker } from "@/app/dashboard/settings/_components/color-picker"
 import {
   LogOut,
@@ -32,7 +33,8 @@ import {
   Loader2,
   Bell,
   MessageSquare,
-  CalendarDays
+  CalendarDays,
+  Activity
 } from "lucide-react"
 import { hasPermission, hasFullAccess, type Permission } from "@/lib/permissions"
 import { useRouter } from "next/navigation"
@@ -90,16 +92,47 @@ function convertHexToHsl(hex: string): string {
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname()
   const { toast } = useToast()
+  const { colors, isLoading: isColorsLoading } = useColors()
+  // We can use the colors directly from context now
   const [isLoading, setIsLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  
+  // Computed color values
+  const [activeColor, setActiveColor] = useState("#4f46e5")
+  const [activeColorHsl, setActiveColorHsl] = useState("226deg 64% 40%")
+
+  // Update local state when context colors change
+  useEffect(() => {
+    if (user.role === "SUPER_ADMIN") {
+      setActiveColor("#f97316") // Brand Orange
+      setActiveColorHsl(convertHexToHsl("#f97316"))
+    } else if (colors.primaryColor) {
+      setActiveColor(colors.primaryColor)
+      setActiveColorHsl(convertHexToHsl(colors.primaryColor))
+    }
+  }, [colors, user.role])
+
+  // School Info State (Name, Logo)
   const [schoolInfo, setSchoolInfo] = useState<{
     name: string
     logo?: string
-    primaryColor?: string
-    secondaryColor?: string
   } | null>(null)
-  const [activeColor, setActiveColor] = useState("#4f46e5")
-  const [activeColorHsl, setActiveColorHsl] = useState("226deg 64% 40%")
+
+  // Fetch school info (Logo, Name) on mount
+  useEffect(() => {
+    const fetchSchoolInfo = async () => {
+      try {
+        const response = await fetch("/api/schools/current")
+        if (response.ok) {
+          const data = await response.json()
+          setSchoolInfo(data.school)
+        }
+      } catch (error) {
+        console.error("Failed to fetch school info", error)
+      }
+    }
+    fetchSchoolInfo()
+  }, [])
 
   // Check if the screen is mobile on mount and window resize
   useEffect(() => {
@@ -119,30 +152,6 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     return () => {
       window.removeEventListener("resize", checkIfMobile)
     }
-  }, [])
-
-  useEffect(() => {
-    const fetchSchoolInfo = async () => {
-      try {
-        const response = await fetch("/api/schools/current")
-        if (!response.ok) {
-          throw new Error("Failed to fetch school information")
-        }
-
-        const data = await response.json()
-        setSchoolInfo(data.school)
-
-        if (data.school.primaryColor) {
-          setActiveColor(data.school.primaryColor)
-          const hsl = convertHexToHsl(data.school.primaryColor)
-          setActiveColorHsl(hsl)
-        }
-      } catch (error) {
-        // Silent fail - use default values
-      }
-    }
-
-    fetchSchoolInfo()
   }, [])
 
   const handleLogout = async () => {
@@ -172,30 +181,12 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     switch (user.role) {
       case "SUPER_ADMIN":
         return [
-          { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { title: "Wallet", href: "/dashboard/wallet", icon: Wallet },
-          { title: "Fees Payment", href: "/dashboard/fees", icon: Coins },
-          { title: "Teachers", href: "/dashboard/teachers", icon: UserCog },
-          { title: "Students", href: "/dashboard/students", icon: GraduationCap },
-          {
-            title: "Results",
-            href: "/dashboard/results",
-            icon: ClipboardCheck,
-          },
-          {
-            title: "Promotion Engine",
-            href: "/dashboard/students/promotions",
-            icon: ArrowRightLeft,
-          },
-          { title: "Academic Session", href: "/dashboard/sessions", icon: Calendar },
-          { title: "Parents", href: "/dashboard/parents", icon: UserCircle },
-          { title: "Classes", href: "/dashboard/classes", icon: School },
-          { title: "Subjects", href: "/dashboard/subjects", icon: BookText },
-          { title: "Departments", href: "/dashboard/departments", icon: Layers },
-          { title: "School Levels", href: "/dashboard/school-levels", icon: Building2 },
-          { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
-          { title: "Admins", href: "/dashboard/admins", icon: ShieldCheck },
-          { title: "Settings", href: "/dashboard/settings", icon: Settings },
+          { title: "Control Center", href: "/dashboard", icon: LayoutDashboard },
+          { title: "Schools Management", href: "/dashboard?show=schools", icon: School },
+          { title: "Global Analytics", href: "/dashboard?show=analytics", icon: Activity },
+          { title: "System Revenue", href: "/dashboard?show=revenue", icon: Coins },
+          { title: "System Accounts", href: "/dashboard/admins", icon: ShieldCheck },
+          { title: "Global Settings", href: "/dashboard/settings", icon: Settings },
         ]
       case "SCHOOL_ADMIN":
         const fullAccess = hasFullAccess(user);
@@ -306,24 +297,42 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     }
   }
 
+  const searchParams = useSearchParams()
+
   const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return pathname === "/dashboard"
+    // Exact match for the full path including query params if present
+    const currentPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "")
+    
+    if (path.includes("?")) {
+      return currentPath === path
     }
+
+    if (path === "/dashboard") {
+      return pathname === "/dashboard" && searchParams.toString() === ""
+    }
+    
     return pathname === path || pathname.startsWith(`${path}/`)
   }
 
   // Group navigation items by category for admin roles
   const getGroupedNavItems = () => {
+    const items = getNavigationItems()
+    
     // For non-admin roles (including parent), return all items in the main group
-    if (
-      !["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(user.role)
-    ) {
-      return { main: getNavigationItems() }
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(user.role)) {
+      return { main: items }
     }
 
-    // For admin roles, group the items by category
-    const items = getNavigationItems()
+    // For Super Admin, we have a specific flat structure or simple grouping
+    if (user.role === "SUPER_ADMIN") {
+      return {
+        main: items.filter(i => ["Control Center", "Schools Management", "Global Analytics", "System Revenue"].includes(i.title)),
+        users: items.filter(i => i.title === "System Accounts"),
+        system: items.filter(i => i.title === "Global Settings")
+      }
+    }
+
+    // For School Admin, group the items by category
     return {
       main: items.filter((item) => ["/dashboard", "/dashboard/wallet", "/dashboard/fees", "/dashboard/calendar"].includes(item.href)),
       users: items.filter((item) =>
@@ -354,13 +363,17 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           collapsed ? "w-[80px]" : "w-72",
         )}
         style={{
-          backgroundColor: activeColorHsl ? `hsl(${activeColorHsl.split(' ')[0]} 15% 98%)` : "hsl(210 20% 98%)",
-          borderColor: activeColor + "20"
+          backgroundColor: activeColorHsl ? `hsl(${activeColorHsl.split(' ')[0]} 20% 99%)` : "#ffffff",
+          borderColor: activeColor + "15"
         }}
       >
-        {/* Ambient Glows */}
+        {/* Modern Ambient Backdrop */}
         <div
-          className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full blur-[100px] pointer-events-none opacity-20"
+          className="absolute -top-[5%] -left-[10%] w-[50%] h-[30%] rounded-full blur-[120px] pointer-events-none opacity-[0.08]"
+          style={{ backgroundColor: activeColor }}
+        />
+        <div
+          className="absolute top-[40%] -right-[15%] w-[40%] h-[40%] rounded-full blur-[100px] pointer-events-none opacity-[0.05]"
           style={{ backgroundColor: activeColor }}
         />
 
@@ -427,7 +440,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                       const isItemActive = isActive(item.href)
 
                       return (
-                        <li key={item.href}>
+                        <li key={`${item.href}-${item.title}`}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Link

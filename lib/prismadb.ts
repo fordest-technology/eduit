@@ -71,9 +71,11 @@ export async function getDashboardStats(schoolId: string) {
         },
       },
       _avg: {
-        marks: true,
+        total: true,
       },
     });
+
+    const averageScore = averageScoreResult?._avg?.total || 0;
 
     return {
       totalStudents,
@@ -81,7 +83,7 @@ export async function getDashboardStats(schoolId: string) {
       totalClasses,
       totalSubjects,
       attendanceRate: Number(attendanceRate.toFixed(2)),
-      averageScore: Number(averageScoreResult._avg.marks?.toFixed(2) || 0),
+      averageScore: Number(averageScore.toFixed(2)),
     };
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);

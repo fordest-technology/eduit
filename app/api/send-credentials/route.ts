@@ -61,7 +61,16 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    console.log({ body }, "Received credentials payload");
+    
+    // SECURITY: Never log sensitive credentials
+    // Only log non-sensitive request metadata for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CREDENTIALS_REQUEST]', {
+        role: body.role,
+        schoolId: body.schoolId,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Validate input using Zod
     const validation = credentialsSchema.safeParse(body);
@@ -85,10 +94,11 @@ export async function POST(request: Request) {
     const { name, email, role, schoolName, password, schoolId, schoolUrl } =
       validation.data;
 
+    // SECURITY: Sanitized logging - no emails or passwords
     steps.push({
       time: Date.now() - startTime,
       msg: "Request received",
-      details: { name, email, role, schoolName, schoolId },
+      details: { role, schoolId },
     });
 
     // Use the provided password or generate a fallback one
@@ -155,11 +165,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // Track successful API call
+    // Track successful API call (no sensitive data)
     apiCalls.push({
       requestId,
       timestamp: new Date().toISOString(),
-      email,
+      email: '[REDACTED]', // SECURITY: Never store email addresses
       role,
       success: true,
       error: undefined,

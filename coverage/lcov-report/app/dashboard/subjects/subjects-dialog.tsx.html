@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/31</span>
+                <span class='fraction'>0/33</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/31</span>
+                <span class='fraction'>0/33</span>
             </div>
         
             
@@ -310,7 +310,16 @@
 <a name='L245'></a><a href='#L245'>245</a>
 <a name='L246'></a><a href='#L246'>246</a>
 <a name='L247'></a><a href='#L247'>247</a>
-<a name='L248'></a><a href='#L248'>248</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -394,25 +403,34 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -566,13 +584,13 @@ import { useForm } from <span class="cstat-no" title="statement not covered" >"r
 import * as z from <span class="cstat-no" title="statement not covered" >"zod"</span>
 import { toast } from <span class="cstat-no" title="statement not covered" >"sonner"</span>
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from <span class="cstat-no" title="statement not covered" >"@/components/ui/dialog"</span>
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from <span class="cstat-no" title="statement not covered" >"@/components/ui/sheet";</span>
 import {
     Form,
     FormControl,
@@ -640,41 +658,50 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
     })
 &nbsp;
     async function <span class="fstat-no" title="function not covered" >onSubmit(v</span>alues: z.infer&lt;typeof formSchema&gt;) {
-<span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            setIsLoading(true)</span>
-            const response = <span class="cstat-no" title="statement not covered" >await fetch("/api/subjects", {</span>
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(values),
-            })
+<span class="cstat-no" title="statement not covered" >        setIsLoading(true)</span>
 &nbsp;
+        const promise = <span class="cstat-no" title="statement not covered" >fetch("/api/subjects", {</span>
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(values),
+        }).then(<span class="fstat-no" title="function not covered" >async (r</span>esponse) =&gt; {
 <span class="cstat-no" title="statement not covered" >            <span class="missing-if-branch" title="if path not taken" >I</span>if (!response.ok) {</span>
 <span class="cstat-no" title="statement not covered" >                throw new Error("Failed to create subject")</span>
             }
+<span class="cstat-no" title="statement not covered" >            return response.json();</span>
+        });
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            toast.success("Subject created successfully")</span>
-<span class="cstat-no" title="statement not covered" >            form.reset()</span>
-<span class="cstat-no" title="statement not covered" >            router.refresh()</span>
-<span class="cstat-no" title="statement not covered" >            onOpenChange(false)</span>
+<span class="cstat-no" title="statement not covered" >        toast.promise(promise, {</span>
+            loading: 'Registering new academic subject...',
+            success: <span class="fstat-no" title="function not covered" >() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >                form.reset()</span>
+<span class="cstat-no" title="statement not covered" >                router.refresh()</span>
+<span class="cstat-no" title="statement not covered" >                onOpenChange(false)</span>
+<span class="cstat-no" title="statement not covered" >                return '✅ Subject created successfully'</span>
+            },
+            error: '❌ Failed to create subject',
+        });
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        try {</span>
+<span class="cstat-no" title="statement not covered" >            await promise;</span>
         } catch (error) {
 <span class="cstat-no" title="statement not covered" >            console.error(error)</span>
-<span class="cstat-no" title="statement not covered" >            toast.error("Something went wrong. Please try again.")</span>
         } finally {
 <span class="cstat-no" title="statement not covered" >            setIsLoading(false)</span>
         }
     }
 &nbsp;
     return (
-        &lt;Dialog open={open} onOpenChange={onOpenChange}&gt;
-            &lt;DialogContent className="sm:max-w-[425px]"&gt;
-                &lt;DialogHeader&gt;
-                    &lt;DialogTitle&gt;Add Subject&lt;/DialogTitle&gt;
-                    &lt;DialogDescription&gt;
+        &lt;Sheet open={open} onOpenChange={onOpenChange}&gt;
+            &lt;SheetContent className="sm:max-w-[425px] w-full overflow-y-auto" side="right"&gt;
+                &lt;SheetHeader className="mb-6"&gt;
+                    &lt;SheetTitle&gt;Add Subject&lt;/SheetTitle&gt;
+                    &lt;SheetDescription&gt;
                         Create a new subject for your curriculum.
-                    &lt;/DialogDescription&gt;
-                &lt;/DialogHeader&gt;
+                    &lt;/SheetDescription&gt;
+                &lt;/SheetHeader&gt;
                 &lt;Form {...form}&gt;
                     &lt;form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"&gt;
                         &lt;FormField
@@ -790,19 +817,19 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
                                 &lt;/FormItem&gt;
                             )}
                         /&gt;
-                        &lt;DialogFooter&gt;
+                        &lt;SheetFooter className="mt-8"&gt;
                             &lt;Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="bg-[#E11D48] hover:bg-[#BE123C] text-white"
+                                className="bg-[#E11D48] hover:bg-[#BE123C] text-white w-full"
                             &gt;
                                 Create Subject
                             &lt;/Button&gt;
-                        &lt;/DialogFooter&gt;
+                        &lt;/SheetFooter&gt;
                     &lt;/form&gt;
                 &lt;/Form&gt;
-            &lt;/DialogContent&gt;
-        &lt;/Dialog&gt;
+            &lt;/SheetContent&gt;
+        &lt;/Sheet&gt;
     )
 } </pre></td></tr></table></pre>
 
@@ -811,7 +838,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

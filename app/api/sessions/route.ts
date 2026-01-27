@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getSession, type UserRole } from "@/lib/auth";
+import { withErrorHandling } from "@/lib/prisma";
 
 // Helper function to convert BigInt values to numbers for serialization
 function serializeBigInts(data: any): any {
@@ -39,53 +40,63 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
+    // Valid schoolId check
+    const reqSchoolId = request.nextUrl.searchParams.get("schoolId");
+    
+    // Determine effective schoolId:
+    // 1. If Super Admin, use query param (or session schoolId as fallback)
+    // 2. If School Admin/Teacher, MUST use session schoolId
+    const schoolId = session.role === "SUPER_ADMIN" 
+      ? (reqSchoolId || session.schoolId)
+      : session.schoolId;
 
-    const { searchParams } = new URL(request.url);
-    const schoolId =
-      session.role === "SUPER_ADMIN"
-        ? searchParams.get("schoolId") || undefined
-        : session.schoolId;
-    const isCurrent =
-      searchParams.get("isCurrent") === "true" ? true : undefined;
+    if (!schoolId) {
+       // Return empty array instead of 500 if no context
+       return NextResponse.json([]);
+    }
 
-    const academicSessions = await prisma.academicSession.findMany({
-      where: {
-        schoolId: schoolId as string,
-        ...(isCurrent !== undefined ? { isCurrent } : {}),
-      },
-      include: {
-        school: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const isCurrentParam = request.nextUrl.searchParams.get("isCurrent");
+    const isCurrent = isCurrentParam === "true" ? true : isCurrentParam === "false" ? false : undefined;
+
+    const academicSessions = await withErrorHandling(async () => {
+      return await prisma.academicSession.findMany({
+        where: {
+          schoolId: schoolId,
+          ...(isCurrent !== undefined ? { isCurrent } : {}),
         },
-        resultConfigurations: {
-          include: {
-            periods: {
-              select: {
-                id: true,
-                name: true,
-                weight: true,
+        include: {
+          school: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          resultConfigurations: {
+            include: {
+              periods: {
+                select: {
+                  id: true,
+                  name: true,
+                  weight: true,
+                }
               }
             }
-          }
-        },
-        _count: {
-          select: {
-            studentClasses: true,
-            attendance: true,
-            results: true,
-            classes: true,
+          },
+          _count: {
+            select: {
+              studentClasses: true,
+              attendance: true,
+              results: true,
+              classes: true,
+            },
           },
         },
-      },
-      orderBy: {
-        startDate: "desc",
-      },
+        orderBy: {
+          startDate: "desc",
+        },
+      });
     });
+
 
     return NextResponse.json(serializeBigInts(academicSessions));
   } catch (error) {

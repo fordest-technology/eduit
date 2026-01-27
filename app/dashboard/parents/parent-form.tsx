@@ -145,67 +145,18 @@ export default function ParentForm({ parent, onSuccess, className = "" }: Parent
                 throw new Error(result.error || "Failed to save parent");
             }
 
-            // Show appropriate message based on whether email was sent
+            // Show appropriate message based on API response
             if (parent) {
                 toast.success("Parent updated successfully");
             } else {
-                // Send welcome email for new parents
-                try {
-                    setEmailStatus('sending');
-
-                    // Get school information
-                    let schoolName = "School";
-                    const schoolId = result.schoolId;
-                    let schoolUrl = window.location.origin;
-
-                    try {
-                        if (schoolId) {
-                            const schoolResponse = await fetch(`/api/schools/${schoolId}`);
-                            if (schoolResponse.ok) {
-                                const schoolData = await schoolResponse.json();
-                                schoolName = schoolData.name || schoolName;
-                                if (schoolData.subdomain) {
-                                    schoolUrl = `https://${schoolData.subdomain}.eduit.app`;
-                                }
-                            }
-                        }
-                    } catch (err) {
-                        console.error("Error fetching school info:", err);
-                    }
-
-                    const emailResponse = await fetch("/api/send-credentials", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            name: result.name,
-                            email: result.email,
-                            password: data.password || result.password,
-                            role: "parent",
-                            schoolName: schoolName,
-                            schoolId: schoolId,
-                            schoolUrl: schoolUrl,
-                            revalidate: true,
-                        }),
-                    });
-
-                    if (!emailResponse.ok) {
-                        const emailError = await emailResponse.text();
-                        throw new Error(emailError || "Failed to send login credentials");
-                    }
-
+                // Check if email was sent by the API
+                if (result.emailSent) {
                     setEmailStatus('success');
                     toast.success("Parent created successfully and login credentials sent");
-                } catch (emailError) {
-                    console.error("Failed to send email:", emailError);
+                } else {
                     setEmailStatus('error');
-                    if (emailError instanceof Error) {
-                        setEmailError(emailError.message);
-                    } else {
-                        setEmailError("Failed to send login credentials");
-                    }
-                    toast.warning("Parent account created. However, there was an issue sending the login email. You may need to provide credentials manually.");
+                    setEmailError("Email delivery failed");
+                    toast.warning("Parent account created, but there was an issue sending the login email. You may need to provide credentials manually.");
                 }
             }
 

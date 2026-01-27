@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/35</span>
+                <span class='fraction'>0/36</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>0/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/35</span>
+                <span class='fraction'>0/36</span>
             </div>
         
             
@@ -413,12 +413,7 @@
 <a name='L348'></a><a href='#L348'>348</a>
 <a name='L349'></a><a href='#L349'>349</a>
 <a name='L350'></a><a href='#L350'>350</a>
-<a name='L351'></a><a href='#L351'>351</a>
-<a name='L352'></a><a href='#L352'>352</a>
-<a name='L353'></a><a href='#L353'>353</a>
-<a name='L354'></a><a href='#L354'>354</a>
-<a name='L355'></a><a href='#L355'>355</a>
-<a name='L356'></a><a href='#L356'>356</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L351'></a><a href='#L351'>351</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -459,7 +454,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -497,18 +491,12 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -518,17 +506,19 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -782,7 +772,7 @@ import { Card, CardContent, CardHeader, CardTitle } from <span class="cstat-no" 
 import { Button } from <span class="cstat-no" title="statement not covered" >"@/components/ui/button"</span>
 import { Input } from <span class="cstat-no" title="statement not covered" >"@/components/ui/input"</span>
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from <span class="cstat-no" title="statement not covered" >"@/components/ui/form"</span>
-import { useToast } from <span class="cstat-no" title="statement not covered" >"@/components/ui/use-toast"</span>
+import { toast } from <span class="cstat-no" title="statement not covered" >"sonner"</span>
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from <span class="cstat-no" title="statement not covered" >"@/components/ui/select"</span>
 import { Loader2 } from <span class="cstat-no" title="statement not covered" >"lucide-react"</span>
 import { UserRole } from <span class="cstat-no" title="statement not covered" >"@prisma/client"</span>
@@ -814,7 +804,6 @@ interface ProfileSettingsProps {
 &nbsp;
 export function <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >ProfileSettings({</span></span> userRole, userId }: ProfileSettingsProps) {
     const [isLoading, setIsLoading] = <span class="cstat-no" title="statement not covered" >useState(false)</span>
-    const { toast } = <span class="cstat-no" title="statement not covered" >useToast()</span>
 &nbsp;
     const form = <span class="cstat-no" title="statement not covered" >useForm&lt;ProfileFormData&gt;({</span>
         resolver: zodResolver(profileSchema),
@@ -849,41 +838,37 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
 <span class="cstat-no" title="statement not covered" >                    form.reset(data.user)</span>
                 }
             } catch (error) {
-<span class="cstat-no" title="statement not covered" >                toast({</span>
-                    title: "Error",
-                    description: "Failed to load user data",
-                    variant: "destructive"
-                })
+<span class="cstat-no" title="statement not covered" >                toast.error("Failed to load user data")</span>
             }
         }
 <span class="cstat-no" title="statement not covered" >        fetchUserData()</span>
-    }, [userId, form, toast])
+    }, [userId, form])
 &nbsp;
     async function <span class="fstat-no" title="function not covered" >onSubmit(d</span>ata: ProfileFormData) {
-<span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            setIsLoading(true)</span>
-            const response = <span class="cstat-no" title="statement not covered" >await fetch(`/api/users/${userId}`, {</span>
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-&nbsp;
+<span class="cstat-no" title="statement not covered" >        setIsLoading(true)</span>
+        const promise = <span class="cstat-no" title="statement not covered" >fetch(`/api/users/${userId}`, {</span>
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        }).then(<span class="fstat-no" title="function not covered" >async (r</span>esponse) =&gt; {
 <span class="cstat-no" title="statement not covered" >            <span class="missing-if-branch" title="if path not taken" >I</span>if (!response.ok) {</span>
 <span class="cstat-no" title="statement not covered" >                throw new Error('Failed to update profile')</span>
             }
+<span class="cstat-no" title="statement not covered" >            return response.json();</span>
+        });
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            toast({</span>
-                title: "Success",
-                description: "Your profile has been updated successfully."
-            })
+<span class="cstat-no" title="statement not covered" >        toast.promise(promise, {</span>
+            loading: 'Updating profile information...',
+            success: '✅ Profile updated successfully!',
+            error: '❌ Failed to update profile',
+        });
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        try {</span>
+<span class="cstat-no" title="statement not covered" >            await promise;</span>
         } catch (error) {
-<span class="cstat-no" title="statement not covered" >            toast({</span>
-                title: "Error",
-                description: "Failed to update profile.",
-                variant: "destructive"
-            })
+<span class="cstat-no" title="statement not covered" >            console.error(error);</span>
         } finally {
 <span class="cstat-no" title="statement not covered" >            setIsLoading(false)</span>
         }
@@ -1135,7 +1120,7 @@ export function <span class="cstat-no" title="statement not covered" ><span clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-18T08:31:16.653Z
+                at 2026-01-20T14:30:04.219Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

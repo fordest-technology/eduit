@@ -20,8 +20,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
+
 
     const academicSession = await prisma.academicSession.findUnique({
       where: { id: sessionId },
@@ -93,8 +92,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
+
 
     // Only super_admin and school_admin can update sessions
     const allowedRoles: UserRole[] = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
@@ -230,8 +228,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
+
 
     // Only SUPER_ADMIN and SCHOOL_ADMIN can delete sessions
     const allowedRoles: UserRole[] = ["SUPER_ADMIN", "SCHOOL_ADMIN"];

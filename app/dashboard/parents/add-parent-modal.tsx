@@ -6,14 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { toast } from "sonner"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
+import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import {
     Form,
     FormControl,
@@ -26,12 +19,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
-import { Loader2, Mail, CheckCircle, AlertCircle, X, Upload, Copy, RefreshCw } from "lucide-react"
+import { Loader2, Mail, CheckCircle, AlertCircle, Upload, Copy, RefreshCw, ArrowRight, ArrowLeft } from "lucide-react"
 import { generatePassword } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Parent } from "./types"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Stepper } from "@/components/ui/stepper"
 
 const createFormSchema = (isEditMode: boolean) => z.object({
     name: z.string().min(1, "Name is required"),
@@ -56,6 +48,12 @@ interface AddParentModalProps {
     parentToEdit?: Parent | null
 }
 
+const STEPS = [
+    { id: "basic", label: "Basic Info", fields: ["name", "email", "occupation", "password"] },
+    { id: "contact", label: "Contact", fields: ["phone", "alternatePhone"] },
+    { id: "address", label: "Address", fields: ["address", "city", "state", "country"] },
+];
+
 export function AddParentModal({
     open,
     onOpenChange,
@@ -69,7 +67,7 @@ export function AddParentModal({
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
     const [emailError, setEmailError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<string>("basic");
+    const [currentStep, setCurrentStep] = useState(0);
     const isEditMode = Boolean(parentToEdit);
 
     const formSchema = createFormSchema(isEditMode);
@@ -135,7 +133,7 @@ export function AddParentModal({
             }
             setEmailStatus('idle');
             setEmailError(null);
-            setActiveTab("basic");
+            setCurrentStep(0);
         }
     }, [parentToEdit, open, form]);
 
@@ -161,66 +159,19 @@ export function AddParentModal({
         }
     };
 
-    async function sendLoginCredentials(parentName: string, parentEmail: string, userPassword: string) {
-        setEmailStatus('sending');
-        setEmailError(null);
-
-        try {
-            // Get school information
-            let schoolName = "School";
-            let schoolId = session?.schoolId;
-            let schoolUrl = window.location.origin;
-
-            try {
-                if (schoolId) {
-                    const schoolResponse = await fetch(`/api/schools/${schoolId}`);
-                    if (schoolResponse.ok) {
-                        const schoolData = await schoolResponse.json();
-                        schoolName = schoolData.name || schoolName;
-                        if (schoolData.subdomain) {
-                            schoolUrl = `https://${schoolData.subdomain}.eduit.app`;
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching school info:", err);
-            }
-
-            const response = await fetch("/api/send-credentials", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: parentName,
-                    email: parentEmail,
-                    password: userPassword,
-                    role: "parent",
-                    schoolName: schoolName,
-                    schoolId: schoolId,
-                    schoolUrl: schoolUrl,
-                    revalidate: true,
-                }),
-            });
-
-            if (!response.ok) {
-                const error = await response.text();
-                throw new Error(error || "Failed to send login credentials");
-            }
-
-            setEmailStatus('success');
-            return true;
-        } catch (error) {
-            console.error("Failed to send email:", error);
-            setEmailStatus('error');
-            if (error instanceof Error) {
-                setEmailError(error.message);
-            } else {
-                setEmailError("Failed to send login credentials");
-            }
-            return false;
+    const nextStep = async () => {
+        const fields = STEPS[currentStep].fields as any[];
+        const isValid = await form.trigger(fields);
+        if (isValid) {
+            setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
         }
-    }
+    };
+
+    const prevStep = () => {
+        setCurrentStep((prev) => Math.max(prev - 1, 0));
+    };
+
+
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true);
@@ -239,7 +190,6 @@ export function AddParentModal({
             if (values.country) formData.append("country", values.country);
 
             if (image && image.startsWith('data:')) {
-                // Manually convert data URL to blob to avoid "Failed to fetch" errors
                 const parts = image.split(',');
                 const byteString = atob(parts[1]);
                 const mimeString = parts[0].split(':')[1].split(';')[0];
@@ -271,8 +221,14 @@ export function AddParentModal({
                     throw new Error(result.error || "Failed to save parent");
                 }
 
+                // Check if email was sent by the API for new parents
                 if (!isEditMode) {
-                    await sendLoginCredentials(values.name, values.email, values.password || "");
+                    if (result.emailSent) {
+                        setEmailStatus('success');
+                    } else {
+                        setEmailStatus('error');
+                        setEmailError("Email delivery failed");
+                    }
                 }
 
                 router.refresh();
@@ -300,335 +256,304 @@ export function AddParentModal({
     }
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent
-                side="right"
-                className="w-[550px] sm:w-[600px] lg:w-[650px] overflow-y-auto"
-            >
-                <SheetHeader className="mb-6 border-b pb-4">
-                    <SheetTitle className="text-xl font-semibold">
-                        {isEditMode ? 'Edit Parent Account' : 'Add New Parent'}
-                    </SheetTitle>
-                    <SheetDescription className="text-sm text-muted-foreground">
-                        {isEditMode
-                            ? "Update the parent's information and save changes when done."
-                            : "Create a new parent account. Login credentials will be sent automatically via email."}
-                    </SheetDescription>
-                </SheetHeader>
+        <ResponsiveModal 
+            open={open} 
+            onOpenChange={onOpenChange}
+            title={isEditMode ? 'Edit Parent Profile' : 'Parent Onboarding'}
+            description={isEditMode
+                ? "Update parent details and contact information."
+                : "Complete the 3-step process to register a new parent."}
+        >
+            <div className="flex flex-col h-full">
+                {!isEditMode && (
+                    <div className="mb-6">
+                        <Stepper steps={STEPS} currentStep={currentStep} />
+                    </div>
+                )}
 
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        {/* Image Upload Section */}
-                        <div className="flex flex-col items-center mb-6">
-                            <Avatar className="w-24 h-24 mb-2 border-2 border-primary/20">
-                                <AvatarImage src={image || ""} alt="Profile" />
-                                <AvatarFallback className="text-lg bg-primary/10">
-                                    {form.getValues("name")
-                                        ? form.getValues("name")
-                                            .split(" ")
-                                            .map((n: string) => n[0])
-                                            .join("")
-                                            .toUpperCase()
-                                        : "P"}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="mt-2 text-center">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="mb-1"
-                                >
-                                    <Upload className="h-4 w-4 mr-2" />
-                                    {image ? "Change Photo" : "Upload Photo"}
-                                </Button>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Recommended: Square image, max 2MB
-                                </p>
-                            </div>
-                        </div>
+                <div className="flex-1 overflow-y-auto pr-2">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            {(currentStep === 0 || isEditMode) && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="flex flex-col items-center mb-6">
+                                        <Avatar className="w-24 h-24 mb-3 border-4 border-white shadow-lg">
+                                            <AvatarImage src={image || ""} alt="Profile" />
+                                            <AvatarFallback className="text-2xl bg-indigo-50 text-indigo-600 font-bold">
+                                                {form.getValues("name")
+                                                    ? form.getValues("name").charAt(0).toUpperCase()
+                                                    : "P"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="text-center">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                ref={fileInputRef}
+                                                onChange={handleFileChange}
+                                                className="hidden"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="rounded-full"
+                                            >
+                                                <Upload className="h-3 w-3 mr-2" />
+                                                {image ? "Change Photo" : "Upload Photo"}
+                                            </Button>
+                                        </div>
+                                    </div>
 
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 mb-2 bg-muted/50 p-1 rounded-lg">
-                                <TabsTrigger
-                                    value="basic"
-                                    className="data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:shadow-sm rounded-md"
-                                >
-                                    Basic Info
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="contact"
-                                    className="data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:shadow-sm rounded-md"
-                                >
-                                    Contact Info
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="address"
-                                    className="data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:shadow-sm rounded-md"
-                                >
-                                    Address
-                                </TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="basic" className="space-y-4 mt-4 p-4 border rounded-lg bg-white">
-                                {/* Name Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="flex items-center">
-                                                Full Name <span className="text-red-500 ml-1">*</span>
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., Jane Doe" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                {/* Email Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="flex items-center">
-                                                Email Address <span className="text-red-500 ml-1">*</span>
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input type="email" placeholder="e.g., jane.doe@example.com" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                {/* Occupation Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="occupation"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Occupation (Optional)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., Doctor, Teacher, etc." {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                {/* Password Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="flex items-center">
-                                                {isEditMode ? "New Password (leave blank to keep current)" : "Password"}
-                                                {!isEditMode && <span className="text-red-500 ml-1">*</span>}
-                                            </FormLabel>
-                                            <div className="flex space-x-2">
-                                                <FormControl>
-                                                    <PasswordInput {...field} />
-                                                </FormControl>
-                                                <Button
-                                                    type="button"
-                                                    size="icon"
-                                                    variant="outline"
-                                                    onClick={handleGeneratePassword}
-                                                    title="Generate new password"
-                                                >
-                                                    <RefreshCw className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    size="icon"
-                                                    variant="outline"
-                                                    onClick={handleCopyPassword}
-                                                    title="Copy password"
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                            {!isEditMode && (
-                                                <FormDescription>
-                                                    A secure password will be generated and sent to the parent's email.
-                                                </FormDescription>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="e.g. John Doe" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
                                             )}
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </TabsContent>
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="email"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                                                    <FormControl>
+                                                        <Input type="email" placeholder="john.doe@example.com" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
 
-                            <TabsContent value="contact" className="space-y-4 mt-4 p-4 border rounded-lg bg-white">
-                                {/* Phone Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="phone"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Phone Number (Optional)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., +1 234 567 890" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                {/* Alternate Phone Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="alternatePhone"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Alternate Phone (Optional)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., +1 234 567 890" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </TabsContent>
-
-                            <TabsContent value="address" className="space-y-4 mt-4 p-4 border rounded-lg bg-white">
-                                {/* Address Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="address"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Address (Optional)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., 123 Main St" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* City Field */}
                                     <FormField
                                         control={form.control}
-                                        name="city"
+                                        name="occupation"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>City (Optional)</FormLabel>
+                                                <FormLabel>Occupation (Optional)</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="e.g., New York" {...field} />
+                                                    <Input placeholder="e.g. Software Engineer" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
 
-                                    {/* State Field */}
                                     <FormField
                                         control={form.control}
-                                        name="state"
+                                        name="password"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>State/Province (Optional)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g., NY" {...field} />
-                                                </FormControl>
+                                                <FormLabel className="flex items-center">
+                                                    {isEditMode ? "Change Password" : "Password"}
+                                                    {!isEditMode && <span className="text-red-500 ml-1">*</span>}
+                                                </FormLabel>
+                                                <div className="flex space-x-2">
+                                                    <FormControl>
+                                                        <PasswordInput {...field} />
+                                                    </FormControl>
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="outline"
+                                                        onClick={handleGeneratePassword}
+                                                        title="Generate new password"
+                                                    >
+                                                        <RefreshCw className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="outline"
+                                                        onClick={handleCopyPassword}
+                                                        title="Copy password"
+                                                    >
+                                                        <Copy className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                                {!isEditMode && (
+                                                    <FormDescription>
+                                                        A random password is generated by default.
+                                                    </FormDescription>
+                                                )}
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
+                            )}
 
-                                {/* Country Field */}
-                                <FormField
-                                    control={form.control}
-                                    name="country"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Country (Optional)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., United States" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                            {(currentStep === 1 || isEditMode) && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <h3 className={`font-semibold text-lg ${isEditMode ? 'pt-4 border-t' : ''}`}>
+                                        Contact Information
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="phone"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Phone Number</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="+1 234 567 890" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="alternatePhone"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Alternate Phone (Optional)</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="+1 234 567 890" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    
+                                    {!isEditMode && (
+                                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
+                                            <div className="flex items-center text-sm text-blue-700">
+                                                <Mail className="h-4 w-4 mr-2 text-blue-500" />
+                                                <p className="font-medium">Credentials will be sent via email upon completion.</p>
+                                            </div>
+                                        </div>
                                     )}
-                                />
-                            </TabsContent>
-                        </Tabs>
-
-                        {/* Required Fields Note */}
-                        <div className="text-xs text-muted-foreground mt-2 mb-4">
-                            <span className="text-red-500">*</span> Required fields
-                        </div>
-
-                        {/* Email Sending Info */}
-                        {!isEditMode && (
-                            <div className="bg-blue-50 border border-blue-100 p-4 rounded-md">
-                                <div className="flex items-center text-sm text-blue-700">
-                                    <Mail className="h-4 w-4 mr-2 text-blue-500" />
-                                    <p className="font-medium">A welcome email with login credentials will be sent automatically.</p>
                                 </div>
-                                {emailStatus === 'sending' && (
-                                    <div className="flex items-center mt-2 text-sm text-amber-600">
-                                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                        <p>Sending login credentials to email...</p>
-                                    </div>
-                                )}
-                                {emailStatus === 'success' && (
-                                    <div className="flex items-center mt-2 text-sm text-green-600">
-                                        <CheckCircle className="h-3 w-3 mr-2" />
-                                        <p>Login credentials sent successfully!</p>
-                                    </div>
-                                )}
-                                {emailStatus === 'error' && (
-                                    <div className="flex items-center mt-2 text-sm text-red-600">
-                                        <AlertCircle className="h-3 w-3 mr-2" />
-                                        <p>{emailError || "Failed to send email with credentials."}</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                            )}
 
-                        <SheetFooter className="pt-6 border-t mt-6 flex justify-between sm:justify-between">
+                            {(currentStep === 2 || isEditMode) && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <h3 className={`font-semibold text-lg ${isEditMode ? 'pt-4 border-t' : ''}`}>
+                                        Address Details
+                                    </h3>
+                                    <FormField
+                                        control={form.control}
+                                        name="address"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Street Address</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="123 Main St" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="city"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>City</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="New York" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="state"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>State</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="NY" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="country"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Country</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="USA" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </form>
+                    </Form>
+                </div>
+
+                <div className="pt-4 border-t mt-4">
+                    <div className="flex justify-between items-center">
+                        {currentStep > 0 && !isEditMode ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={prevStep}
+                                className="rounded-xl"
+                            >
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Previous
+                            </Button>
+                        ) : (
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={() => onOpenChange(false)}
-                                className="w-[120px]"
+                                className="rounded-xl"
                             >
                                 Cancel
                             </Button>
+                        )}
+
+                        {!isEditMode && currentStep < STEPS.length - 1 ? (
                             <Button
-                                type="submit"
+                                type="button"
+                                onClick={nextStep}
+                                className="rounded-xl"
+                            >
+                                Next Step
+                                <ArrowRight className="h-4 w-4 ml-2" />
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={form.handleSubmit(onSubmit)}
                                 disabled={isLoading}
-                                className="w-[150px]"
+                                className="rounded-xl bg-indigo-600 hover:bg-indigo-700 min-w-[120px]"
                             >
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {isEditMode ? 'Saving...' : 'Creating...'}
+                                        {isEditMode ? 'Saving...' : 'Registering...'}
                                     </>
                                 ) : (
-                                    isEditMode ? 'Save Changes' : 'Create Parent'
+                                    isEditMode ? 'Save Changes' : 'Complete Registration'
                                 )}
                             </Button>
-                        </SheetFooter>
-                    </form>
-                </Form>
-            </SheetContent>
-        </Sheet>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </ResponsiveModal>
     );
-} 
+}

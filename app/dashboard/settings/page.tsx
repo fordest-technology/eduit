@@ -18,21 +18,26 @@ export default async function SettingsPage() {
     }
 
     // Get school colors for styling the banner
-    const school = await prisma.school.findUnique({
-        where: {
-            id: session.schoolId,
-        },
-        select: {
-            name: true,
-            primaryColor: true,
-            secondaryColor: true,
-        },
-    })
-
-    const schoolColors = {
-        primaryColor: school?.primaryColor || "#3b82f6",
-        secondaryColor: school?.secondaryColor || "#1f2937",
+    let school = null;
+    if (session.schoolId) {
+        school = await prisma.school.findUnique({
+            where: {
+                id: session.schoolId,
+            },
+            select: {
+                name: true,
+                primaryColor: true,
+                secondaryColor: true,
+            },
+        })
     }
+
+    const schoolColors = session.role === "SUPER_ADMIN" 
+        ? { primaryColor: "#16a34a", secondaryColor: "#ea580c" } // Brand Green & Orange
+        : {
+            primaryColor: school?.primaryColor || "#3b82f6",
+            secondaryColor: school?.secondaryColor || "#1f2937",
+        }
 
     return (
         <div className="flex flex-col min-h-screen">
