@@ -13,7 +13,8 @@
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "email:dev": "email dev"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -48,6 +49,8 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@react-email/components": "^1.0.6",
+    "@react-email/render": "^2.0.4",
     "@studio-freight/react-lenis": "^0.0.47",
     "@tanstack/react-query": "^5.90.19",
     "@tanstack/react-table": "^8.21.3",
@@ -110,6 +113,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.5.6",
     "prisma": "^6.19.2",
+    "react-email": "^5.2.5",
     "tailwindcss": "^3.4.19",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",

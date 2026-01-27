@@ -44,34 +44,24 @@ export async function POST(req: NextRequest) {
       firstName, lastName, email, schoolName, studentPopulation
     );
 
-    // Send Notification Emails
+    // Send Professional Emails via React Email Service
     try {
-      if (process.env.RESEND_API_KEY) {
-        const { Resend } = await import("resend");
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        
-        await resend.emails.send({
-          from: "EduIT Waitlist <onboarding@resend.dev>", // Using Resend default for now as standard
-          to: ["ololadetimileyin3@gmail.com", "johnayomide50@gmail.com", "fordestechnologies@gmail.com"],
-          subject: "New Waitlist Signup: " + schoolName,
-          html: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-              <h2 style="color: #f97316;">New Waitlist Entry</h2>
-              <p>A new institution has joined the EduIT waitlist!</p>
-              <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-              <p><strong>Name:</strong> ${firstName} ${lastName}</p>
-              <p><strong>Email:</strong> ${email}</p>
-              <p><strong>School:</strong> ${schoolName}</p>
-              <p><strong>Population:</strong> ${studentPopulation}</p>
-              <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-              <p style="font-size: 12px; color: #999;">EduIT Automation Engine</p>
-            </div>
-          `
-        });
-      }
+      const { emailService } = await import("@/lib/email-service");
+      
+      // Notify Admins
+      await emailService.sendWaitlistAdminNotification({
+        firstName,
+        lastName,
+        email,
+        schoolName,
+        studentPopulation
+      });
+
+      // Confirm to User
+      await emailService.sendWaitlistConfirmation(email, firstName);
+      
     } catch (emailError) {
-      console.error("Failed to send notification email:", emailError);
-      // Don't fail the whole request if email fails
+      console.error("Failed to send notification emails:", emailError);
     }
 
     return NextResponse.json({ success: true });
