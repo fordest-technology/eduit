@@ -129,7 +129,7 @@ export default function Home() {
             </Link>
           </div>
           <nav className="hidden lg:flex gap-10">
-            {["Features", "Modules", "Pricing", "Security"].map((item) => (
+            {["Features", "Modules", "Pricing"].map((item) => (
               <Link
                 key={item}
                 href={`#${item.toLowerCase()}`}
