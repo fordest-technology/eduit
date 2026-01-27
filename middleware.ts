@@ -17,6 +17,7 @@ const publicPaths = [
   "/api/auth/reset-password",
   "/api/auth/verify-code",
   "/api/auth/confirm-reset",
+  "/api/waitlist",
 ];
 
 const allowedOrigins = [
