@@ -399,15 +399,13 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             </div>
           ) : (
             <div className={cn("flex items-center gap-3", collapsed && "justify-center w-full")}>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-xl shadow-black/5 ring-1 ring-black/5 flex-shrink-0">
-                <GraduationCap className="h-6 w-6" style={{ color: activeColor }} />
+              <div className="flex h-10 w-40 items-center justify-center rounded-xl bg-transparent flex-shrink-0 overflow-hidden">
+                <img
+                  src="/eduitlogo-text.png"
+                  alt="EduIT Logo"
+                  className="h-full w-full object-contain"
+                />
               </div>
-              {!collapsed && (
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold font-sora tracking-tight text-slate-800 leading-none">EduIT</span>
-                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-[0.2em] mt-1">Portal</span>
-                </div>
-              )}
             </div>
           )}
         </div>

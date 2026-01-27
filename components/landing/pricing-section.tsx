@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 const plans = [
     {
@@ -19,7 +20,7 @@ const plans = [
             "Custom branding"
         ],
         popular: true,
-        cta: "Get Started"
+        cta: "Join Waitlist"
     },
     {
         name: "Enterprise",
@@ -34,7 +35,7 @@ const plans = [
             "24/7 phone support",
             "SLA guarantees"
         ],
-        cta: "Contact Sales"
+        cta: "Join Waitlist"
     }
 ]
 
@@ -122,14 +123,16 @@ export function PricingSection() {
                             </div>
 
                             <div className="mt-14">
-                                <Button
-                                    className={`w-full h-16 rounded-[1.25rem] text-[17px] font-black transition-all hover:scale-[1.02] active:scale-95 shadow-lg ${p.popular
-                                            ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-900/20'
-                                            : 'bg-[#0f172a] hover:bg-[#1e293b] text-white shadow-slate-900/10'
-                                        }`}
-                                >
-                                    {p.cta}
-                                </Button>
+                                <Link href="#waitlist">
+                                    <Button
+                                        className={`w-full h-16 rounded-[1.25rem] text-[17px] font-black transition-all hover:scale-[1.02] active:scale-95 shadow-lg ${p.popular
+                                                ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-900/20'
+                                                : 'bg-[#0f172a] hover:bg-[#1e293b] text-white shadow-slate-900/10'
+                                            }`}
+                                    >
+                                        {p.cta}
+                                    </Button>
+                                </Link>
                             </div>
                         </motion.div>
                     ))}

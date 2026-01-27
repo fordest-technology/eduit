@@ -2,8 +2,11 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
+import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider"
 import {
   CalendarDays,
   CheckCircle,
@@ -34,12 +37,63 @@ import {
   Database,
   HeadphonesIcon
 } from "lucide-react"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { TrustedBy } from "@/components/landing/trusted-by"
 import { Testimonials } from "@/components/landing/testimonials"
 import { SecuritySection } from "@/components/landing/security-section"
 import { PricingSection } from "@/components/landing/pricing-section"
 
 export default function Home() {
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    schoolName: "",
+    studentPopulation: "Under 500"
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      })
+      if (res.ok) {
+        toast({
+          title: "Successfully joined!",
+          description: "We'll be in touch with you soon.",
+        })
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          schoolName: "",
+          studentPopulation: "Under 500"
+        })
+      } else {
+        throw new Error("Failed to join")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const fadeInUp = {
     initial: { opacity: 0, y: 20 },
     whileInView: { opacity: 1, y: 0 },
@@ -56,18 +110,19 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white font-poppins selection:bg-orange-100 selection:text-orange-900">
+    <SmoothScrollProvider>
+      <div className="flex flex-col min-h-screen bg-white font-poppins selection:bg-orange-100 selection:text-orange-900">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex h-20 items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center group">
-              <div className="relative h-16 w-48 transition-transform group-hover:scale-105 duration-300">
+              <div className="relative h-10 w-32 transition-transform group-hover:scale-105 duration-300">
                 <Image
-                  src="/EDUIT.jpeg"
+                  src="/eduitlogo-text.png"
                   alt="EduIT Logo"
                   fill
-                  className="object-contain mix-blend-multiply brightness-[1.1] contrast-[1.1]"
+                  className="object-contain"
                   priority
                 />
               </div>
@@ -85,9 +140,9 @@ export default function Home() {
             ))}
           </nav>
           <div className="flex items-center gap-6">
-            <Link href="#request-demo">
+            <Link href="#waitlist">
               <Button className="bg-orange-600 hover:bg-orange-700 text-white text-[15px] font-black h-12 px-8 rounded-2xl shadow-xl shadow-orange-100 transition-all hover:scale-[1.02] active:scale-100 font-sora tracking-tight">
-                Book a Demo
+                Join Waitlist
               </Button>
             </Link>
           </div>
@@ -99,19 +154,7 @@ export default function Home() {
         <section className="relative pt-24 pb-20 md:pt-36 md:pb-32 overflow-hidden">
           <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto text-center space-y-8">
-              <motion.div
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-100/50"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4 }}
-              >
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
-                  ))}
-                </div>
-                <span className="text-[13px] font-bold text-orange-700 font-sora tracking-tight">⭐ 4.9 / 5 average rating</span>
-              </motion.div>
+
 
               <motion.h1
                 className="text-5xl md:text-7xl font-extrabold text-slate-900 leading-[1.05] tracking-tight font-sora"
@@ -138,9 +181,9 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
-                <Link href="/register">
+                <Link href="#waitlist">
                   <Button size="lg" className="bg-orange-600 hover:bg-orange-700 text-white text-[16px] font-black h-14 px-10 rounded-2xl shadow-xl shadow-orange-100 transition-all hover:-translate-y-1 active:translate-y-0 font-sora">
-                    Get Started Now
+                    Join Waitlist
                   </Button>
                 </Link>
                 <Link href="#features">
@@ -330,14 +373,14 @@ export default function Home() {
                   </div>
                 </motion.div>
               ))}
-              <Link href="#request-demo" className="group">
+              <Link href="#waitlist" className="group">
                 <div className="flex gap-6 items-start p-6 rounded-3xl border-2 border-dashed border-slate-200 hover:border-orange-500 hover:bg-orange-50 transition-all cursor-pointer h-full">
                   <div className="bg-orange-600 p-4 rounded-2xl text-white shrink-0 shadow-lg shadow-orange-100">
                     <Plus className="h-7 w-7" />
                   </div>
                   <div className="space-y-2">
                     <h4 className="text-xl font-bold font-sora">Explore 30+ Integrated Modules</h4>
-                    <p className="text-slate-500 font-medium">EduIT scales with your institutional needs. Discover more.</p>
+                    <p className="text-slate-500 font-medium">Join our waitlist to be among the first institutions to scale with EduIT.</p>
                   </div>
                 </div>
               </Link>
@@ -381,31 +424,55 @@ export default function Home() {
               <h3 className="text-4xl font-black text-slate-900 tracking-tight font-sora">Common Questions</h3>
             </div>
 
-            <div className="space-y-4">
-              {[
-                { q: "Can we migrate data from our existing system?", a: "Yes. We provide secure, white-glove migration services for all clients." },
-                { q: "Are there any setup or hidden fees?", a: "No. EduIT offers clear, transparent pricing with no hidden costs." },
-                { q: "Do you provide training for staff?", a: "Yes. Professional and Enterprise plans include guided onboarding and training." },
-                { q: "Can EduIT be customized for our institution?", a: "Absolutely. EduIT is modular and highly configurable." }
-              ].map((faq, i) => (
-                <div key={i} className="bg-white p-8 rounded-[2rem] border border-slate-200/60 hover:border-orange-200 transition-all cursor-default">
-                  <h4 className="text-[17px] font-black font-sora text-slate-900 mb-3">{faq.q}</h4>
-                  <p className="text-slate-600 font-medium leading-relaxed">{faq.a}</p>
-                </div>
-              ))}
+            <div className="max-w-3xl mx-auto">
+              <Accordion type="single" collapsible className="w-full space-y-4">
+                {[
+                  { 
+                    q: "How long does it take to migrate our existing school data?", 
+                    a: "EduIT provides white-glove migration services to ensure zero data loss. Typically, a full transition from your legacy system takes between 3 to 7 business days, depending on the volume and complexity of your records." 
+                  },
+                  { 
+                    q: "Does EduIT handle tuition fees and automated payment reconciliation?", 
+                    a: "Yes. Our Financial Hub is one of our strongest features. It integrates directly with major payment gateways (including Squad, HabariPay, and GTBank), allowing parents to pay online while the system automatically reconciles accounts and issues digital receipts." 
+                  },
+                  { 
+                    q: "Can teachers take attendance and manage grades via mobile?", 
+                    a: "Absolutely. EduIT is mobile-first. Teachers can log attendance, record class assessments, and submit termly reports directly from their smartphones. Data is synced in real-time across the platform." 
+                  },
+                  { 
+                    q: "Is our student data encrypted and compliant with local regulations?", 
+                    a: "Security is our top priority. EduIT uses bank-grade AES-256 encryption for all data at rest and in transit. We are fully compliant with NDPR (Nigeria Data Protection Regulation) and international data safety standards." 
+                  },
+                  { 
+                    q: "Do you provide on-site training for staff and administrators?", 
+                    a: "Yes. We don't just give you software; we ensure you know how to use it. Our Professional and Enterprise plans include dedicated onboarding sessions and ongoing technical support for your entire team." 
+                  }
+                ].map((faq, i) => (
+                  <AccordionItem key={i} value={`item-${i}`} className="bg-white border border-slate-200/60 rounded-[1.5rem] px-6 py-2 shadow-sm hover:border-orange-200 transition-all overflow-hidden">
+                    <AccordionTrigger className="hover:no-underline text-left py-4">
+                      <span className="text-[17px] font-black font-sora text-slate-900 tracking-tight leading-snug">
+                        {faq.q}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="text-slate-600 font-medium leading-relaxed pb-6 pt-2">
+                      {faq.a}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </div>
           </div>
         </section>
 
         {/* Final CTA */}
-        <section id="request-demo" className="py-24 bg-white overflow-hidden relative">
+        <section id="waitlist" className="py-24 bg-white overflow-hidden relative">
           <div className="container mx-auto px-4 relative z-10">
             <div className="bg-orange-600 rounded-[4rem] p-12 md:p-24 text-white overflow-hidden relative">
               <div className="grid lg:grid-cols-2 gap-16 items-center">
                 <div className="space-y-8">
-                  <h3 className="text-4xl md:text-6xl font-black font-sora tracking-tight leading-[1.05]">Experience EduIT <br />in Action</h3>
+                  <h3 className="text-4xl md:text-6xl font-black font-sora tracking-tight leading-[1.05]">Join the Waitlist <br />for Early Access</h3>
                   <p className="text-xl text-orange-50 font-medium leading-relaxed border-l-4 border-white/30 pl-8 capitalize italic">
-                    See how EduIT can simplify operations, empower educators, and elevate student outcomes at your institution.
+                    Be the first to experience the future of school management. Secure your spot in our early access program today.
                   </p>
                   <div className="flex items-center gap-6 pt-6">
                     <div className="text-center">
@@ -421,37 +488,73 @@ export default function Home() {
                 </div>
 
                 <div className="bg-white rounded-[3rem] p-8 md:p-12 text-slate-900 shadow-2xl">
-                  <h4 className="text-2xl font-black font-sora mb-8 text-center uppercase tracking-tighter italic">Schedule Demo</h4>
-                  <form className="space-y-4">
+                  <h4 className="text-2xl font-black font-sora mb-8 text-center uppercase tracking-tighter italic">Join Waitlist</h4>
+                  <form className="space-y-4" onSubmit={handleSubmit}>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-black uppercase tracking-widest text-slate-400">First Name</label>
-                        <input type="text" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="John" />
+                        <input 
+                          type="text" 
+                          required
+                          value={formData.firstName}
+                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                          className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" 
+                          placeholder="John" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-black uppercase tracking-widest text-slate-400">Last Name</label>
-                        <input type="text" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="Doe" />
+                        <input 
+                          type="text" 
+                          required
+                          value={formData.lastName}
+                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                          className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" 
+                          placeholder="Doe" 
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-black uppercase tracking-widest text-slate-400">Work Email</label>
-                      <input type="email" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="john@school.edu" />
+                      <input 
+                        type="email" 
+                        required
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" 
+                        placeholder="john@school.edu" 
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-black uppercase tracking-widest text-slate-400">School Name</label>
-                      <input type="text" className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" placeholder="Green Valley High" />
+                      <input 
+                        type="text" 
+                        required
+                        value={formData.schoolName}
+                        onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
+                        className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm" 
+                        placeholder="Green Valley High" 
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-black uppercase tracking-widest text-slate-400">Student Population</label>
-                      <select className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm appearance-none cursor-pointer">
+                      <select 
+                        value={formData.studentPopulation}
+                        onChange={(e) => setFormData({ ...formData, studentPopulation: e.target.value })}
+                        className="w-full h-14 bg-slate-50 border-slate-100 rounded-xl px-5 font-bold outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600 transition-all text-sm appearance-none cursor-pointer"
+                      >
                         <option>Under 500</option>
                         <option>500 - 1,000</option>
                         <option>1,000 - 5,000</option>
                         <option>Above 5,000</option>
                       </select>
                     </div>
-                    <Button type="button" className="w-full h-16 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl text-lg font-black shadow-xl shadow-orange-100 mt-4 transition-all hover:scale-[1.02] active:scale-100">
-                      Request a Live Demo
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                      className="w-full h-16 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl text-lg font-black shadow-xl shadow-orange-100 mt-4 transition-all hover:scale-[1.02] active:scale-100 disabled:opacity-50"
+                    >
+                      {isSubmitting ? "Joining..." : "Join the Waitlist"}
                     </Button>
                   </form>
                 </div>
@@ -471,12 +574,12 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
             <div className="space-y-8">
               <Link href="/" className="flex items-center group">
-                <div className="relative h-16 w-48 bg-white p-2 rounded-xl">
+                <div className="relative h-12 w-40 bg-transparent rounded-xl">
                   <Image
-                    src="/EDUIT.jpeg"
+                    src="/eduitlogo-text.png"
                     alt="EduIT Logo"
                     fill
-                    className="object-contain brightness-[1.1] contrast-[1.1]"
+                    className="object-contain"
                   />
                 </div>
               </Link>
@@ -516,7 +619,7 @@ export default function Home() {
               <div className="flex gap-4">
                 {["Twitter", "LinkedIn", "YouTube"].map((s) => (
                   <div key={s} className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center hover:bg-orange-600 hover:border-orange-600 hover:text-white transition-all cursor-pointer">
-                    <Star className="h-4 w-4" />
+                    <span className="text-[10px] font-black">{s[0]}</span>
                   </div>
                 ))}
               </div>
@@ -551,5 +654,7 @@ export default function Home() {
         </div>
       </footer>
     </div>
+    </SmoothScrollProvider>
   )
 }
+

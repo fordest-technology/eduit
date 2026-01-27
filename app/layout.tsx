@@ -23,6 +23,9 @@ import { Toaster as SonnerToaster } from "sonner";
 export const metadata: Metadata = {
   title: "EduIT",
   description: "School Management System",
+  icons: {
+    icon: "/eduitlogo.svg",
+  }
 };
 
 // Helper function to convert hex to HSL

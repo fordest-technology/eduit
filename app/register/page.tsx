@@ -157,8 +157,8 @@ export default function RegisterPage() {
           animate={{ opacity: 1, x: 0 }}
         >
           <Link href="/">
-            <div className="relative h-14 w-44 bg-white p-2 rounded-xl mb-12 shadow-xl">
-              <Image src="/EDUIT.jpeg" alt="EduIT Logo" fill className="object-contain" />
+            <div className="relative h-12 w-44 bg-transparent rounded-xl mb-12 shadow-xl">
+              <Image src="/eduitlogo-text.png" alt="EduIT Logo" fill className="object-contain" />
             </div>
           </Link>
 

@@ -152,9 +152,9 @@ export default function LoginPage() {
           transition={{ duration: 0.8 }}
         >
           <Link href="/">
-            <div className="relative h-16 w-52 bg-white p-2.5 rounded-2xl shadow-2xl group transition-transform hover:scale-105">
+            <div className="relative h-12 w-48 bg-transparent rounded-2xl shadow-2xl group transition-transform hover:scale-105">
               <Image
-                src="/EDUIT.jpeg"
+                src="/eduitlogo-text.png"
                 alt="EduIT Logo"
                 fill
                 className="object-contain"
@@ -212,7 +212,7 @@ export default function LoginPage() {
           >
             <div className="text-center space-y-4">
               <div className="md:hidden flex justify-center mb-8">
-                <Image src="/EDUIT.jpeg" alt="Logo" width={160} height={48} className="object-contain" />
+                <Image src="/eduitlogo-text.png" alt="Logo" width={140} height={40} className="object-contain" />
               </div>
               <div className="space-y-2">
                 <h2 className="text-3xl font-black text-slate-900 font-sora tracking-tighter">

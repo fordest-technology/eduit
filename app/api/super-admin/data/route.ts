@@ -124,7 +124,7 @@ export async function GET() {
     const bestStudent = topStudents
         .map(s => ({
             name: s.user.name,
-            school: s.user.school.name,
+            school: s.user.school?.name || "N/A",
             img: s.user.profileImage,
             avg: s.results.length > 0 ? s.results.reduce((acc, r) => acc + r.total, 0) / s.results.length : 0
         }))
