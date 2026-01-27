@@ -30,7 +30,7 @@ export const WaitlistConfirmationEmail = ({
         <Container style={container}>
           <Section style={headerSection}>
             <Img
-              src="https://eduit-fordest.vercel.app/eduitlogo-text.png"
+              src="https://raw.githubusercontent.com/fordest-technology/eduit/main/public/eduitlogo-text.png"
               width="130"
               height="36"
               alt="EduIT Ecosystem"

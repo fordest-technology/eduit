@@ -37,7 +37,7 @@ export const WaitlistAdminEmail = ({
         <Container style={container}>
           <Section style={headerSection}>
             <Img
-              src="https://eduit-fordest.vercel.app/eduitlogo-text.png"
+              src="https://raw.githubusercontent.com/fordest-technology/eduit/main/public/eduitlogo-text.png"
               width="140"
               height="40"
               alt="EduIT Ecosystem"
