@@ -67,15 +67,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import StudentModal from "../../students/student-modal";
-import { format } from "date-fns";
+import { format, subDays, startOfToday, eachDayOfInterval, startOfWeek, subWeeks, addDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import {
+    Tooltip as ShadcnTooltip,
+    TooltipContent as ShadcnTooltipContent,
+    TooltipProvider as ShadcnTooltipProvider,
+    TooltipTrigger as ShadcnTooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
     LineChart,
     Line,
     XAxis,
     YAxis,
     CartesianGrid,
-    Tooltip,
+    Tooltip as ChartTooltip,
     ResponsiveContainer,
     AreaChart,
     Area
@@ -376,6 +382,109 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
         );
     };
 
+    const AttendanceHeatMap = ({ attendance }: { attendance: AttendanceRecord[] }) => {
+        const today = startOfToday();
+        const weeks = 24; // Increased to 24 weeks for a better spread
+        
+        // Ensure we start from a Monday weeks ago
+        const gridStartDate = startOfWeek(subWeeks(today, weeks - 1), { weekStartsOn: 1 });
+        
+        // Create status map for easy lookup
+        const statusMap = new Map();
+        attendance.forEach(a => {
+            const dateKey = format(new Date(a.date), 'yyyy-MM-dd');
+            statusMap.set(dateKey, a.status);
+        });
+
+        const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        
+        // Month markers
+        const monthMarkers: { month: string, startIndex: number }[] = [];
+        for (let i = 0; i < weeks; i++) {
+            const date = addDays(gridStartDate, i * 7);
+            const monthLabel = format(date, 'MMM');
+            if (monthMarkers.length === 0 || monthMarkers[monthMarkers.length - 1].month !== monthLabel) {
+                monthMarkers.push({ month: monthLabel, startIndex: i });
+            }
+        }
+
+        return (
+            <Card className="border-slate-100 shadow-xl shadow-black/5 rounded-[2.5rem] overflow-hidden bg-white p-8">
+                <div className="flex items-center justify-between mb-10">
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest">Attendance Engagement Hub</h4>
+                        <p className="text-xs text-slate-400 font-medium mt-1">24-week behavioral consistency mapping</p>
+                    </div>
+                    <div className="flex items-center gap-6 text-[10px] font-bold text-slate-500 bg-slate-50 px-6 py-2.5 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-2"><div className="h-3 w-3 rounded-[3px] bg-slate-100" /> None</div>
+                        <div className="flex items-center gap-2"><div className="h-3 w-3 rounded-[3px] bg-emerald-500" /> Present</div>
+                        <div className="flex items-center gap-2"><div className="h-3 w-3 rounded-[3px] bg-amber-400" /> Late</div>
+                        <div className="flex items-center gap-2"><div className="h-3 w-3 rounded-[3px] bg-rose-400" /> Absent</div>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col">
+                    {/* Month Labels */}
+                    <div className="flex gap-1.5 ml-12 mb-2 relative h-4">
+                        {monthMarkers.map((m, i) => (
+                            <span 
+                                key={i} 
+                                className="text-[9px] font-black text-slate-300 uppercase tracking-tighter absolute"
+                                style={{ left: `${m.startIndex * 18.2}px` }} // 12px width + 6px gap
+                            >
+                                {m.month}
+                            </span>
+                        ))}
+                    </div>
+
+                    <div className="flex gap-4 items-start">
+                        {/* Day Labels */}
+                        <div className="flex flex-col gap-1.5 pt-0.5">
+                            {dayLabels.map(day => (
+                                <span key={day} className="text-[10px] font-bold text-slate-300 h-3 flex items-center w-8">
+                                    {day}
+                                </span>
+                            ))}
+                        </div>
+
+                        {/* The Grid */}
+                        <div className="flex-1 overflow-x-auto pb-4 scrollbar-hide">
+                            <div className="flex gap-1.5">
+                                {Array.from({ length: weeks }).map((_, wIndex) => (
+                                    <div key={wIndex} className="flex flex-col gap-1.5">
+                                        {[0, 1, 2, 3, 4].map((dIndex) => {
+                                            const dateInGrid = addDays(gridStartDate, wIndex * 7 + dIndex);
+                                            const dateKey = format(dateInGrid, 'yyyy-MM-dd');
+                                            const status = statusMap.get(dateKey);
+                                            
+                                            let colorClass = 'bg-slate-50 border border-slate-100/50';
+                                            if (status === AttendanceStatus.PRESENT) colorClass = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.25)]';
+                                            if (status === AttendanceStatus.LATE) colorClass = 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.25)]';
+                                            if (status === AttendanceStatus.ABSENT) colorClass = 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.25)]';
+                                            
+                                            return (
+                                                <ShadcnTooltipProvider key={dIndex}>
+                                                    <ShadcnTooltip>
+                                                        <ShadcnTooltipTrigger asChild>
+                                                            <div className={`h-3 w-3 shrink-0 rounded-[3px] ${colorClass} transition-all hover:scale-125 cursor-help`} />
+                                                        </ShadcnTooltipTrigger>
+                                                        <ShadcnTooltipContent className="rounded-xl font-bold bg-slate-900 border-none shadow-xl text-white py-2 px-3">
+                                                            <p className="text-[10px] leading-none">{format(dateInGrid, 'EEEE, MMM do')} • <span className="uppercase tracking-widest">{status?.toLowerCase() || 'no data'}</span></p>
+                                                        </ShadcnTooltipContent>
+                                                    </ShadcnTooltip>
+                                                </ShadcnTooltipProvider>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+        );
+    };
+
     return (
         <div className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -615,7 +724,7 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
                                                         tickLine={false}
                                                         tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
                                                     />
-                                                    <Tooltip
+                                                    <ChartTooltip
                                                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontWeight: 'bold' }}
                                                     />
                                                     <Area
@@ -739,7 +848,7 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
 
                     <TabsContent value="attendance" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <div className="space-y-10">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <Card className="p-8 border-none shadow-xl shadow-emerald-500/10 bg-emerald-50/50 rounded-[2rem] border-l-8 border-l-emerald-500 overflow-hidden relative">
                                     <CheckCircleIcon className="absolute -right-4 -bottom-4 h-24 w-24 text-emerald-100 -rotate-12" />
                                     <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Registry: Present</p>
@@ -764,18 +873,9 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
                                         <p className="text-sm font-bold opacity-60 uppercase mb-1">Exceptions</p>
                                     </div>
                                 </Card>
-                                <Card className="p-8 border-none shadow-xl shadow-blue-500/10 bg-blue-50/50 rounded-[2rem] border-l-8 border-l-blue-500 overflow-hidden relative">
-                                    <ActivityIcon className="absolute -right-4 -bottom-4 h-24 w-24 text-blue-100 -rotate-12" />
-                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Engagement Tier</p>
-                                    <div className="flex items-end gap-2 text-blue-700">
-                                        <p className="text-2xl font-black font-sora leading-none uppercase tracking-widest">
-                                            {parseInt(calculateAttendancePercentage()) >= 90 ? 'EXCELLENT' :
-                                                parseInt(calculateAttendancePercentage()) >= 75 ? 'GOOD' :
-                                                    parseInt(calculateAttendancePercentage()) >= 50 ? 'AVERAGE' : 'POOR'}
-                                        </p>
-                                    </div>
-                                </Card>
                             </div>
+
+                            <AttendanceHeatMap attendance={student.attendance || []} />
 
                             <Card className="border-slate-100 shadow-xl shadow-black/5 rounded-[2.5rem] overflow-hidden bg-white">
                                 <div className="bg-white border-b border-slate-100 flex flex-row items-center justify-between px-8 py-6">
@@ -783,7 +883,6 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
                                         <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-widest">Dynamic Engagement Logs</CardTitle>
                                         <p className="text-xs text-slate-400 font-medium mt-1">Real-time daily arrival and departure tracking</p>
                                     </div>
-                                    <Button variant="outline" size="sm" className="rounded-xl border-slate-200 font-bold text-xs h-10 px-6 hover:bg-slate-50 shadow-sm">Audit Full History</Button>
                                 </div>
                                 <CardContent className="p-0 font-poppins">
                                     <div className="divide-y divide-slate-100 italic">
@@ -902,10 +1001,10 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
 
                                             <div className="mt-10 flex gap-4 pt-4 border-t border-slate-50">
                                                 <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold border-slate-200 text-xs shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all font-sora">
-                                                    Portal Message
+                                                    View Profile
                                                 </Button>
                                                 <Button style={{ backgroundColor: "#4f46e5" }} className="flex-1 rounded-2xl h-12 font-bold text-white shadow-lg shadow-indigo-500/10 hover:opacity-90 transition-all font-sora">
-                                                    Secure Call
+                                                    Contact Guardian
                                                 </Button>
                                             </div>
                                         </div>
@@ -958,8 +1057,10 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
             </AlertDialog>
 
             <Dialog open={isParentsDialogOpen} onOpenChange={setIsParentsDialogOpen}>
-                <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-10 overflow-hidden relative font-poppins">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+                <DialogContent className="sm:max-w-xl rounded-3xl border-none shadow-2xl p-0 overflow-hidden font-poppins">
+                    <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+                    
+                    <div className="p-8 sm:p-10">
 
                     <DialogHeader>
                         <div className="w-16 h-16 rounded-3xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-6 shadow-inner">
@@ -1019,18 +1120,19 @@ export function StudentDetails({ student, currentClass, currentSession, onRefres
                     <DialogFooter>
                         <Button
                             style={{ backgroundColor: "#4f46e5" }}
-                            className="w-full rounded-[1.5rem] h-16 font-black text-white shadow-2xl shadow-indigo-500/30 hover:opacity-90 transition-all font-sora text-lg uppercase tracking-wider group"
+                            className="w-full rounded-2xl h-14 font-black text-white shadow-xl shadow-indigo-500/10 hover:opacity-90 transition-all font-sora text-sm uppercase tracking-wider group"
                             onClick={handleAddParent}
                             disabled={isParentLoading || !selectedParentId}
                         >
                             {isParentLoading ? (
                                 <Loader2 className="h-6 w-6 animate-spin mr-3" />
                             ) : (
-                                <UserPlus className="h-6 w-6 mr-3 group-hover:scale-110 transition-transform" />
+                                <UserPlus className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
                             )}
-                            Finalize Nexus Linkage
+                            Finalize Linkage
                         </Button>
                     </DialogFooter>
+                </div>
                 </DialogContent>
             </Dialog>
         </div>

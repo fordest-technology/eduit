@@ -16,7 +16,8 @@ import {
   CreditCard, 
   TrendingUp,
   Receipt,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -122,7 +123,7 @@ export function WalletFeesContent() {
                       {wallet.bankAccountNumber}
                     </p>
                     <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">
-                      {wallet.bankCode === "000" ? "Squad Virtual Bank" : "Commercial Bank"}
+                      {wallet.bankCode === "000" ? "Payvessel Virtual Bank" : "Commercial Bank"}
                     </p>
                     
                     {/* Branding */}
@@ -439,22 +440,12 @@ export function WalletFeesContent() {
                     )}
                 </Button>
 
-                <div className="flex items-center justify-center gap-4 opacity-40 grayscale group-hover:grayscale-0 transition-all">
+                <div className="flex items-center justify-center gap-4 opacity-70 group-hover:opacity-100 transition-all">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">In Partnership With</p>
                     <div className="flex items-center gap-3">
-                        <Image src="/squad.png" alt="Squad" width={50} height={15} className="h-3 w-auto object-contain" />
-                        <div className="h-3 w-px bg-slate-200" />
-                        <Image src="/habaripay.jpg" alt="HabariPay" width={50} height={15} className="h-3 w-auto object-contain" />
-                        <div className="h-3 w-px bg-slate-200" />
-                        <div className="flex items-center gap-1">
-                            <Image 
-                                src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" 
-                                alt="GTBank" 
-                                width={12} 
-                                height={12} 
-                                className="h-3 w-auto object-contain"
-                            />
-                            <span className="text-[9px] font-black text-slate-500">GTCO</span>
+                        <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                            <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Payvessel Limited</span>
                         </div>
                     </div>
                 </div>

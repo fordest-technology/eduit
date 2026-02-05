@@ -136,6 +136,8 @@ export function ParentPaymentForm({
         });
     };
 
+    const [vaDetails, setVaDetails] = useState<any | null>(null);
+
     const handlePayNow = async (bill: any, amountToPay: number, itemName?: string) => {
         const payId = itemName ? `${bill.id}-${itemName}` : bill.id;
         setIsSubmitting(payId);
@@ -168,12 +170,14 @@ export function ParentPaymentForm({
                 throw new Error(result.error || "Failed to initiate payment");
             }
 
-            if ((result.status === 200 || result.status === "success" || result.success) && (result.data?.checkout_url || result.checkout_url)) {
+            if (result.status === "success" && result.payment_method === "TRANSFER") {
+                setVaDetails(result.account_details);
+                toast.success("Virtual account generated!");
+            } else if ((result.status === 200 || result.status === "success" || result.success) && (result.data?.checkout_url || result.checkout_url)) {
+                // Fallback for legacy or other methods
                 const url = result.data?.checkout_url || result.checkout_url;
-                toast.success("Redirecting to payment gateway...");
                 window.location.href = url;
             } else {
-                console.error("Ambiguous Squad Response:", result);
                 throw new Error("Invalid response from payment gateway");
             }
         } catch (error) {
@@ -218,7 +222,88 @@ export function ParentPaymentForm({
             </Card>
 
             <AnimatePresence mode="wait">
-                {selectedChild && (
+                {vaDetails ? (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="flex justify-center"
+                    >
+                        <Card className="w-full max-w-2xl border-none shadow-2xl rounded-[3rem] bg-slate-900 text-white overflow-hidden relative">
+                             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
+                             <div className="p-10 space-y-8 relative z-10">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-2xl font-black font-sora text-white">Bank Transfer</h3>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Temporary Payment Account</p>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                                        <ArrowRight className="h-6 w-6 text-indigo-400 rotate-90" />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="p-8 rounded-[2rem] bg-white/5 border border-white/10 flex flex-col items-center gap-2">
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Transfer Exactly</p>
+                                        <h4 className="text-5xl font-black font-sora tracking-tighter">
+                                            {formatCurrency(vaDetails.amount)}
+                                        </h4>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Bank Name</p>
+                                            <div className="h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center px-6 font-bold text-lg">
+                                                {vaDetails.bankName}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Number</p>
+                                            <div className="h-14 rounded-2xl bg-indigo-500 text-white flex items-center justify-between px-6 font-black text-2xl tracking-widest group cursor-pointer" onClick={() => {
+                                                navigator.clipboard.writeText(vaDetails.accountNumber);
+                                                toast.success("Account number copied!");
+                                            }}>
+                                                {vaDetails.accountNumber}
+                                                <Badge className="bg-white/20 text-white border-none text-[9px]">COPY</Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Beneficiary</p>
+                                        <div className="h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center px-6 font-bold text-slate-300">
+                                            {vaDetails.accountName}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-tight flex gap-3 items-center">
+                                    <Info className="h-5 w-5 shrink-0" />
+                                    <span>This account is temporary and expires in 30 minutes. Once payment is made, your receipt will be generated automatically.</span>
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <Button 
+                                        variant="outline" 
+                                        className="flex-1 h-14 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-black uppercase text-xs tracking-widest"
+                                        onClick={() => setVaDetails(null)}
+                                    >
+                                        Cancel Transaction
+                                    </Button>
+                                    <Button 
+                                        className="flex-1 h-14 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black uppercase text-xs tracking-widest"
+                                        onClick={() => {
+                                            toast.info("Checking for payment status...");
+                                            // Verification logic will trigger automatically via webhook
+                                        }}
+                                    >
+                                        I Have Paid
+                                    </Button>
+                                </div>
+                             </div>
+                        </Card>
+                    </motion.div>
+                ) : selectedChild && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -330,7 +415,7 @@ export function ParentPaymentForm({
                                                                         {isSubmitting === `${bill.id}-${item.name}` ? (
                                                                             <div className="flex items-center gap-3">
                                                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                                                <span>Processing Gateway...</span>
+                                                                                <span>Generating ID...</span>
                                                                             </div>
                                                                         ) : (
                                                                             <div className="flex items-center gap-3 uppercase tracking-widest">
@@ -360,7 +445,7 @@ export function ParentPaymentForm({
                                                         <div className="relative z-10">
                                                             <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-2">Aggregated Settlement</p>
                                                             <h5 className="text-4xl font-black font-sora leading-none tracking-tighter">
-                                                                {formatCurrency(bill.balance)}
+                                                                 {formatCurrency(bill.balance)}
                                                             </h5>
                                                             <p className="text-xs text-white/60 font-medium mt-3">Clear all remaining items in this category instantly</p>
                                                         </div>
@@ -385,10 +470,11 @@ export function ParentPaymentForm({
 
                                 <div className="flex flex-col items-center justify-center gap-4 pt-12 pb-6 border-t border-slate-100">
                                     <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">Institutional Secure Gateway</p>
-                                    <div className="flex items-center gap-8 opacity-40 grayscale group hover:opacity-100 hover:grayscale-0 transition-all duration-500">
-                                        <img src="/squad.png" alt="Squad" className="h-5 w-auto object-contain" />
-                                        <img src="/habaripay.jpg" alt="HabariPay" className="h-5 w-auto object-contain" />
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Guaranty_Trust_Bank_Logo_2022.svg/1200px-Guaranty_Trust_Bank_Logo_2022.svg.png" alt="GTBank" className="h-5 w-auto object-contain" />
+                                    <div className="flex items-center gap-8 opacity-60 transition-all duration-500">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Powered by Payvessel</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

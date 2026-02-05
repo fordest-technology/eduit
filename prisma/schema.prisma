@@ -94,6 +94,7 @@ model Student {
   paymentRequests PaymentRequest[]
   results         Result[]
   squadPayments   SquadPayment[]
+  payvesselPayments PayvesselPayment[]
   department      Department?      @relation(fields: [departmentId], references: [id])
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   classes         StudentClass[]
@@ -149,8 +150,11 @@ model School {
   levels                 SchoolLevel[]
   wallet                 SchoolWallet?
   squadPayments          SquadPayment[]
+  payvesselPayments      PayvesselPayment[]
+  withdrawalRequests     WithdrawalRequest[]
   subjects               Subject[]
   usagePayments          UsagePayment[]
+  payvesselUsages        PayvesselUsage[]
   users                  User[]
 
   @@index([subdomain])
@@ -664,6 +668,40 @@ model UsagePayment {
   @@index([schoolId])
 }
 
+model PayvesselPayment {
+  id                String             @id @default(cuid())
+  schoolId          String
+  studentId         String
+  feeId             String?
+  reference         String             @unique // trackingReference or transaction reference
+  amount            Decimal            @db.Decimal(20, 2)
+  platformFee       Decimal            @db.Decimal(20, 2)
+  netAmount         Decimal            @db.Decimal(20, 2)
+  status            SquadPaymentStatus @default(PENDING) // Reusing the status enum for consistency
+  metadata          Json?
+  createdAt         DateTime           @default(now())
+  paidAt            DateTime?
+  school            School             @relation(fields: [schoolId], references: [id])
+  student           Student            @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([reference])
+}
+
+model PayvesselUsage {
+  id           String             @id @default(cuid())
+  schoolId     String
+  amount       Decimal            @db.Decimal(20, 2)
+  studentCount Int
+  status       SquadPaymentStatus @default(PENDING)
+  reference    String?            @unique
+  createdAt    DateTime           @default(now())
+  paidAt       DateTime?
+  school       School             @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
 model ResultTemplate {
   id          String   @id @default(cuid())
   name        String
@@ -753,4 +791,21 @@ enum PeriodStatus {
   GRADING
   PUBLISHED
   CLOSED
+}
+
+model WithdrawalRequest {
+  id            String             @id @default(cuid())
+  schoolId      String
+  amount        Decimal            @db.Decimal(20, 2)
+  bankName      String
+  bankCode      String
+  accountNumber String
+  accountName   String
+  reference     String             @unique
+  status        SquadPaymentStatus @default(PENDING)
+  createdAt     DateTime           @default(now())
+  processedAt   DateTime?
+  school        School             @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
 }

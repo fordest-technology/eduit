@@ -168,23 +168,41 @@ const addToClassSchema = z.object({
 })
 
 // Create the action buttons component for the header
-function ActionButtons({ onEditClick, onClassClick }: { onEditClick: () => void, onClassClick: () => void }) {
+function ActionButtons({ onEditClick, onClassClick, studentId, classId }: { 
+    onEditClick: () => void, 
+    onClassClick: () => void,
+    studentId?: string,
+    classId?: string
+}) {
     return (
-        <div className="flex gap-2 z-20">
+        <div className="flex flex-wrap gap-3 z-20">
             <Button
                 variant="outline"
                 onClick={onClassClick}
-                className="z-20"
+                className="z-20 h-11 px-6 rounded-2xl font-bold border-indigo-100 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all shadow-sm"
             >
                 <UserPlus className="h-4 w-4 mr-2" />
-                Add to Class
+                Update Classification
             </Button>
+            
+            <Button
+                variant="outline"
+                asChild
+                className="h-11 px-6 rounded-2xl font-bold border-emerald-100 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-sm"
+            >
+                <Link href={`/dashboard/results${classId ? `?classId=${classId}` : ''}`}>
+                    <GraduationCap className="h-4 w-4 mr-2" />
+                    Enter Results
+                </Link>
+            </Button>
+
             <Button
                 variant="default"
                 onClick={onEditClick}
+                className="h-11 px-6 rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 transition-all"
             >
                 <Pencil className="h-4 w-4 mr-2" />
-                Edit Student
+                Edit Profile
             </Button>
         </div>
     );
@@ -253,19 +271,16 @@ export default function StudentDetailsPage() {
     })
 
     const handleRefresh = async () => {
-        setLoading(true)
+        setLoading(true);
+        setError(null);
         try {
-            // Fetch student data with detailed error handling
             const studentRes = await fetch(`/api/students/${params.id}`);
-
             if (!studentRes.ok) {
                 const errorData = await studentRes.json().catch(() => ({}));
                 throw new Error(errorData.message || `Failed to fetch student: ${studentRes.status} ${studentRes.statusText}`);
             }
 
             const responseData = await studentRes.json();
-
-            // The API returns data in { student: {...}, availableDepartments: [...], ... } format
             const studentData = responseData.student;
             const activeSession = responseData.currentSession;
 
@@ -274,14 +289,18 @@ export default function StudentDetailsPage() {
             }
 
             // Set current class and session directly from API response
-            let currentClassObj = studentData.currentClass;
-            setCurrentClass(currentClassObj);
+            setCurrentClass(studentData.currentClass);
             setCurrentSession(activeSession);
 
-            // Set student data with all classes included
+            // Fetch current school info for UI styling separately since it's non-critical
+            fetch('/api/schools/current')
+                .then(res => res.ok ? res.json() : null)
+                .then(data => data && setSchoolInfo(data))
+                .catch(console.error);
+
+            // Format student data with all classes included
             const formattedStudent = {
                 ...studentData,
-                // Include nested properties at the top level for ComplexStudent type
                 id: studentData.id,
                 name: studentData.name,
                 email: studentData.email,
@@ -297,108 +316,45 @@ export default function StudentDetailsPage() {
                     updatedAt: new Date(),
                 } : null,
                 studentClass: studentData.classes || [],
-                // Set arrays for properties required by ComplexStudent type
                 parents: studentData.parents || [],
                 attendance: studentData.attendance || [],
                 results: studentData.results || [],
-            }
+            };
 
             setStudent(formattedStudent);
 
             // Format student data for edit form
-            if (studentData) {
-                const formattedStudentData = {
-                    id: studentData.id,
-                    name: studentData.name,
-                    email: studentData.email,
-                    phone: studentData.phone || "",
-                    gender: studentData.gender || "MALE",
-                    dateOfBirth: studentData.dateOfBirth,
-                    profileImage: studentData.profileImage,
-                    address: studentData.address || "",
-                    city: studentData.city || "",
-                    state: studentData.state || "",
-                    country: studentData.country || "",
-                    religion: studentData.religion || "",
-                    department: studentData.department || null
-                }
-                setEditingStudent(formattedStudentData)
-            }
+            const formattedStudentData = {
+                id: studentData.id,
+                name: studentData.name,
+                email: studentData.email,
+                phone: studentData.phone || "",
+                gender: studentData.gender || "MALE",
+                dateOfBirth: studentData.dateOfBirth,
+                profileImage: studentData.profileImage,
+                address: studentData.address || "",
+                city: studentData.city || "",
+                state: studentData.state || "",
+                country: studentData.country || "",
+                religion: studentData.religion || "",
+                department: studentData.department || null
+            };
+            setEditingStudent(formattedStudentData);
 
-            // Set available data from API response
             if (responseData.availableDepartments) {
-                setDepartments(responseData.availableDepartments)
-            }
-
-            // Fetch current school info for UI styling
-            const schoolRes = await fetch('/api/schools/current')
-            if (schoolRes.ok) {
-                const schoolData = await schoolRes.json()
-                setSchoolInfo(schoolData)
+                setDepartments(responseData.availableDepartments);
             }
 
         } catch (error) {
-            console.error("Error fetching data:", error)
-            setError(error instanceof Error ? error.message : "An unexpected error occurred")
-            toast.error(error instanceof Error ? error.message : "An unexpected error occurred")
+            console.error("Error fetching data:", error);
+            setError(error instanceof Error ? error.message : "An unexpected error occurred");
+            toast.error(error instanceof Error ? error.message : "An unexpected error occurred");
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
-
-    useEffect(() => {
-        handleRefresh()
-    }, [params.id])
-
-    const refreshData = () => {
-        setLoading(true);
-        setError(null);
-        fetch(`/api/students/${params.id}`)
-            .then(res => {
-                if (!res.ok) throw new Error('Failed to refresh student data');
-                return res.json();
-            })
-            .then(data => {
-                const studentData = data.student;
-                const activeSession = data.currentSession;
-
-                if (studentData) {
-                    // Set current class and session directly from API response
-                    let currentClassObj = studentData.currentClass;
-
-                    // Map the nested student data to match the expected format
-                    const formattedStudent = {
-                        ...studentData,
-                        id: studentData.id,
-                        name: studentData.name,
-                        email: studentData.email,
-                        phone: studentData.phone,
-                        gender: studentData.gender,
-                        profileImage: studentData.profileImage,
-                        dateOfBirth: studentData.dateOfBirth,
-                        department: studentData.departmentId ? {
-                            id: studentData.departmentId,
-                            name: studentData.department?.name || 'Unknown Department',
-                            schoolId: studentData.schoolId,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                        } : null,
-                        studentClass: studentData.classes || [],
-                        parents: studentData.parents || [],
-                        attendance: studentData.attendance || [],
-                        results: studentData.results || [],
-                    }
-
-                    setStudent(formattedStudent);
-                    setCurrentClass(currentClassObj);
-                    setCurrentSession(activeSession);
-                }
-            })
-            .catch(err => {
-                toast.error('Failed to refresh student data');
-            })
-            .finally(() => setLoading(false));
     };
+
+    const refreshData = handleRefresh;
 
     const handleAddToClass = () => {
         setShowClassModal(true);
@@ -417,32 +373,38 @@ export default function StudentDetailsPage() {
         setIsFetchingClassData(true);
         fetch(`/api/students/${params.id}`)
             .then(res => res.json())
-            .then(data => {
+            .then(async data => {
                 const classesData = data.availableClasses || [];
                 const sessionsData = data.availableSessions || [];
 
                 setClasses(classesData);
 
                 // If sessions not directly available, fetch them
-                if (!sessionsData || sessionsData.length === 0) {
-                    return fetch("/api/academic-sessions?active=true")
-                        .then(res => res.json())
-                        .then(sessions => {
-                            setSessions(sessions);
-                            // Set default session to current if available
-                            const currentSession = sessions.find((s: { isCurrent: boolean }) => s.isCurrent);
-                            if (currentSession) {
-                                form.setValue("sessionId", currentSession.id);
-                            }
-                        });
+                if (!Array.isArray(sessionsData) || sessionsData.length === 0) {
+                    try {
+                        const res = await fetch("/api/academic-sessions?active=true");
+                        const sessions = await res.json();
+                        
+                        const finalSessions = Array.isArray(sessions) ? sessions : 
+                                             (sessions && Array.isArray(sessions.sessions) ? sessions.sessions : []);
+                        
+                        setSessions(finalSessions);
+                        
+                        // Set default session to current if available
+                        const currentSession = finalSessions.find((s: any) => s.isCurrent);
+                        if (currentSession) {
+                            form.setValue("sessionId", currentSession.id);
+                        }
+                    } catch (err) {
+                        console.error("Error fetching sessions:", err);
+                    }
                 } else {
                     setSessions(sessionsData);
                     // Set default session to current if available
-                    const currentSession = sessionsData.find((s: { isCurrent: boolean }) => s.isCurrent);
+                    const currentSession = sessionsData.find((s: any) => s.isCurrent);
                     if (currentSession) {
                         form.setValue("sessionId", currentSession.id);
                     }
-                    return Promise.resolve();
                 }
             })
             .catch(err => {
@@ -523,7 +485,7 @@ export default function StudentDetailsPage() {
                 icon={<GraduationCap className="h-6 w-6 mr-2" />}
                 action={
                     loading ? (
-                        <Button variant="outline" disabled>
+                        <Button variant="outline" disabled className="rounded-2xl h-11">
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             Loading...
                         </Button>
@@ -534,6 +496,8 @@ export default function StudentDetailsPage() {
                                 setEditingStudent(student)
                             }}
                             onClassClick={handleAddToClass}
+                            studentId={student?.id}
+                            classId={currentClass?.id}
                         />
                     )
                 }
@@ -557,39 +521,7 @@ export default function StudentDetailsPage() {
                     )}
                 </div>
 
-                {/* Quick Academic Actions */}
-                {!loading && student && (
-                    <div className="mt-12 flex flex-wrap gap-4 justify-center">
-                        <Button
-                            variant="secondary"
-                            className="rounded-2xl h-12 px-6 font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
-                            onClick={handleAddToClass}
-                        >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Update Classification
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            className="rounded-2xl h-12 px-6 font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
-                            asChild
-                        >
-                            <Link href={`/dashboard/students/${student.id}/attendance`}>
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Full History
-                            </Link>
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            className="rounded-2xl h-12 px-6 font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
-                            asChild
-                        >
-                            <Link href={`/dashboard/students/${student.id}/results`}>
-                                <GraduationCap className="h-4 w-4 mr-2" />
-                                Record Archive
-                            </Link>
-                        </Button>
-                    </div>
-                )}
+
             </div>
 
             {/* Student Edit Modal */}
